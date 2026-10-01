@@ -3,3 +3,4 @@ import './styles/assets.css';
 import './styles/stage9.css';
 import './styles/vibrancy.css';
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+import './styles/splendor.css';

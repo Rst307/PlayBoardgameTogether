@@ -1,3 +1,4 @@
+import { viewSchema as splendorViewSchema } from '@boardgame/splendor/shared';
 import type { ReactNode } from 'react';
 import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
 import { viewSchema as counterViewSchema } from '@boardgame/test-counter/shared';
@@ -6,6 +7,13 @@ import { viewSchema as gardenViewSchema } from '@boardgame/grid-garden/shared';
 
 export type GameBoard = (view: unknown, busy: boolean, events: unknown[], onAction: (action: unknown) => void, assets?:AssetResolverPort) => ReactNode;
 export const clientGames = [
+  {
+    id: 'splendor.base', version: '1.0.0', name: '璀璨宝石', defaultOptions: {},
+    load: async (): Promise<GameBoard> => {
+      const { SplendorBoard } = await import('@boardgame/splendor/client');
+      return (view, busy, _events, onAction) => <SplendorBoard view={splendorViewSchema.parse(view)} busy={busy} onAction={onAction} />;
+    },
+  },
   {
     id: 'demo.counter-room', version: '1.0.0', name: '计数房间', defaultOptions: { targetScore: 3 },
     load: async (): Promise<GameBoard> => {

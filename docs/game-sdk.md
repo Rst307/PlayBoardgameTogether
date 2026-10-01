@@ -32,3 +32,7 @@ Color Match 的 decision context 只由该座位 View 派生出 `play_card`、`d
 ## 公开规则说明
 
 各游戏通过独立 ./rules 入口导出 publicRules，在 API registry.rules 中按 gameId@version 装配。Color Match、计数测试与正式计数房均有公开说明，涵盖目标、回合、合法动作、特殊效果、终局和信息边界。房间/建房/对局页支持展开及复制；调度器将同一版本文本注入脚本 worker 的 publicRules 和模型 adapter 的 rules。说明不包含 State、隐藏手牌或凭据，不改变原有规则摘要或存档版本。新增游戏需同时注册其公开说明。
+
+## 璀璨宝石扩展示例（2026-10-01）
+
+games/splendor 的 splendor.base@1.0.0 是轮流行动的宝石引擎构筑扩展。动作由 take/reserve/reserve_deck/buy/return/noble/pass 描述；支付使用严格代币数量对象，退币和贵族选择作为持久化阶段。本人 View 仅含自己的预留卡，其他座位仅含预留数量；牌堆只提供数量。公开事件不含预留/盲抽牌身份。合法候选枚举所有精确支付（含主动黄金替代），脚本和模型沿用统一命令链路。原创客户端 SVG 使用空的不可变默认资源清单，不依赖管理员上传或外链。详见 [规则与维护](games/splendor.md)。

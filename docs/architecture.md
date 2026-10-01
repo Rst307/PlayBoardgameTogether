@@ -77,3 +77,7 @@ web -> client-sdk -> HTTP / authenticated WS
 大厅公开概要和密码加入继续由 rooms 拥有；app 仅装配认证/频控，protocol/client-sdk 提供共享 schema 边界。快速创建和独立创建页共用 RoomCreateForm，大厅筛选/分页由 Lobby 管理。新增公开说明由各游戏的独立 rules 入口导出，仅在 API registry 精确版本装配，再供规则接口和 AI context 共用；不修改已有规则源文件或摘要，旧局规则锁不受说明文案影响。真人脚本托管禁用不取消既有模型配置功能。
 
 正常结算由 matches 在原动作事务和 room → match 锁内恢复房间 waiting、清除本局关联和真人准备；真人与 automation 共用事务内复位函数。commit 后 match 变更通知标记房间也有变化，由 app 同时广播两类快照。房间可承载多轮，固定的 match participant 不依赖后续房间座位是否保留；旧对局的 View、receipt、规则摘要继续独立恢复。
+
+## 璀璨宝石扩展（2026-10-01）
+
+新增 games/splendor，shared 定义动作/View 和功能牌表，server 拥有权威牌堆、预留、阶段、规则与存档检查，client 绘制原创 SVG 并提供确认式交互。API registry、Web game-registry、AI policy worker 与安装脚本分别装配该包；没有新增平台规则分支、HTTP/WS 协议或数据库表。splendor.base@1.0.0 摘要额外覆盖 catalog 源码。存档恢复按字段验证最终分数，允许 JSONB 键重排。详见 [璀璨宝石](games/splendor.md)。

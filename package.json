@@ -25,6 +25,7 @@
     "@boardgame/game-sdk": "workspace:*",
     "@boardgame/color-match": "workspace:*",
     "@boardgame/grid-garden": "workspace:*",
+    "@boardgame/splendor": "workspace:*",
     "@boardgame/test-counter": "workspace:*",
     "@eslint/js": "9.35.0",
     "@playwright/test": "1.55.0",

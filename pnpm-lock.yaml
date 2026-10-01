@@ -17,6 +17,9 @@ importers:
       '@boardgame/grid-garden':
         specifier: workspace:*
         version: link:games/grid-garden
+      '@boardgame/splendor':
+        specifier: workspace:*
+        version: link:games/splendor
       '@boardgame/test-counter':
         specifier: workspace:*
         version: link:games/test-counter
@@ -77,6 +80,9 @@ importers:
       '@boardgame/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@boardgame/splendor':
+        specifier: workspace:*
+        version: link:../../games/splendor
       '@boardgame/test-counter':
         specifier: workspace:*
         version: link:../../games/test-counter
@@ -129,6 +135,9 @@ importers:
       '@boardgame/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@boardgame/splendor':
+        specifier: workspace:*
+        version: link:../../games/splendor
       '@boardgame/test-counter':
         specifier: workspace:*
         version: link:../../games/test-counter
@@ -181,6 +190,25 @@ importers:
         version: 5.9.2
 
   games/grid-garden:
+    dependencies:
+      '@boardgame/game-sdk':
+        specifier: workspace:*
+        version: link:../../packages/game-sdk
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
+      zod:
+        specifier: 4.1.5
+        version: 4.1.5
+    devDependencies:
+      '@types/react':
+        specifier: 19.1.12
+        version: 19.1.12
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
+  games/splendor:
     dependencies:
       '@boardgame/game-sdk':
         specifier: workspace:*

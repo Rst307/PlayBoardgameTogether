@@ -1,3 +1,5 @@
+import { splendorExtension, splendorAssetManifest } from '@boardgame/splendor/server';
+import { publicRules as splendorRules } from '@boardgame/splendor/rules';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { assetManifestSchema, manifestSchema, type GameExtension } from '@boardgame/game-sdk';
@@ -48,9 +50,19 @@ export function createRegistry(includeDevelopment: boolean) {
     new URL('../../../../games/grid-garden/src/shared/index.ts', import.meta.url),
     new URL('../../../../games/grid-garden/src/server/index.ts', import.meta.url),
   ];
+  const splendorSources = [
+    sdk,
+    new URL('../../../../games/splendor/src/shared/index.ts', import.meta.url),
+    new URL('../../../../games/splendor/src/shared/catalog.ts', import.meta.url),
+    new URL('../../../../games/splendor/src/server/index.ts', import.meta.url),
+  ];
+
+  registry.rules.set('splendor.base@1.0.0', splendorRules);
   registry.register(counterRoomExtension, counterAssetManifest, counterSources);
   registry.register(colorMatchExtension, colorAssetManifest, colorSources);
   registry.register(gridGardenExtension, gridGardenAssetManifest, gardenSources);
+  registry.register(splendorExtension, splendorAssetManifest, splendorSources);
+
   registry.rules.set('demo.counter-room@1.0.0', counterRules);
   registry.rules.set('color-match@1.0.0', colorRules);
   registry.rules.set('grid-garden@1.0.0', gridGardenRules);

@@ -14,6 +14,7 @@
     "@boardgame/game-sdk": "workspace:*",
     "@boardgame/color-match": "workspace:*",
     "@boardgame/grid-garden": "workspace:*",
+    "@boardgame/splendor": "workspace:*",
     "@boardgame/protocol": "workspace:*",
     "@boardgame/test-counter": "workspace:*",
     "@fastify/cors": "10.1.0",
