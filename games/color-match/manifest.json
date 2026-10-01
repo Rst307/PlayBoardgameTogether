@@ -1,0 +1,1 @@
+{ "id": "color-match", "version": "1.0.0", "sdkRange": "^0.1.0", "contentVersion": "1.0.0", "name": "Color Match", "description": "按颜色或数字出牌，数字 5 可指定对手摸牌。", "players": { "min": 2, "max": 4 }, "mode": "rules-driven", "capabilities": ["private-view", "turn-based"], "defaultAssetPack": { "id": "color-match.default", "version": "1.0.0" }, "developmentOnly": false }

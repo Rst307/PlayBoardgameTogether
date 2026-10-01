@@ -1,0 +1,15 @@
+{
+  "id": "grid-garden.classic",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "assets": [
+    { "kind": "image", "id": "board.grid", "file": "board.png", "mediaType": "image/png", "width": 256, "height": 256, "source": "原创几何图案", "license": "CC0-1.0" },
+    { "kind": "image", "id": "tile.domino", "file": "domino.png", "mediaType": "image/png", "width": 128, "height": 64, "source": "原创几何图案", "license": "CC0-1.0" },
+    { "kind": "image", "id": "icon.energy", "file": "energy.png", "mediaType": "image/png", "width": 64, "height": 64, "source": "原创几何图案", "license": "CC0-1.0" },
+    { "kind": "image", "id": "icon.harvest", "file": "harvest.png", "mediaType": "image/png", "width": 64, "height": 64, "source": "原创几何图案", "license": "CC0-1.0" },
+    { "kind": "image", "id": "icon.build", "file": "build.png", "mediaType": "image/png", "width": 64, "height": 64, "source": "原创几何图案", "license": "CC0-1.0" },
+    { "kind": "sound", "id": "sound.reveal", "file": "reveal.wav", "mediaType": "audio/wav", "durationMs": 200, "source": "原创合成提示音", "license": "CC0-1.0" },
+    { "kind": "sound", "id": "sound.place", "file": "place.wav", "mediaType": "audio/wav", "durationMs": 200, "source": "原创合成提示音", "license": "CC0-1.0" },
+    { "kind": "sound", "id": "sound.finish", "file": "finish.wav", "mediaType": "audio/wav", "durationMs": 200, "source": "原创合成提示音", "license": "CC0-1.0" }
+  ]
+}

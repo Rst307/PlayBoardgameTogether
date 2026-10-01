@@ -1,0 +1,125 @@
+import { z } from 'zod';
+export * from './profile.js';
+import { assetBindingSchema, presentationCueSchema } from './assets.js';
+
+export const PROTOCOL_VERSION = 1 as const;
+export const modelParametersSchema = z.object({
+  temperature: z.number().min(0).max(2).optional(),
+  maxOutputTokens: z.number().int().min(16).max(512).optional(),
+}).strict();
+export const modelProfileInputSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  endpointId: z.string().regex(/^[a-z0-9-]{1,80}$/),
+  baseUrl: z.string().trim().max(500).optional(),
+  modelId: z.string().trim().min(1).max(120),
+  parameters: modelParametersSchema.default({}),
+  enabled: z.boolean().default(true),
+  apiKey: z.string().trim().min(8).max(4096).optional(),
+}).strict();
+export const modelProfileUpdateSchema = modelProfileInputSchema.extend({ expectedVersion: z.number().int().positive() });
+export const modelProfileSchema = z.object({
+  id: z.string().uuid(), name: z.string(), endpoint_id: z.string(), base_url: z.string(),
+  model_id: z.string(), parameters: modelParametersSchema, enabled: z.boolean(),
+  has_credential: z.boolean(), profile_version: z.number().int(),
+});
+export const modelEndpointSchema = z.object({ id: z.string(), name: z.string(), protocol: z.enum(['mock', 'openai-chat-completions']) });
+export const modelProfileSavedSchema = z.object({ id: z.string().uuid(), profileVersion: z.number().int() });
+export const modelConnectionTestSchema = z.object({ attemptId: z.string().uuid(), status: z.literal('completed'), kind: z.enum(['real', 'mock']) });
+export const modelSettingsStatusSchema = z.object({ credentialsAvailable: z.boolean() });
+export const modelDeletedSchema = z.object({ deleted: z.boolean() });
+export const modelCredentialSavedSchema = z.object({ hasCredential: z.boolean() });
+export const modelCredentialRevokedSchema = z.object({ revoked: z.boolean() });
+export type ModelProfile = z.infer<typeof modelProfileSchema>;
+export type ModelEndpoint = z.infer<typeof modelEndpointSchema>;
+export type ModelProfileInput = z.input<typeof modelProfileInputSchema>;
+export type ModelProfileUpdate = z.input<typeof modelProfileUpdateSchema>;
+export const errorCodes = ['VALIDATION_ERROR', 'GAME_NOT_FOUND', 'MATCH_NOT_FOUND', 'STATE_CONFLICT', 'ACTION_NOT_ALLOWED', 'RATE_LIMITED', 'SERVICE_UNAVAILABLE', 'INTERNAL_ERROR', 'AUTH_INVALID_CREDENTIALS', 'UNAUTHENTICATED', 'FORBIDDEN', 'INVITE_UNAVAILABLE', 'ROOM_FULL', 'ROOM_NOT_FOUND', 'ROOM_NOT_WAITING', 'SEAT_OCCUPIED', 'NOT_SEATED', 'NOT_ALL_READY', 'ROOM_CONFIG_CHANGED', 'REQUEST_ID_CONFLICT', 'GAME_SETUP_FAILED', 'GAME_VERSION_UNAVAILABLE', 'RECOVERY_BLOCKED', 'ROOM_ALREADY_STARTED', 'CONTROLLER_CONFLICT', 'CONTROLLER_NOT_HUMAN', 'AI_POLICY_UNAVAILABLE', 'AI_NOT_SUPPORTED', 'AI_TASK_STALE', 'AI_BLOCKED', 'AI_INVALID_OUTPUT', 'AI_PROVIDER_FAILED', 'AI_TIMEOUT'] as const;
+export type ErrorCode = (typeof errorCodes)[number];
+
+export type SuccessEnvelope<T> = { ok: true; data: T; traceId: string };
+export type ErrorEnvelope = { ok: false; error: { code: ErrorCode; message: string; retryable: boolean }; traceId: string };
+export const apiEnvelopeSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), data: z.unknown(), traceId: z.string().min(1) }).strict(),
+  z.object({ ok: z.literal(false), error: z.object({ code: z.enum(errorCodes), message: z.string(), retryable: z.boolean() }).strict(), traceId: z.string().min(1) }).strict(),
+]);
+
+export const requestIdSchema = z.string().min(1).max(128);
+export const roomPasswordSchema = z.string().min(1).max(128);
+export const createRoomInputSchema = z.object({
+  requestId: requestIdSchema, name: z.string().trim().min(1).max(40),
+  gameId: z.string().min(1).max(128), version: z.string().min(1).max(32),
+  options: z.unknown(), seatCount: z.number().int().positive().max(20),
+  visibility: z.enum(['public', 'private']).optional(), password: roomPasswordSchema.optional(),
+}).strict();
+export const createRoomResultSchema = z.object({roomId:z.string().uuid(),inviteCode:z.string().nullable()});
+export const lobbyQuerySchema = z.object({
+  limit:z.coerce.number().int().min(1).max(50).default(20), cursor:z.string().max(512).optional(),
+  gameId:z.string().max(128).optional(), roomType:z.enum(['open','password']).optional(),
+  status:z.enum(['waiting','in_game','finished','closed']).optional(),
+}).strict();
+export const lobbyRoomSchema = z.object({
+  id:z.string().uuid(), name:z.string(), gameId:z.string(), gameVersion:z.string(),
+  status:z.enum(['waiting','in_game','finished','closed']), seatCount:z.number().int(),
+  occupiedCount:z.number().int(), hasPassword:z.boolean(), isMember:z.boolean(),
+});
+export const lobbyPageSchema = z.object({items:lobbyRoomSchema.array(),nextCursor:z.string().nullable()});
+export const gameRulesSchema = z.object({gameId:z.string(),version:z.string(),rules:z.string()});
+export type CreateRoomInput = z.input<typeof createRoomInputSchema>;
+export type LobbyQuery = z.input<typeof lobbyQuerySchema>;
+export type LobbyRoom = z.infer<typeof lobbyRoomSchema>;
+export const pingMessageSchema = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), type: z.literal('ping'), requestId: requestIdSchema }).strict();
+export const pongMessageSchema = z.object({ protocolVersion: z.literal(PROTOCOL_VERSION), type: z.literal('pong'), requestId: requestIdSchema }).strict();
+export const gameCommandSchema = z.object({
+  protocolVersion: z.literal(PROTOCOL_VERSION), type: z.literal('game.command'), requestId: requestIdSchema,
+  matchId: z.string().min(1).max(128), expectedRevision: z.number().int().nonnegative(), action: z.object({ type: z.string().min(1).max(64), payload: z.unknown() }).strict(),
+}).strict();
+export const playerSnapshotSchema = z.object({
+  protocolVersion: z.literal(PROTOCOL_VERSION), type: z.literal('player.snapshot'), matchId: z.string(), revision: z.number().int().nonnegative(), view: z.unknown(), delivery: z.enum(['snapshot', 'live', 'catch-up']),
+}).strict();
+
+export const createLabMatchSchema = z.object({ gameId: z.string().min(1).max(128), version: z.string().min(1).max(32), options: z.unknown() }).strict();
+export const labActionSchema = z.object({
+  testSeatId: z.string().min(1).max(128), requestId: requestIdSchema, expectedRevision: z.number().int().nonnegative(), action: z.unknown(),
+}).strict();
+
+export const matchActionSchema = z.object({
+  requestId: requestIdSchema,
+  expectedRevision: z.number().int().nonnegative(),
+  expectedControllerEpoch: z.number().int().nonnegative().optional(),
+  action: z.unknown(),
+}).strict();
+
+export const controllerCommandSchema = z.object({
+  requestId: requestIdSchema,
+  expectedControllerEpoch: z.number().int().nonnegative(),
+  controllerType: z.enum(['human', 'script', 'model']),
+  profileId: z.string().uuid().optional(),
+  policyId: z.literal('basic-v1').optional(),
+}).strict();
+
+export const matchViewSchema = z.object({
+  assetBinding: assetBindingSchema.nullable().optional(),
+  cues: z.array(presentationCueSchema).max(128).optional(),
+  matchId: z.string().uuid(), roomId: z.string().uuid(),
+  gameId: z.string(), gameVersion: z.string(),
+  revision: z.number().int().nonnegative(),
+  status: z.enum(['active', 'finished', 'aborted']),
+  seatIndex: z.number().int().nonnegative(),
+  controller: z.object({ type: z.enum(['human', 'script', 'model']), controllerEpoch: z.number().int().nonnegative(), controllerVersion: z.number().int().nonnegative(), policyId: z.string().nullable(), profileId: z.string().uuid().nullable().optional() }).strict(),
+  aiStatus: z.object({ status: z.enum(['idle', 'queued', 'running', 'submitting', 'blocked']), version: z.number().int().nonnegative(), safeErrorCode: z.string().nullable() }).strict(),
+  controllers:z.array(z.object({seatIndex:z.number().int().nonnegative(),type:z.enum(['human','script','model']),controllerEpoch:z.number().int().nonnegative(),controllerVersion:z.number().int().nonnegative(),aiStatus:z.enum(['idle','queued','running','submitting','blocked']),aiStatusVersion:z.number().int().nonnegative(),safeErrorCode:z.string().nullable()}).strict()).optional(),
+  view: z.unknown(),
+  delivery: z.enum(['snapshot', 'live']),
+  events: z.array(z.unknown()).optional(),
+}).strict();
+export type MatchView = z.infer<typeof matchViewSchema>;
+export const matchCommandReceiptSchema = z.discriminatedUnion('outcome', [
+  z.object({ outcome: z.literal('accepted'), requestId: requestIdSchema, appliedRevision: z.number().int().positive() }).strict(),
+  z.object({ outcome: z.literal('not_found'), requestId: requestIdSchema }).strict(),
+]);
+export type MatchCommandReceipt = z.infer<typeof matchCommandReceiptSchema>;
+export const matchSnapshotMessageSchema = z.object({
+  protocolVersion: z.literal(PROTOCOL_VERSION), type: z.literal('match.snapshot'),
+  matchId: z.string().uuid(), revision: z.number().int().nonnegative(),
+  snapshot: matchViewSchema,
+}).strict();

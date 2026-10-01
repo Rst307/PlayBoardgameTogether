@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - games/*
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  argon2: true
+  esbuild: true

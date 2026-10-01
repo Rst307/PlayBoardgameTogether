@@ -1,0 +1,9 @@
+{
+  "id": "demo.counter-assets",
+  "version": "0.1.0",
+  "language": "zh-CN",
+  "assets": [
+    { "kind": "image", "id": "counter.token", "file": "token.png", "mediaType": "image/png", "width": 1, "height": 1, "source": "project-generated fixture", "license": "CC0-1.0" },
+    { "kind": "sound", "id": "counter.add", "file": "add.wav", "mediaType": "audio/wav", "durationMs": 100, "source": "project-generated fixture", "license": "CC0-1.0" }
+  ]
+}

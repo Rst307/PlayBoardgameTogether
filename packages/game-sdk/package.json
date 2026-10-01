@@ -1,0 +1,29 @@
+{
+  "name": "@boardgame/game-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "production": "./dist/index.js",
+      "default": "./src/index.ts"
+    },
+    "./assets": {
+      "production": "./dist/assets.js",
+      "default": "./src/assets.ts"
+    },
+    "./multi-action": {
+      "production": "./dist/multi-action.js",
+      "default": "./src/multi-action.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

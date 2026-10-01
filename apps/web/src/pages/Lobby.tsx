@@ -1,0 +1,58 @@
+import {useEffect,useRef,useState,type FormEvent} from 'react';
+import type {LobbyQuery,LobbyRoom} from '@boardgame/protocol';
+import {api,command,navigate} from '../platform.js';
+import type {AvailableGame} from './RoomCreateForm.js';
+
+const statusNames={waiting:'等待开局',in_game:'进行中',finished:'已结束',closed:'已关闭'};
+export function Lobby() {
+  const [games,setGames]=useState<AvailableGame[]>([]);
+  const [query,setQuery]=useState<LobbyQuery>({status:'waiting'});
+  const [rooms,setRooms]=useState<LobbyRoom[]>([]);
+  const [cursor,setCursor]=useState<string|null>(null);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [selected,setSelected]=useState<LobbyRoom>();
+  const [refresh,setRefresh]=useState(0);
+  const generation=useRef(0);
+  useEffect(()=>{void api.games<AvailableGame[]>().then(setGames).catch(()=>undefined);},[]);
+  useEffect(()=>{
+    const token=++generation.current;
+    setBusy(true);setError('');setRooms([]);setCursor(null);setSelected(undefined);
+    void api.lobby(query).then(page=>{if(token===generation.current){setRooms(page.items);setCursor(page.nextCursor);}})
+      .catch(cause=>{if(token===generation.current)setError(cause instanceof Error?cause.message:'大厅加载失败');})
+      .finally(()=>{if(token===generation.current)setBusy(false);});
+    return()=>{generation.current++;};
+  },[query,refresh]);
+  async function more() {
+    if(!cursor||busy)return;
+    const token=generation.current;
+    setBusy(true);
+    try {const page=await api.lobby({...query,cursor});if(token===generation.current){setRooms(old=>[...old,...page.items]);setCursor(page.nextCursor);}}
+    catch(cause){if(token===generation.current)setError(cause instanceof Error?cause.message:'加载失败');}
+    finally{if(token===generation.current)setBusy(false);}
+  }
+  async function join(room:LobbyRoom,password?:string) {
+    if(room.isMember){navigate(`/rooms/${room.id}`);return;}
+    setBusy(true);setError('');
+    try {await api.joinPublicRoom(room.id,{requestId:command(),...(password?{password}:{})});navigate(`/rooms/${room.id}`);}
+    catch(cause){setError(cause instanceof Error?cause.message:'加入失败');}
+    finally{setBusy(false);}
+  }
+  function submitPassword(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();if(selected)void join(selected,String(new FormData(event.currentTarget).get('password')));
+  }
+  return <section className="room-list"><h2>公开房间</h2><p className="muted">选择房间直接加入；私人房间请使用邀请码。</p>
+    <div className="lobby-filters">
+      <label>筛选游戏<select value={query.gameId??''} onChange={event=>setQuery(old=>({...old,gameId:event.target.value||undefined}))}><option value="">全部游戏</option>{games.filter(game=>!game.developmentOnly).map(game=><option key={`${game.id}@${game.version}`} value={game.id}>{game.name}</option>)}</select></label>
+      <label>筛选房间类型<select value={query.roomType??''} onChange={event=>setQuery(old=>({...old,roomType:(event.target.value||undefined) as LobbyQuery['roomType']}))}><option value="">全部类型</option><option value="open">公开无密码</option><option value="password">公开密码房</option></select></label>
+      <label>筛选状态<select value={query.status??''} onChange={event=>setQuery(old=>({...old,status:(event.target.value||undefined) as LobbyQuery['status']}))}><option value="">全部状态</option>{Object.entries(statusNames).map(([value,name])=><option key={value} value={value}>{name}</option>)}</select></label>
+      <button className="secondary" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>刷新大厅</button>
+    </div>
+    {error&&<p className="error-notice" role="alert">{error}</p>}
+    {selected&&<form className="panel form-stack" onSubmit={submitPassword}><h3>加入 {selected.name}</h3><label>加入房间密码<input name="password" type="password" maxLength={128} required autoComplete="off"/></label><button disabled={busy}>确认加入</button><button type="button" className="secondary" onClick={()=>setSelected(undefined)}>取消</button></form>}
+    {rooms.map(room=><article className="room-row" key={room.id}><span><strong>{room.name}</strong><small>{games.find(game=>game.id===room.gameId)?.name??room.gameId} · {room.occupiedCount}/{room.seatCount} 人 · {room.hasPassword?'密码房':'无密码'} · {statusNames[room.status]}</small></span><button disabled={busy||(!room.isMember&&(room.status!=='waiting'||room.occupiedCount>=room.seatCount))} onClick={()=>room.hasPassword&&!room.isMember?setSelected(room):void join(room)}>{room.isMember?'进入房间':room.status!=='waiting'?'不可加入':room.occupiedCount>=room.seatCount?'已满':'加入房间'}</button></article>)}
+    {!busy&&!error&&!rooms.length&&<p className="muted">没有符合筛选条件的房间。可以调整筛选，或创建自己的房间。</p>}
+    {busy&&<p role="status">正在加载…</p>}
+    {cursor&&<button className="secondary" disabled={busy} onClick={()=>void more()}>加载更多大厅房间</button>}
+  </section>;
+}

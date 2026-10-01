@@ -1,0 +1,74 @@
+# 协议
+
+## 本人资料与历史（2026-10-01）
+
+- `GET /api/v1/profile`：返回 id、username、displayName、avatar、bio、createdAt，只能读取当前 session 账户。
+- `PUT /api/v1/profile`：严格输入 `{ displayName, avatar, bio }`，昵称 trim 后 1–32 字，avatar 为内置枚举，bio trim 后最多 300 字；需要 Origin 和 CSRF，返回保存后的本人资料。不接收 accountId 或外部图片 URL。
+- `GET /api/v1/profile/matches?before=<match UUID>`：返回 `{ items, nextCursor }`，每项仅 id、gameId、gameVersion、roomName、status、createdAt；按固定参与者身份过滤，每页 20 项。before 必须是 UUID，非本人游标不返回记录。
+
+共享 schema 与类型在 protocol/profile.ts，client-sdk 的 profile/saveProfile/matchHistory 解析 unknown 响应。未新增全局胜率或胜负推断，游戏结果仍由各扩展的本人 View 展示。
+
+## 第七阶段资源接口
+
+GET `/assets/contracts`、`/assets/versions?gameId=...`、`/assets/versions/:id`、`/assets/files/:id` 需要登录。文件先鉴权后 ETag，private/max-age=0/must-revalidate、nosniff、正确 MIME 和长度。
+
+管理员 `/admin/assets/drafts` 支持 GET/POST；`/:id` GET/PATCH/DELETE；`/:id/files` GET/POST；`/:id/validate`、`/:id/publish` POST；`/admin/assets/versions` GET，`/:id/archive` POST，`/:id` DELETE。写请求保持 Origin/CSRF/session/role。上传原始媒体正文，头部 X-Request-Id、X-File-Name（URI 编码仅显示）、X-File-Size、X-Content-SHA256，接收前预留配额；重复请求绑定全部内容。草稿编辑传 manifestText，服务端检查重复 JSON 键；发布传 expectedDraftRevision/contentHash/requestId。
+
+PUT `/rooms/:id/assets`：requestId/expectedRoomRevision/versionId，只允许 waiting 房主，复用房间命令事务与 ready 失效。RoomSnapshot 增加 assetVersionId；MatchView 增加 nullable assetBinding(versionId/manifestHash/contractVersion) 和可选 cues(eventId/cueIndex/cueId)。cue 只在已投影 WS live 完整批次出现，HTTP receipt/initial/resync 静默；同 revision 的完整 cue 批次消费后关闭水位。错误复用 VALIDATION_ERROR、FORBIDDEN、STATE_CONFLICT、REQUEST_ID_CONFLICT、GAME_VERSION_UNAVAILABLE、SERVICE_UNAVAILABLE。
+
+HTTP envelope 为 `{ok:true,data,traceId}` 或 `{ok:false,error:{code,message,retryable},traceId}`。认证/房间/match 响应带 `Cache-Control: no-store`。
+
+## HTTP
+
+- `POST /api/v1/auth/login`、`GET /auth/me`、`POST /auth/logout`
+- `GET/POST /api/v1/rooms`、`POST /rooms/join`；列表默认 20、最大 50，返回 `{items,nextCursor}`，用 `?cursor=...` 翻页
+- `GET /rooms/:id`
+- `PATCH /rooms/:id/config`
+- `POST /rooms/:id/invite|leave|host|start|close`
+- `PUT|DELETE /rooms/:id/my-seat`、`PUT /rooms/:id/my-ready`
+- `PUT|DELETE /rooms/:id/seats/:seatId/bot`：waiting 房间内仅房主可添加/移除白名单脚本 AI。
+- `GET /games/:id/ai-policies`：公开兼容策略描述，不返回模块路径。
+- `GET /api/v1/matches/:id/view`
+- `POST /api/v1/matches/:id/actions`：`{requestId,expectedRevision,expectedControllerEpoch,action}`；不接受客户端 seatId/automation 标记。epoch 0 的旧阶段 4 请求保留兼容，发生控制切换后必须携带当前 epoch。
+- `PUT /api/v1/matches/:id/my-controller`：本人 set human/model（human 座位设置 script 返回 FORBIDDEN），带 requestId、expectedControllerEpoch；model 必须提供本人的 profileId。
+- `POST /api/v1/matches/:id/seats/:seatId/ai-retry`：本人或专用 bot 房主重试 blocked 调度。
+- `GET /api/v1/matches/:id/commands/:requestId`：只允许当前 session 对应的固定参与者查询本人 `match.action` 结果。返回 `{outcome:'accepted',requestId,appliedRevision}` 或 `{outcome:'not_found',requestId}`；not_found 不证明正在执行的请求最终不会提交，客户端必须以原 ID 和原内容重试。
+
+所有房间写请求带 requestId；依赖当前决定的写请求再带 expectedRoomRevision。身份字段不由 body 接收。未找到和非成员对外统一 404 语义。
+
+正式动作按 session account 映射固定参与者，事务内再次检查 session/账户状态，先查同一 requestId 的已提交结果，再检查 match revision 与规则。相同请求返回原 revision/View，但不重放原 live 事件；不同内容复用 ID 返回 `REQUEST_ID_CONFLICT`；旧 revision 返回 `STATE_CONFLICT`；非法或终局动作返回 `ACTION_NOT_ALLOWED`。成功后同一事务保存状态、RNG、revision、动作和结果引用。正式动作回执在对局保留期内不设 7 天 TTL；客户端不可把旧回执 View 当作最新视图。
+
+阶段 5 新增 `CONTROLLER_CONFLICT`、`CONTROLLER_NOT_HUMAN`、`AI_POLICY_UNAVAILABLE`、`AI_NOT_SUPPORTED`、`AI_TASK_STALE`、`AI_BLOCKED`。内部 lease 细节不通过公共接口泄露。
+
+## 模型设置
+
+模型设置接口（均以当前 session 为所有者，写入保留 Origin/CSRF 校验，响应 no-store）：
+
+- `GET /api/v1/model-endpoints`：公共可选服务目录；`GET /api/v1/me/model-settings`：只返回 credentialsAvailable。
+- `GET/POST /api/v1/me/model-profiles`：列出本人未删除配置／原子创建配置与可选 apiKey。
+- `PATCH /api/v1/me/model-profiles/:id`：完整编辑字段加 expectedVersion；可选 apiKey 缺省表示保留，地址改变必须重新提供密钥；版本冲突返回 STATE_CONFLICT。
+- `DELETE /api/v1/me/model-profiles/:id`：软删除并撤销凭证；正在用于活跃对局模型托管的配置拒绝编辑和删除。
+- `PUT|DELETE /api/v1/me/model-profiles/:id/credential`：替换／撤销本人密钥，不返回密钥内容。
+- `POST /api/v1/me/model-profiles/:id/test`：显式触发一次无私密游戏数据的连接测试，返回 attemptId、status、kind（real/mock）。
+
+共享 modelProfileInputSchema、modelProfileUpdateSchema 及响应 schema 位于 protocol，client-sdk 在响应边界解析，不再由调用者传泛型断言模型设置响应。
+
+## WebSocket
+
+`/api/v1/ws`：公开诊断 hello/ping/pong。
+
+`/api/v1/ws/session`：cookie session + Origin。客户端发送 `room.subscribe(roomId)`、`room.unsubscribe(roomId)`、`ping`；服务端发送 `session.ready`、`room.snapshot`、`room.presence`、`room.closed`、`subscription.revoked`、`pong`、`error`。snapshot 是完整替换，客户端只接受不低于当前 roomRevision 的版本。presence 使用独立 presenceSeq，不推进 roomRevision。每连接最多订阅 10 个房间、每秒最多处理 10 条消息；会话失效时断开连接。
+
+订阅正在进行的房间时，服务端在 `room.snapshot` 后发送本人初始 `match.snapshot`。阶段 5 snapshot 增加本人 controller、公开 controllers 和 aiStatus；控制/任务状态可在相同游戏 revision 下更新。客户端分别按 revision、controllerVersion、aiStatusVersion 合并，仍只对 live 游戏事件按 eventId 去重。
+
+正常结算提交后推送 finished 的 `match.snapshot` 和 waiting 的 `room.snapshot`；两者分别按自身 revision 合并，不依赖到达顺序。waiting 快照的 activeMatchId 和 matchStatus 均为 null，真人 ready 为 false。历史结果继续通过原 matchId 的 View 接口按参与者身份读取。订阅 waiting 房间不会补发上一局 match.snapshot；结果页在房间订阅确认后用 REST 同步已结束的对局，不无限等待已移除的 activeMatchId。
+
+## 房间大厅与规则（2026-09-25）
+
+- POST /rooms：共享 createRoomInputSchema；可选 visibility=public/private、password（1–128 字符）。缺省 private 保持旧客户端隐私。重复 requestId 不重复建房；新请求超过一个未关闭创建房间返回 ROOM_CONFIG_CHANGED/409。
+- GET /rooms/lobby：需要会话；limit 默认 20、最大 50，cursor、gameId、roomType=open/password、status=waiting/in_game/finished/closed 可选。返回 lobbyPageSchema 的公开概要与 nextCursor，不返回成员、私密 State、邀请码或密码摘要。
+- POST /rooms/:id/join：公开房通过 requestId 和可选 password 加入。私人房返回 ROOM_NOT_FOUND。邀请码路径 POST /rooms/join 同样接受 password；密码错误 FORBIDDEN/403；共享加入频控。
+- GET /games/:id/versions/:version/rules：精确版本的公开规则文本，返回 gameId/version/rules；未知版本明确 404。
+- room.snapshot 增加 visibility、hasPassword、matchStatus；进行中退出返回 ROOM_ALREADY_STARTED/409；关闭仅限房主，允许终止 active 对局，非房主返回 FORBIDDEN/403。关闭与终止同事务提交，成功后广播关闭快照/通知。导航不改变成员资格。
+
+新大厅/创建结果/规则的客户端响应均经共享 schema 校验。控制器仍保留协议 script 枚举用于专用 bot 与历史回执；真人新请求无法开启脚本。

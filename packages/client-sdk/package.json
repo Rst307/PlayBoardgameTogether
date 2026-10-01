@@ -1,0 +1,22 @@
+{
+  "name": "@boardgame/client-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "production": "./dist/index.js",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@boardgame/protocol": "workspace:*",
+    "@boardgame/game-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

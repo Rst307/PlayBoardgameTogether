@@ -1,0 +1,35 @@
+import { test, expect } from '@playwright/test';
+
+test('more navigation stays expanded across page changes until explicitly collapsed', async ({ page }) => {
+  await page.route('**/api/**', route => route.abort());
+  await page.goto('/');
+  await page.evaluate(() => { document.body.dataset.navigationMarker = 'same-document'; });
+  const more = page.locator('.nav-tools');
+  const toggle = more.locator('summary');
+  await toggle.click();
+  await expect(more).toHaveAttribute('open');
+  await page.getByRole('link', { name: '系统状态', exact: true }).click();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('系统状态');
+  await expect(more).toHaveAttribute('open');
+  await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('游戏大厅');
+  await expect(more).toHaveAttribute('open');
+  await page.goBack();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('系统状态');
+  await expect(more).toHaveAttribute('open');
+  await page.goForward();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('游戏大厅');
+  await expect(more).toHaveAttribute('open');
+  await page.getByRole('link', { name: '我的资料', exact: true }).click();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('我的资料');
+  await expect(more).toHaveAttribute('open');
+  expect(await page.evaluate(() => document.body.dataset.navigationMarker)).toBe('same-document');
+  await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('游戏大厅');
+  await expect(more).toHaveAttribute('open');
+  await toggle.click();
+  await expect(more).not.toHaveAttribute('open');
+  await page.goBack();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('我的资料');
+  await expect(more).not.toHaveAttribute('open');
+});
