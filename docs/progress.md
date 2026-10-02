@@ -280,3 +280,11 @@ Git：开始与结束均确认本目录不存在 .git，git status/branch/remote
 尚未满足完整验收：G47 人工实际听音待确认，Android/iOS 实机与 WebKit 未测；配额极值、部分并发/进程强杀及迁移夹具覆盖详见验收表的“部分”项，不将审查当成实测。没有付费模型调用、Grid Garden 或公网部署，阶段六既有缺口保持独立。工作目录无 Git 元数据，无法提交/推送，未初始化仓库。下一步补齐验收表剩余证据及人工听音；后续扩展使用 [第八阶段交接](stage-8-handoff.md)，不另建上传和播放器。
 
 阶段七最终浏览器补充：修正旧初始播放断言后，完整 `pnpm test:e2e` 桌面与 Pixel 5 共 26 项全部通过（2.9 分钟）；已检查实际纸质替换包桌面/手机和管理员预览截图。最后 `pnpm lint` 通过。G47 仍待人工实际听音，自动浏览器 source.start 证据不替代物理音频设备验收。
+
+## 游戏优先布局与结算返回（2026-10-02）
+
+实现：MatchPage 在当前页面观察到 active → finished 后自动回原房间，提示本局结束、重新准备并提供本局结果入口；历史结果初次加载/刷新继续查看。游戏桌为主列，规则、声音、控制方式和座位控制状态在宽屏右侧，1100px 以下移到下方；对局导航收为顶栏。共享样式统一正文行距、标题换行、点击区域、数字排版和错误强调。房间写入显示保存反馈，控制切换在离线/结果未确认时禁用，成功后反馈当前控制方式。保留房间关闭确认和已有正式动作、回执、身份化 View、资源链路。
+
+实际验证：pnpm typecheck、pnpm lint、pnpm test tests/unit（13 文件 / 58 项）、pnpm build（生产 bundle/API runtime）通过。测试库隔离检查、迁移与游戏同步通过；pnpm test:e2e 启动前被现有 Splendor 资源种子脚本的已发布草稿 STATE_CONFLICT 阻塞，没有改写该用户工作中的脚本。初次改用现有 run-e2e.ts 时与另一个清理同一测试库的集成进程重叠，登录失败，已停止本轮运行并等待对方结束。随后 pnpm exec tsx --env-file=.env scripts/run-e2e.ts tests/e2e/color-match.spec.ts tests/e2e/grid-garden.spec.ts tests/e2e/room-close.spec.ts tests/e2e/stage9-ui.spec.ts tests/e2e/stage6-model.spec.ts tests/e2e/splendor.spec.ts：桌面与 Pixel 5 共 26 项全部通过；实际检查两款游戏的桌面/手机截图，验证辅助区位置、无横向溢出、正常回房、历史结果刷新、下一局、关闭、冲突、断线和四人结算。
+
+pnpm exec vitest run tests/integration：13 文件 / 84 项，83 项通过，既有管理员 CLI 幂等初始化用例超过 5 秒失败；单独以原断言和时限重跑该用例通过（其余 23 项因名称过滤未运行，不计为通过）。没有更改测试时限或清理开发库。完整集成首轮不记为全绿。未验证实机手机和物理听音；现有资源种子冲突仍需其所属资源工作处理。下一步恢复种子幂等性后按现有包装脚本复核；本轮只提交自己的页面、样式、结算测试与说明，不包含已有图包改动及生成截图。详见 [游戏优先体验](game-first-experience.md)。

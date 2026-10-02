@@ -51,7 +51,7 @@ export function App() {
     path === '/profile' ? '我的资料' : path === '/rooms/new' ? '创建房间' : path === '/settings/models' ? '模型设置' :
     path === '/admin/assets' ? '资源管理' : room ? '房间' : match ? '游戏桌' :
     path === '/status' ? '系统状态' : path === '/dev/ui' ? '界面场景' : '桌游平台';
-  return <div className="desktop-shell" onClick={followPageLink}>
+  return <div className={`desktop-shell ${match ? 'desktop-shell--game' : ''}`} onClick={followPageLink}>
     <a className="skip-link" href="#main-content">跳到主要内容</a>
     <header className="site-header">
       <div className="window-marks" aria-hidden="true"><i /><i /><i /></div>

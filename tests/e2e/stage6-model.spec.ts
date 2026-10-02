@@ -53,7 +53,9 @@ test('model settings save and test an explicitly labelled mock profile', async (
   await page.locator('.controller-panel summary').click();
   await page.getByRole('button', { name: '启用模型 · 浏览器模拟配置' }).last().click();
   await expect(page.getByText(/座位 1 · 模型 AI/)).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.page-heading').getByText(/已结束/)).toBeVisible({ timeout: 60000 });
+  await expect(page).toHaveURL(/\/rooms\//, { timeout: 60000 });
+  await page.getByRole('link', { name: '查看本局结果' }).click();
+  await expect(page.locator('.page-heading').getByText(/已结束/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

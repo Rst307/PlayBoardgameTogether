@@ -78,7 +78,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await expect(b.locator('.color-hand-cards button')).toHaveCount(5, { timeout: 15_000 });
     await a.screenshot({ path: `docs/screenshots/stage-9/after/color-initial-${testInfo.project.name}.png`, fullPage: true });
     for (let revision = 0; revision < 300; revision++) {
-      if (await a.locator('.page-heading').getByText(/已结束/).count()) break;
+      if (await a.getByRole('region', { name: '本局已结束', exact: true }).count()) break;
       const active = await a.getByText('轮到你行动', { exact: true }).count() ||
         await a.getByText('请选择一名目标玩家', { exact: true }).count() ? a : b;
       const target = active.getByRole('button', { name: '指定摸牌' }).first();
@@ -157,8 +157,8 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
         await active.unroute('**/api/v1/matches/*/actions');
         await active.reload();
       }
-      await expect(a.getByText(`对局 · revision ${revision + 1}`)).toBeVisible({ timeout: revision === 1 ? 20_000 : 5_000 });
-      await expect(b.getByText(`对局 · revision ${revision + 1}`)).toBeVisible({ timeout: revision === 1 ? 20_000 : 5_000 });
+      await expect.poll(async () => await a.getByText(`对局 · revision ${revision + 1}`).count() > 0 || await a.getByRole('region', { name: '本局已结束', exact: true }).count() > 0, { timeout: revision === 1 ? 20_000 : 5_000 }).toBe(true);
+      await expect.poll(async () => await b.getByText(`对局 · revision ${revision + 1}`).count() > 0 || await b.getByRole('region', { name: '本局已结束', exact: true }).count() > 0, { timeout: revision === 1 ? 20_000 : 5_000 }).toBe(true);
       if (revision === 0) {
         const passive = active === a ? b : a;
         await expect(passive.getByRole('region', { name: '行动记录' }).getByRole('listitem').first()).toBeVisible();
@@ -179,6 +179,12 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
         await third!.context.close();
         third = undefined;
       }
+    }
+    for (const page of [a, b]) {
+      await expect(page).toHaveURL(/\/rooms\//);
+      await expect(page.getByRole('region', { name: '本局已结束', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: '准备', exact: true })).toBeEnabled();
+      await page.getByRole('link', { name: '查看本局结果' }).click();
     }
     await expect(a.locator('.page-heading').getByText(/已结束/)).toBeVisible();
     await expect(b.locator('.page-heading').getByText(/已结束/)).toBeVisible();

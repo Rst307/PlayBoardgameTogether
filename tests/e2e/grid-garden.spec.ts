@@ -18,8 +18,18 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
   await page.getByRole('button', { name: '开始游戏' }).click();
   await expect(page.getByRole('heading', { name: 'Grid Garden', exact: true })).toBeVisible();
   await expect(page.getByRole('grid', { name: '我的4乘4花园' })).toBeVisible();
+  const table = page.getByRole('region', { name: '游戏桌', exact: true });
+  const support = page.getByRole('complementary', { name: '对局辅助', exact: true });
+  const tableBox = (await table.boundingBox())!, supportBox = (await support.boundingBox())!;
+  if (testInfo.project.name === 'desktop') {
+    expect(tableBox.width).toBeGreaterThan(supportBox.width * 2);
+    expect(supportBox.x).toBeGreaterThan(tableBox.x);
+  } else {
+    expect(supportBox.y).toBeGreaterThan(tableBox.y + tableBox.height - 1);
+  }
+  await page.screenshot({ path: testInfo.outputPath('game-first-layout.png'), fullPage: true });
   async function submitAndWait(round: number, choice: 'harvest' | 'build') {
-    const next = round < 3 ? page.getByText(`第 ${round + 1} / 3 轮`) : page.getByRole('heading', { name: '最终得分' });
+    const next = round < 3 ? page.getByText(`第 ${round + 1} / 3 轮`) : page.getByRole('region', { name: '本局已结束', exact: true });
     const choiceButton = page.getByRole('button', { name: choice === 'build' ? '建造 -1' : '收获 +2' });
     for (let attempt = 0; attempt < 8; attempt++) {
       if (await next.isVisible().catch(() => false)) return;
@@ -46,7 +56,11 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
     await expect(page.getByText(`第 ${round} / 3 轮`)).toBeVisible();
     await submitAndWait(round, round === 1 ? 'build' : 'harvest');
   }
-  await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/rooms\//, { timeout: 30_000 });
+  await expect(page.getByRole('button', { name: '准备', exact: true })).toBeEnabled();
+  await page.getByRole('link', { name: '查看本局结果' }).click();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
   await expect(page.getByRole('list').getByText(/获胜/)).toBeVisible();
   await expect(page.locator('.garden-results').getByText(/^第 1 轮/).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -153,6 +167,8 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       await a.getByRole('button', { name: '确认放置' }).click();
     }
     for (const page of [a, b]) {
+      await expect(page).toHaveURL(/\/rooms\//);
+      await page.getByRole('link', { name: '查看本局结果' }).click();
       await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
       await expect(page.getByText('座位 1：6 分（占格 6 + 能量 0） · 获胜')).toBeVisible();
       await expect(page.getByText('座位 2：5 分（占格 2 + 能量 3）')).toBeVisible();

@@ -17,6 +17,11 @@ export function RoomPage({id}:{id:string}){
   const[players,setPlayers]=useState<{min:number;max:number}>({min:2,max:2});
   const[assetVersions,setAssetVersions]=useState<AssetVersionInfo[]>([]);
   useEffect(()=>{if(room?.gameId)void api.assets.versions(room.gameId).then(setAssetVersions).catch(()=>undefined);},[room?.gameId]);
+  const [completedMatchId] = useState<string | undefined>(() => {
+    const state: unknown = history.state;
+    if (state && typeof state === 'object' && 'completedMatchId' in state && typeof state.completedMatchId === 'string') return state.completedMatchId;
+    return undefined;
+  });
   const enteringMatch=useRef(false);
   const active=useRef(false);
   const returnedHome=useRef(false);
@@ -71,6 +76,8 @@ export function RoomPage({id}:{id:string}){
   const waiting=room.status==='waiting';
   const playing=room.matchStatus==='active';
   return <><section className="page-heading"><div><p className="eyebrow">{waiting?'等待开局':room.status==='closed'?'房间已关闭':'对局已创建'}</p><h1>{room.name}</h1><p>{room.gameId}@{room.gameVersion} · {room.members.length}/{room.seatCount} 人 · revision {room.roomRevision}</p></div><span className={`status ${connected?'status--ok':'status--warn'}`}>{connected?'实时同步':'连接中断，状态可能过期'}</span></section>{error&&<p className="error-notice" role="alert">{error}</p>}{invite&&waiting&&<div className="invite-box"><span>点击邀请码即可复制</span><button type="button" className="secondary" aria-label="复制邀请码" onClick={()=>void copyInvite()}><strong>{invite.match(/.{1,4}/g)?.join('-')??invite}</strong></button></div>}{copyNotice&&<p role="status">{copyNotice}</p>}{copyNotice.startsWith('复制失败')&&<label className="form-stack invite-manual">手动复制邀请码<input readOnly value={invite} onFocus={event=>event.currentTarget.select()}/></label>}<GameRules gameId={room.gameId} version={room.gameVersion}/>{playing&&<p className="muted">对局进行中，玩家不能退出；房主可强制关闭房间并终止对局。返回此页不会退出对局。</p>}
+    {completedMatchId&&<section className="round-complete panel" aria-label="本局已结束"><div><h2>本局已结束，已返回房间</h2><p>席位已保留。重新准备后，房主就能开始下一局。</p></div><a className="button-link secondary" href={`/matches/${encodeURIComponent(completedMatchId)}`}>查看本局结果</a></section>}
+    {busy&&<p className="action-hint" role="status">正在保存房间操作，请稍候…</p>}
     {assetVersions.length>0&&<section className="panel"><h2>图片与音效</h2><p>当前：{assetVersions.find(version=>version.id===room.assetVersionId)?.name??(room.assetVersionId?'已锁定版本（可能已归档）':'历史 CSS 默认包')}</p>
       {waiting&&room.permissions.isHost&&<label>资源包<select aria-label="资源包" value={room.assetVersionId??''} disabled={busy||!connected} onChange={event=>void run('assets','PUT',{versionId:event.target.value})}>
         {!assetVersions.some(version=>version.id===room.assetVersionId)&&<option value={room.assetVersionId??''}>保持当前绑定</option>}

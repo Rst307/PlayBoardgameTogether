@@ -200,6 +200,8 @@ test('four real accounts finish three harvest rounds with private choices and a 
       }
     }
     for (const page of pages) {
+      await expect(page).toHaveURL(/\/rooms\//);
+      await page.getByRole('link', { name: '查看本局结果' }).click();
       await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
       await expect(page.locator('.garden-results:not(.garden-events) li')).toHaveCount(4);
       for (const seat of [1, 2, 3, 4]) await expect(page.getByText(`座位 ${seat}：4 分（占格 0 + 能量 4） · 获胜`)).toBeVisible();

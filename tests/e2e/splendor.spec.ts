@@ -86,6 +86,9 @@ test('璀璨宝石：真人与脚本AI完成整局、私密预留刷新保留、
     }
     expect((await response).status()).toBe(200);
   }
+  await expect(page).toHaveURL(/\/rooms\//, { timeout: 30_000 });
+  await expect(page.getByRole('button', { name: '准备', exact: true })).toBeEnabled();
+  await page.getByRole('link', { name: '查看本局结果' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: '最终结算' })).toBeVisible();
   expect((await snapshot()).view.outcome.status).toBe('finished');
