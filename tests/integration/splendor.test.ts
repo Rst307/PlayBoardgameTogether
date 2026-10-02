@@ -33,12 +33,19 @@ describe.skipIf(!url)('Splendor formal action flow', () => {
   }
   const write = (urlPath: string, session: Session, payload: unknown, method: 'POST' | 'PUT' = 'POST') => app.inject({ method, url: urlPath, headers: { origin, cookie: session.cookie, 'x-csrf-token': session.csrf }, payload });
   const read = (urlPath: string, session: Session) => app.inject({ url: urlPath, headers: { cookie: session.cookie } });
-  async function start(seatCount = 2) {
+  async function start(seatCount = 2, assetVersionId?: string) {
     const sessions = await Promise.all(['garden_a', 'garden_b', 'garden_c', 'garden_d'].map(login));
     const created = await write('/api/v1/rooms', sessions[0]!, { requestId: 'create', name: 'Splendor', gameId: 'splendor.base', version: '1.0.0', options: {}, seatCount });
     expect(created.statusCode).toBe(200);
     const { roomId, inviteCode } = created.json().data;
     let revision = 0;
+    if (assetVersionId) {
+      const selected = await write(`/api/v1/rooms/${roomId}/assets`, sessions[0]!, {
+        requestId: 'select-tts', expectedRoomRevision: revision, versionId: assetVersionId,
+      }, 'PUT');
+      expect(selected.statusCode).toBe(200);
+      revision = selected.json().data.roomRevision;
+    }
     for (let index = 1; index < seatCount; index++) {
       const joined = await write('/api/v1/rooms/join', sessions[index]!, { requestId: `join-${index}`, inviteCode });
       expect(joined.statusCode).toBe(200); revision = joined.json().data.roomRevision;
@@ -53,6 +60,27 @@ describe.skipIf(!url)('Splendor formal action flow', () => {
     expect(launched.statusCode).toBe(200);
     return { sessions, roomId, matchId: launched.json().data.matchId as string };
   }
+  it('locks the selected TTS manifest and restores both image and legacy SVG matches', async () => {
+    const versions = (await db.query<{ id: string; pack_id: string; manifest_hash: string; manifest: { assets: Record<string, unknown> } }>(
+      "SELECT id,pack_id,manifest_hash,manifest FROM asset_versions WHERE game_id='splendor.base' AND status='published' ORDER BY pack_id",
+    )).rows;
+    expect(versions.map(version => version.pack_id)).toEqual(['splendor.original', 'splendor.tts-classic']);
+    const tts = versions.find(version => version.pack_id === 'splendor.tts-classic')!;
+    expect(Object.keys(tts.manifest.assets)).toHaveLength(109);
+    const { sessions, matchId } = await start(2, tts.id);
+    const endpoint = '/api/v1/matches/' + matchId + '/view';
+    const initial = (await read(endpoint, sessions[0]!)).json().data;
+    expect(initial.assetBinding.versionId).toBe(tts.id);
+    expect(initial.assetBinding.manifestHash).toBe(tts.manifest_hash);
+    expect((await read(endpoint, sessions[0]!)).json().data.assetBinding).toEqual(initial.assetBinding);
+    // The previous release created null bindings; its rule/resource digest stays unchanged.
+    await db.query("UPDATE matches SET asset_version_id=NULL,asset_manifest_hash=NULL,asset_contract_version=NULL,resource_pack_id='splendor.original' WHERE id=$1", [matchId]);
+    const legacy = await read(endpoint, sessions[0]!);
+    expect(legacy.statusCode).toBe(200);
+    expect(legacy.json().data.assetBinding).toBeNull();
+    expect(legacy.json().data.view).toEqual(initial.view);
+  });
+
   it('enforces identity, conflicts, exact retries, rollback, private reservation and recovery', async () => {
     const { sessions, matchId } = await start();
     const endpoint = '/api/v1/matches/' + matchId;

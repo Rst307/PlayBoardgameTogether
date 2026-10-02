@@ -1,5 +1,20 @@
 # 开发进度
 
+## 璀璨宝石双图包（2026-10-02）
+
+新增独立 splendor-assets@1.0.0 契约与 109 个可选图片槽：90 张卡面、10 位贵族、3 级牌背和 6 种筹码。原 SVG 通过空映射保留为默认 splendor.original@1.0.0；用户本地 TTS 素材按颜色/声望/费用逐项核对后发布为 splendor.tts-classic@1.0.0。客户端使用精确 AssetResolver，完整卡面、贵族、牌背及筹码可替换；图片失败恢复对应 SVG/规则文字和操作，固定预览覆盖全部素材。规则 shared/server/catalog、旧摘要和身份化 View 未变，未新增数据库迁移或音效。开局沿用已有精确资源绑定与取消准备流程。
+
+python scripts/prepare-splendor-tts.py 将提取图片调整到网页尺寸，并把 1024 × 1024 筹码 UV 的首个椭圆面校正为透明圆形。pnpm assets:seed 使用现有 AssetService/隔离 Docker 媒体校验安装两套真实发布版本，本机 TTS 109 文件合计 62,521,060 字节（约 59.62 MiB）。初次更大尺寸被原有 100 MiB 映射配额拒绝，调整后通过；只清理本轮该失败种子草稿，原始提取图包未动。测试库一次单文件媒体处理失败后，增加按原始 hash 复用已校验文件及最多三次的新回执重试，未放宽解码/配额。重复 pnpm assets:seed 输出两个版本 unchanged。源图、准备文件与已发布字节都保留本地 .data，不提交 GitHub；新环境缺素材只安装原创，须备份资源存储才能恢复 TTS 版本。
+
+实际验证：
+- pnpm typecheck、pnpm lint 通过；新增独立图包 E2E 后 lint 再通过。pnpm build 通过，包含 assets 生产导出、浏览器 bundle 和 API runtime 边界；此后只改种子重试/测试与文档，没有再改产品客户端。
+- pnpm test tests/unit：13 文件/58 项通过，无 skip；其中新增映射/槽位覆盖两项，现有璀璨宝石规则十项保持通过。
+- pnpm test:integration 首次媒体准备失败，重试后共享库完整执行 79/84 通过，五项因会话/对局消失失败；同时观察到其他集成/E2E 进程正在执行。随后通过本地 .data/run-splendor-isolated.ts，在新专用 boardgame_splendor_assets_test_20261002 和 .data/splendor-isolated-test-assets 运行标准 prepare/migrate/sync/seed 与 vitest run tests/integration，复制的只有开发库六套已发布资源记录/字节，不复制账号、会话或对局。stage7-assets 测试存储改为尊重 TEST_ASSET_STORAGE_DIR，避免仍硬编码共享根。
+- 专用库完整集成 13 文件中 12 文件通过、83/84 项通过（154.25 秒）；唯一失败是既有 Grid Garden beforeEach 的 TRUNCATE 死锁，单独在该专用库重跑 tests/integration/grid-garden.test.ts 八项全部通过（13.29 秒）。新璀璨宝石五项（两包/109 映射/精确绑定/历史空绑定恢复及 2/3/4 人完整正式对局）与资源系统十二项均在独立运行中通过。未将该轮全量称为单次零失败。
+- 专用库 E2E 使用本地 .data/run-splendor-isolated.ts --e2e，独立 API 3201/Web 5383，运行新增 tests/e2e/splendor-assets.spec.ts：桌面/Pixel 5 两项通过（1.8 分钟）。覆盖两包选择、换包取消准备、真实卡面解码、故意中止图片请求后的可操作 SVG 回退、键盘选择/取消、私密预留刷新、逐次权威恢复、完整结算及无横向溢出。截图位于 .data/e2e-splendor-tts，已查看桌面/手机桌面；不把含 TTS 插画的截图提交仓库。没有重跑整个旧 E2E 套件。
+
+5173 和 3001 health/live 当前均返回 200。工作期间出现并行页面/样式/旧 E2E 改动，均保留；旧 splendor.spec.ts 的用户结束回房断言未改写，本轮另建独立图包测试，不提交其他页面改动。下一步在等待房间选择「TTS 经典卡面」后重新准备开局；旧对局继续保留原图包。实际许可来源和安装/恢复见 [游戏图包](games/splendor.md)。
+
 ## 璀璨宝石 TTS 图包提取（2026-10-02）
 
 按用户提供的 Workshop 存档 2023213924 和本地 TTS 缓存，新增 scripts/extract-tts-splendor.py，离线解析图集与 CardID，提取 90 张卡面（40/30/20）、10 张贵族、3 张卡背、1 张贵族背面和 6 种筹码 UV 纹理；保留 29 张原始引用图片、来源/哈希/裁切清单和预览。输出位于已忽略的 .data/extracted-assets/splendor-tts-2023213924，ZIP 约 95.04 MiB，不将图片或生成压缩包推送到 GitHub。执行提取并验证所有图片解码、数量/唯一性、原图 SHA-256 与 ZIP CRC（151 项），实际查看卡牌/贵族预览。修复旧版 Pillow 预览兼容性后生成成功；本轮不改平台运行时，无需重复业务测试和构建。详见 [提取说明](games/splendor-tts-extraction.md)。TTS ID 尚未映射为平台卡牌 ID，筹码是模型纹理，本轮未接入图包选择；后续按数值核对映射并实现资源契约。

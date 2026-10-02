@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
+import { cards as previewCards, nobles as previewNobles } from '../shared/catalog.js';
 import {
   colors, countTokens, emptyTokens, names, paymentFor, tokenColors,
   type Card, type Color, type Noble, type SplendorAction, type SplendorView, type Token, type Tokens,
@@ -7,13 +9,28 @@ import {
 const inks: Record<Token, string> = {
   white: '#cfe5ee', blue: '#6aaaf1', green: '#65c8a6', red: '#e78891', black: '#a8a2c1', gold: '#e8c272',
 };
+const AssetContext = createContext<AssetResolverPort | undefined>(undefined);
+function AssetVisual({ src, className, fallback }: {
+  src: string | undefined; className: string; fallback: ReactNode;
+}) {
+  const [failed, setFailed] = useState(false);
+  return src && !failed ? <img src={src} className={className} alt="" aria-hidden="true"
+    onError={() => setFailed(true)} /> : <>{fallback}</>;
+}
+function Visual({ assetKey, className, children }: {
+  assetKey: string; className: string; children?: ReactNode;
+}) {
+  const src = useContext(AssetContext)?.resolveImage(assetKey);
+  return <AssetVisual key={src ?? assetKey} src={src} className={className} fallback={children} />;
+}
 export function Gem({ color, small = false }: { color: Token; small?: boolean }) {
-  return <svg className={small ? 'sp-gem sp-gem--small' : 'sp-gem'} viewBox="0 0 64 64" aria-hidden="true">
+  const className = small ? 'sp-gem sp-gem--small' : 'sp-gem';
+  return <Visual assetKey={'token.' + color} className={className}><svg className={className} viewBox="0 0 64 64" aria-hidden="true">
     <path d={color === 'gold' ? 'M32 4 55 18 55 46 32 60 9 46 9 18Z' : 'M17 10 47 10 60 27 32 58 4 27Z'} fill={inks[color]} />
     <path d="M17 10 24 27 4 27M47 10 40 27 60 27M24 27 32 58 40 27M17 10 32 18 47 10M32 18 24 27 40 27Z" fill="none" stroke="#fff" strokeOpacity=".62" strokeWidth="1.5" />
     <path d="M4 27 24 27 32 58Z" fill="#11172c" opacity=".22" />
     <path d="M17 10 32 18 24 27Z" fill="#fff" opacity=".4" />
-  </svg>;
+  </svg></Visual>;
 }
 function Architecture({ tier, color }: { tier: number; color: Color }) {
   return <svg className="sp-art" viewBox="0 0 180 92" aria-hidden="true">
@@ -43,10 +60,11 @@ function DevelopmentCard({ card, selected, affordable, disabled, onSelect }: {
   const title = ['矿场', '商会', '宫殿'][card.tier - 1]!;
   return <button className={'sp-card' + (selected ? ' sp-card--selected' : '')} disabled={disabled}
     aria-pressed={selected} aria-label={names[card.bonus] + title + '，' + card.points + '声望，' + card.id} onClick={onSelect}>
-    <span className="sp-card-top"><strong>{card.points}<small>声望</small></strong><Gem color={card.bonus} /></span>
+    <Visual assetKey={card.id} className="sp-card-face"><span className="sp-card-top"><strong>{card.points}<small>声望</small></strong><Gem color={card.bonus} /></span>
     <Architecture tier={card.tier} color={card.bonus} />
     <span className="sp-card-caption">{title} <span>{names[card.bonus]} +1</span></span>
-    <Cost values={card.cost} />
+    <Cost values={card.cost} /></Visual>
+    <span className="sr-only">费用：<Cost values={card.cost} /></span>
     <span className={'sp-card-state' + (affordable ? ' sp-card-state--yes' : '')}>{affordable ? '可购买' : '积攒宝石或预留'}</span>
   </button>;
 }
@@ -62,12 +80,12 @@ function NobleTile({ noble, index, eligible, busy, onSelect }: {
   noble: Noble; index: number; eligible: boolean; busy: boolean; onSelect: () => void;
 }) {
   return <button className="sp-noble" disabled={busy || !eligible} onClick={onSelect} aria-label={'选择贵族 ' + noble.name}>
-    <Crest index={index} /><span><strong>{noble.name}</strong><small>3 声望 · 永久折扣要求</small><Cost values={noble.requirement} /></span>
+    <Visual assetKey={noble.id} className="sp-noble-face"><Crest index={index} /></Visual><span><strong>{noble.name}</strong><small>3 声望 · 永久折扣要求</small><Cost values={noble.requirement} /></span>
     {eligible && <b className="sp-arrival">选择到访</b>}
   </button>;
 }
-export function SplendorBoard(props: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void }) {
-  return <SplendorTable key={props.view.viewingSeatId + ':' + props.view.turn + ':' + props.view.phase} {...props} />;
+export function SplendorBoard(props: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void; assets?: AssetResolverPort | undefined }) {
+  return <AssetContext.Provider value={props.assets}><SplendorTable key={props.view.viewingSeatId + ':' + props.view.turn + ':' + props.view.phase} {...props} /></AssetContext.Provider>;
 }
 function SplendorTable({ view, busy, onAction }: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void }) {
   const [takeMode, setTakeMode] = useState<'different' | 'same'>('different');
@@ -139,7 +157,7 @@ function SplendorTable({ view, busy, onAction }: { view: SplendorView; busy: boo
       {[2, 1, 0].map(tier => <div className="sp-tier" key={tier}>
         <button className="sp-deck" disabled={!active || !view.legalActions.some(action => action.type === 'reserve_deck' && action.tier === tier + 1)}
           aria-label={'盲抽' + (tier + 1) + '级牌堆，剩余' + view.deckCounts[tier] + '张'} aria-pressed={blindTier === tier + 1} onClick={() => { setBlindTier(blindTier === tier + 1 ? null : tier + 1); setSelectedId(null); setChosenColors([]); }}>
-          <span>{['I', 'II', 'III'][tier]}</span><strong>{['矿场', '商会', '宫殿'][tier]}</strong>
+          <Visual assetKey={'card.back.' + (tier + 1)} className="sp-deck-face"><span>{['I', 'II', 'III'][tier]}</span></Visual><strong>{['矿场', '商会', '宫殿'][tier]}</strong>
           <small>剩余 {view.deckCounts[tier]} 张</small><small>点击盲抽预留</small></button>
         <div className="sp-card-row">{view.market[tier]!.map(card => <DevelopmentCard key={card.id} card={card} selected={selectedId === card.id}
           affordable={view.legalActions.some(action => action.type === 'buy' && action.cardId === card.id)}
@@ -204,4 +222,18 @@ function SplendorTable({ view, busy, onAction }: { view: SplendorView; busy: boo
       {view.outcome.reason === 'stalemate' && <p>全员无可用行动，僵局结算。</p>}
     </section>}
   </section>;
+}
+
+export function SplendorAssetPreview({ assets }: { assets: AssetResolverPort }) {
+  return <AssetContext.Provider value={assets}><section className="sp-table" aria-label="璀璨宝石图包预览">
+    <h2>璀璨宝石 · 固定素材预览</h2><p>展示全部卡面与贵族，按钮仅演示。缺图时保留原创图形与规则文字。</p>
+    <div className="sp-preview-tokens">{tokenColors.map(color => <span key={color}><Gem color={color} />{names[color]}</span>)}</div>
+    {[1, 2, 3].map(tier => <section key={tier}><h3>{tier} 级发展卡</h3>
+      <div className="sp-card-row">{previewCards.filter(card => card.tier === tier).map(card => <DevelopmentCard
+        key={card.id} card={card} selected={false} affordable={false} disabled={false} onSelect={() => undefined} />)}</div>
+      <div className="sp-preview-back"><Visual assetKey={'card.back.' + tier} className="sp-deck-face">{tier} 级牌背</Visual></div>
+    </section>)}
+    <section className="sp-nobles"><h3>全部贵族</h3><div>{previewNobles.map((noble, index) => <NobleTile
+      key={noble.id} noble={noble} index={index} eligible={false} busy={false} onSelect={() => undefined} />)}</div></section>
+  </section></AssetContext.Provider>;
 }

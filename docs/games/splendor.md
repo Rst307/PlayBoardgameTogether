@@ -17,7 +17,20 @@ games/splendor 提供 splendor.base@1.0.0，在大厅创建房间时选择「璀
 
 ## 图形与来源
 
-原创 SVG 切面宝石、矿场／商会／宫殿线描与贵族纹章直接随客户端编译；没有外链图片、商业原版插画、字体下载或运行时绘图服务。贵族中文名称是原创。默认资源清单 splendor.original@1.0.0 为空，矢量图由客户端语义组件提供；本轮不提供管理员替换图包或新增事件音效。
+2026-10-02 支持两套图包：默认「原创几何 SVG」splendor.original@1.0.0，以及「TTS 经典卡面」splendor.tts-classic@1.0.0。房主在等待房间的「资源包」中选择，更换取消真人准备，开局同事务锁定精确清单。旧局空绑定继续使用原创 SVG，不改写旧规则/资源摘要。贵族中文名称仍为原有功能别名。
+
+独立 ./assets 入口声明 109 个可选图片槽位：90 张发展卡、10 位贵族、3 级牌背和 6 种筹码。原创版本为空图片映射，由客户端 SVG 提供；TTS 版本完整映射，图片通过已鉴权平台资源接口读取，不使用运行时外链。卡面直接展示完整图片；规则数值和操作提示仍来自 View。加载失败恢复对应原创图形和合法按钮，管理页可固定预览全部槽位。没有新增音效。
+
+TTS 图片来自用户提供的 Workshop 2023213924 本地缓存，按牌面颜色/声望/费用逐项映射；筹码将原 UV 首个椭圆面校正为透明圆形。素材未附开放许可，不作为官方授权或 CC0 素材提交 GitHub。提取与准备文件保存在本地 .data；发行商插画版权与原创 SVG 分开记录。
+
+本机已提取图包的安装步骤：
+
+```powershell
+python scripts/prepare-splendor-tts.py '.data/extracted-assets/splendor-tts-2023213924' '.data/extracted-assets/splendor-tts-platform'
+pnpm assets:seed
+```
+
+准备脚本拒绝覆盖已有目录。已准备无需重复生成，种子可重复执行，精确已发布版本不覆盖；中断时复用相同原文件哈希的已校验文件，失败媒体用新回执最多重试三次。也可设置 SPLENDOR_TTS_ASSET_DIR 为包含 files.json 的准备目录。没有本地素材的新环境只安装原创版本，完整恢复须备份数据库和 .data/assets；不在新环境猜测或自动下载素材。详见 [TTS 提取说明](splendor-tts-extraction.md)。
 
 规则核对：[Space Cowboys / Asmodee 官方规则书](https://cdn.svc.asmodee.net/production-asmodeeca/uploads/2022/01/SCSPL01EN_SPLENDOR_RULES_LIGHT.pdf)。基础牌数值参考 [牌表一](https://github.com/bouk/splendimax/blob/master/Splendor%20Cards.csv) 和 [牌表二](https://github.com/seal256/splendor/blob/master/assets/cards.csv)（90 张逐项一致，固定 SHA-256 黄金回归），仅转录功能数值，未复制引擎或插画。牌表保存在 src/shared/catalog.ts，规则摘要覆盖牌表、shared/server 源码和 SDK，不改写旧游戏版本。
 

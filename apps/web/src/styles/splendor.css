@@ -12,6 +12,46 @@
   box-sizing: border-box;
 }
 
+.sp-card-face {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 5 / 7;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.sp-noble-face {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sp-deck-face {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.sp-preview-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.sp-preview-tokens > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-preview-back {
+  width: 90px;
+  margin: 12px 0 24px;
+}
+
 .sp-table header {
   height: auto;
   padding: 0;

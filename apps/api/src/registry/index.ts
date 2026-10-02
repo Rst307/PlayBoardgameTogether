@@ -1,5 +1,6 @@
 import { splendorExtension, splendorAssetManifest } from '@boardgame/splendor/server';
 import { publicRules as splendorRules } from '@boardgame/splendor/rules';
+import { splendorAssetContract } from '@boardgame/splendor/assets';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { assetManifestSchema, manifestSchema, type GameExtension } from '@boardgame/game-sdk';
@@ -30,6 +31,7 @@ export class GameRegistry {
 }
 export function createRegistry(includeDevelopment: boolean) {
   const registry = new GameRegistry();
+  registry.assetContracts.set('splendor.base', splendorAssetContract);
   registry.assetContracts.set('color-match', colorAssetContract);
   registry.presentation.set('color-match', colorPresentationCues);
   registry.assetContracts.set('grid-garden', gridGardenAssetContract);

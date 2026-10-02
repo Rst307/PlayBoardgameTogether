@@ -11,7 +11,7 @@ export const clientGames = [
     id: 'splendor.base', version: '1.0.0', name: '璀璨宝石', defaultOptions: {},
     load: async (): Promise<GameBoard> => {
       const { SplendorBoard } = await import('@boardgame/splendor/client');
-      return (view, busy, _events, onAction) => <SplendorBoard view={splendorViewSchema.parse(view)} busy={busy} onAction={onAction} />;
+      return (view, busy, _events, onAction, assets) => <SplendorBoard view={splendorViewSchema.parse(view)} busy={busy} onAction={onAction} assets={assets} />;
     },
   },
   {
@@ -50,6 +50,7 @@ export function clientGame(id: string, version: string) {
 }
 
 export const assetPreviews:Record<string,()=>Promise<(assets:AssetResolverPort)=>ReactNode>>={
+  'splendor.base':async()=>{const {SplendorAssetPreview}=await import('@boardgame/splendor/client');return assets=><SplendorAssetPreview assets={assets}/>;},
   'color-match':async()=>{const {ColorAssetPreview}=await import('@boardgame/color-match/client');return assets=><ColorAssetPreview assets={assets}/>;},
   'grid-garden':async()=>{const {GridGardenAssetPreview}=await import('@boardgame/grid-garden/client');return assets=><GridGardenAssetPreview assets={assets}/>;},
 };

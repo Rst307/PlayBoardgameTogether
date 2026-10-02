@@ -31,6 +31,8 @@ pnpm assets:check
 
 ## 默认包和旧局
 
+2026-10-02 璀璨宝石增加 splendor-assets@1.0.0 契约，默认原创 SVG 与用户提供的 TTS 经典卡面两个版本。pnpm assets:seed 安装原创版本；存在本地准备目录 .data/extracted-assets/splendor-tts-platform/files.json 时再按现有上传、隔离媒体校验、发布链路安装完整 109 槽 TTS 版本。缺素材的新环境只安装原创，不自动下载。原图与准备文件不提交仓库，安装与恢复见 [璀璨宝石](games/splendor.md)。首次发布前须将图片缩至网页适用尺寸，以满足原有 100 MiB 总配额；不增加配额或放宽媒体校验。旧璀璨宝石空绑定仍保留原始摘要和 SVG。
+
 新房默认安装的 `color-match.classic@1.0.0`，可选明显不同的 `color-match.paper@1.0.0`；两者由 `scripts/seed-assets.ts` 原创生成 PNG/WAV，许可见游戏 assets/NOTICE.md。内置文件丢失时 seed 仅在重新生成后最终 hash 与保存值相同才补回；不同解码器版本生成不同字节时拒绝，要求恢复备份。
 
 旧 `color-match.default@1.0.0` 的实际 manifest 是空数组，CSS 是历史真实表现。011 迁移保留旧对局 resource_digest 和空 asset_version_id，不伪造新图片摘要、不改变 State/RNG/revision/控制/预算/回执。新图片包使用新 ID，不覆盖旧版本。
