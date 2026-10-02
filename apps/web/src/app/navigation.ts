@@ -16,7 +16,7 @@ export function followPageLink(event: MouseEvent<HTMLElement>) {
       (link.target && link.target !== '_self') || link.relList.contains('external')) return;
   const url = new URL(link.href);
   if (url.origin !== location.origin || url.hash || url.search ||
-      !/^(?:\/|\/login|\/profile|\/rooms\/new|\/rooms\/[0-9a-f-]+|\/matches\/[0-9a-f-]+|\/settings\/models|\/admin\/assets|\/status|\/developers(?:\/[a-z-]+)?|\/dev\/(?:ui|lab))$/i.test(url.pathname)) return;
+      !/^(?:\/|\/login|\/profile|\/games\/[a-z0-9._-]+\/[a-z0-9._-]+(?:\/new)?|\/rooms\/new|\/rooms\/[0-9a-f-]+|\/matches\/[0-9a-f-]+|\/settings\/models|\/admin\/assets|\/status|\/developers(?:\/[a-z-]+)?|\/dev\/(?:ui|lab))$/i.test(url.pathname)) return;
   event.preventDefault();
   if (url.pathname !== location.pathname) navigate(url.pathname);
 }

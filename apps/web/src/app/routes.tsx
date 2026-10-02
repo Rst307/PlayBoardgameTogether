@@ -5,6 +5,7 @@ const RootPage = lazy(() => import('./RootPage.js'));
 const LoginPage = lazy(() => import('../pages/LoginPage.js').then(module => ({ default: module.LoginPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
 const NewRoomPage = lazy(() => import('../pages/NewRoomPage.js').then(module => ({ default: module.NewRoomPage })));
+const GameDetailPage = lazy(() => import('../pages/GameDetailPage.js').then(module => ({ default: module.GameDetailPage })));
 const RoomPage = lazy(() => import('../pages/RoomPage.js').then(module => ({ default: module.RoomPage })));
 const MatchPage = lazy(() => import('../pages/MatchPage.js').then(module => ({ default: module.MatchPage })));
 const AssetAdminPage = lazy(() => import('../pages/AssetAdminPage.js').then(module => ({ default: module.AssetAdminPage })));
@@ -26,6 +27,13 @@ export interface PageRoute {
 
 // One owner for route matching, workspace titles and document titles.
 export function resolvePage(path: string): PageRoute {
+  const game = /^\/games\/([a-z0-9._-]+)\/([a-z0-9._-]+)(\/new)?$/i.exec(path);
+  if (game) {
+    const selectedGame = { id: game[1]!, version: game[2]! };
+    return game[3]
+      ? { title: '创建房间', page: <NewRoomPage selectedGame={selectedGame} /> }
+      : { title: '游戏详情', page: <GameDetailPage {...selectedGame} /> };
+  }
   const developer = /^\/developers(?:\/([a-z-]+))?$/.exec(path);
   if (developer) {
     const slug = developer[1] ?? 'index';

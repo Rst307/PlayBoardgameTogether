@@ -2,10 +2,11 @@ import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {api,command,navigate} from '../platform.js';
 import {clientGame} from '../game-registry.js';
 import {GameRules} from './GameRules.js';
+import {loadGames, type AvailableGame} from './game-catalog.js';
 
-export type AvailableGame={id:string;version:string;name:string;description:string;players:{min:number;max:number};developmentOnly:boolean};
+export type {AvailableGame} from './game-catalog.js';
 
-export function RoomCreateForm({defaultName='新的游戏桌'}:{defaultName?:string}) {
+export function RoomCreateForm({defaultName='新的游戏桌', selectedGame}:{defaultName?:string;selectedGame?:{id:string;version:string}}) {
   const [games,setGames]=useState<AvailableGame[]>([]);
   const [choice,setChoice]=useState('');
   const [error,setError]=useState('');
@@ -20,15 +21,16 @@ export function RoomCreateForm({defaultName='新的游戏桌'}:{defaultName?:str
   useEffect(()=>{
     let disposed=false;
     setLoading(true);setError('');
-    void api.games<AvailableGame[]>().then(items=>{
+    void loadGames().then(items=>{
       if(disposed)return;
       const available=items.filter(item=>!item.developmentOnly);
       setGames(available);
-      const first=available[0];
+      const first=selectedGame ? available.find(item=>item.id===selectedGame.id&&item.version===selectedGame.version) : available[0];
       if(first)setChoice(`${first.id}@${first.version}`);
+      else if(selectedGame)setError('所选游戏或版本已不可用，请返回大厅重新选择。');
     }).catch(()=>{if(!disposed)setError('无法加载可用游戏，请重试。');}).finally(()=>{if(!disposed)setLoading(false);});
     return()=>{disposed=true;};
-  },[attempt]);
+  },[attempt,selectedGame?.id,selectedGame?.version]);
   const game=games.find(item=>`${item.id}@${item.version}`===choice);
   async function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(!game||busy)return;

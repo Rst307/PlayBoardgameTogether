@@ -1,5 +1,22 @@
 # 开发进度
 
+## 游戏大厅先选游戏（2026-10-02）
+
+首页改为真实已启用游戏目录，点击原创几何封面卡片进入 `/games/:id/:version` 详情，查看简介、人数与规则，再选择创建或加入。创建复用原建房表单并带入游戏/精确版本，允许调整设置，目录版本缺失时明确阻止创建；旧 `/rooms/new` 继续兼容。加入展开当前游戏公开房间和邀请码表单，保留类型/状态筛选、分页、密码与成员进入；邀请码仍以实际对应房间为准。首页保留继续游戏，未登录可浏览目录。游戏目录以 unknown + Zod 解析，不新建 API、协议、规则或权限链路。公开加入增加请求锁与迟到回复保护，邀请码表单从首页提取复用。
+
+实际执行与结果：
+
+- `pnpm typecheck`、`pnpm lint` 最终通过；首次类型检查发现 exactOptionalPropertyTypes 下的可选属性传入问题，改为条件展开后修复。
+- `pnpm test tests/unit`：16 文件 / 69 项通过，无 skip。
+- `pnpm build` 最终通过，包含生产开发模块排除与编译后 API runtime 检查。
+- `pnpm test:e2e tests/e2e/game-catalog.spec.ts tests/e2e/lobby.spec.ts tests/e2e/profile.spec.ts tests/e2e/stage2.spec.ts tests/e2e/room-close.spec.ts --output=.data/e2e-game-catalog`：首批 14/16，通过目录、history/焦点/刷新、未登录浏览/失败重试、资料、两账户邀请码/权限、关闭等待及进行中房间；密码房两项因测试缺少 openInviteJoin 导入失败。
+- 修正导入并完成公开加入生命周期保护后，`pnpm test:e2e tests/e2e/game-catalog.spec.ts tests/e2e/lobby.spec.ts --output=.data/e2e-game-catalog-final`：桌面和 Pixel 5 共 6 项通过（49.7 秒），无 skip，包含真实密码错误/正确加入、创建配额、缺失版本、刷新与浏览器历史。两批覆盖 16 个不同场景项目组合，不描述为单次 16/16 全绿；其余 10 项在首批通过，没有重复无关整局测试。
+- E2E 完成后串行执行 `pnpm test:integration`：13 文件 / 84 项通过（99.20 秒），无 skip；已确认独立 boardgame_test 与开发库不同。房间密码、目录筛选、会话、权限、去重、回滚与恢复沿用原服务端验证。
+- 新 E2E 文件额外执行 `pnpm exec tsc --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --noUncheckedIndexedAccess --skipLibCheck tests/e2e/game-catalog.spec.ts tests/e2e/lobby.spec.ts`，通过。`git diff --check`、文档本地链接和本轮 diff 凭据模式检查通过。
+- 实际查看桌面大厅与手机详情截图，公开目录与加入区域无横向溢出；新截图位于独立 .data 输出。现有测试另外生成四张阶段 2 历史路径截图，保留在工作区并排除提交；开始时已有截图改动也不纳入提交。
+
+限制与后续：本轮实现 BGA 式选择顺序，封面使用原创几何 SVG，没有接入商业游戏封面、热度/推荐数据或新游戏。没有验收物理手机、WebKit 或公网部署；其余游戏 E2E 仅更新入口辅助函数，未重跑全部整局。后续如提供游戏封面，可在目录表现层替换。README、房间、界面与架构说明已同步，协议/数据库无需迁移。
+
 ## 项目结构、平台体验与回归基础（2026-10-02）
 
 本轮优化入口结构与可用性：App 收敛为站点外壳，routes 统一页面匹配/元数据并按页加载，RootPage 管理首页会话；开发文档目录与标题共用元数据，修复标题写入竞争。页面加载/绘制错误保留导航和重新加载入口，登录支持密码显示/隐藏、请求锁、分类错误、保留输入和卸载后迟到回复保护；404 增加返回入口，补齐 favicon/主题色/描述，短桌面侧栏可滚动。

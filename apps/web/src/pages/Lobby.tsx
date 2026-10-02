@@ -1,12 +1,12 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import type {LobbyQuery,LobbyRoom} from '@boardgame/protocol';
 import {api,command,navigate} from '../platform.js';
-import type {AvailableGame} from './RoomCreateForm.js';
+import {loadGames,type AvailableGame} from './game-catalog.js';
 
 const statusNames={waiting:'等待开局',in_game:'进行中',finished:'已结束',closed:'已关闭'};
-export function Lobby() {
+export function Lobby({gameId}:{gameId?:string}) {
   const [games,setGames]=useState<AvailableGame[]>([]);
-  const [query,setQuery]=useState<LobbyQuery>({status:'waiting'});
+  const [query,setQuery]=useState<LobbyQuery>({status:'waiting',gameId});
   const [rooms,setRooms]=useState<LobbyRoom[]>([]);
   const [cursor,setCursor]=useState<string|null>(null);
   const [busy,setBusy]=useState(false);
@@ -14,7 +14,12 @@ export function Lobby() {
   const [selected,setSelected]=useState<LobbyRoom>();
   const [refresh,setRefresh]=useState(0);
   const generation=useRef(0);
-  useEffect(()=>{void api.games<AvailableGame[]>().then(setGames).catch(()=>undefined);},[]);
+  const joinLock=useRef(false);
+  useEffect(()=>{
+    let disposed=false;
+    void loadGames().then(items=>{if(!disposed)setGames(items);}).catch(()=>undefined);
+    return()=>{disposed=true;};
+  },[]);
   useEffect(()=>{
     const token=++generation.current;
     setBusy(true);setError('');setRooms([]);setCursor(null);setSelected(undefined);
@@ -33,17 +38,20 @@ export function Lobby() {
   }
   async function join(room:LobbyRoom,password?:string) {
     if(room.isMember){navigate(`/rooms/${room.id}`);return;}
+    if(joinLock.current)return;
+    joinLock.current=true;
+    const token=generation.current;
     setBusy(true);setError('');
-    try {await api.joinPublicRoom(room.id,{requestId:command(),...(password?{password}:{})});navigate(`/rooms/${room.id}`);}
-    catch(cause){setError(cause instanceof Error?cause.message:'加入失败');}
-    finally{setBusy(false);}
+    try {await api.joinPublicRoom(room.id,{requestId:command(),...(password?{password}:{})});if(token===generation.current)navigate(`/rooms/${room.id}`);}
+    catch(cause){if(token===generation.current)setError(cause instanceof Error?cause.message:'加入失败');}
+    finally{joinLock.current=false;if(token===generation.current)setBusy(false);}
   }
   function submitPassword(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(selected)void join(selected,String(new FormData(event.currentTarget).get('password')));
   }
   return <section className="room-list"><h2>公开房间</h2><p className="muted">选择房间直接加入；私人房间请使用邀请码。</p>
     <div className="lobby-filters">
-      <label>筛选游戏<select value={query.gameId??''} onChange={event=>setQuery(old=>({...old,gameId:event.target.value||undefined}))}><option value="">全部游戏</option>{games.filter(game=>!game.developmentOnly).map(game=><option key={`${game.id}@${game.version}`} value={game.id}>{game.name}</option>)}</select></label>
+      {!gameId&&<label>筛选游戏<select value={query.gameId??''} onChange={event=>setQuery(old=>({...old,gameId:event.target.value||undefined}))}><option value="">全部游戏</option>{games.filter(game=>!game.developmentOnly).map(game=><option key={`${game.id}@${game.version}`} value={game.id}>{game.name}</option>)}</select></label>}
       <label>筛选房间类型<select value={query.roomType??''} onChange={event=>setQuery(old=>({...old,roomType:(event.target.value||undefined) as LobbyQuery['roomType']}))}><option value="">全部类型</option><option value="open">公开无密码</option><option value="password">公开密码房</option></select></label>
       <label>筛选状态<select value={query.status??''} onChange={event=>setQuery(old=>({...old,status:(event.target.value||undefined) as LobbyQuery['status']}))}><option value="">全部状态</option>{Object.entries(statusNames).map(([value,name])=><option key={value} value={value}>{name}</option>)}</select></label>
       <button className="secondary" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>刷新大厅</button>

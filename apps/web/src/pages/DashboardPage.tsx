@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '@boardgame/client-sdk';
 import { PageFeedback } from '@boardgame/ui';
 import { z } from 'zod';
-import { api, command, navigate } from '../platform.js';
-import { Lobby } from './Lobby.js';
+import { api, navigate } from '../platform.js';
+import { GameCatalog } from './GameCatalog.js';
 
 const roomSchema = z.object({
   id: z.string(), name: z.string(), status: z.string(), gameId: z.string(),
@@ -21,8 +21,6 @@ export function DashboardPage() {
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const [joining, setJoining] = useState(false);
-  const joinLock = useRef(false);
   const active = useRef(false);
 
   useEffect(() => {
@@ -42,26 +40,6 @@ export function DashboardPage() {
     return () => { disposed = true; active.current = false; };
   }, [attempt]);
 
-  async function join(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (joinLock.current) return;
-    joinLock.current = true;
-    setJoining(true); setError('');
-    const fields = new FormData(event.currentTarget);
-    try {
-      const room = roomSchema.parse(await api.joinRoom<unknown>({
-        requestId: command(), inviteCode: String(fields.get('invite')),
-        ...(fields.get('password') ? { password: String(fields.get('password')) } : {}),
-      }));
-      if (active.current) navigate(`/rooms/${room.id}`);
-    } catch (cause) {
-      if (active.current) setError(cause instanceof Error ? cause.message : '加入失败');
-    } finally {
-      joinLock.current = false;
-      if (active.current) setJoining(false);
-    }
-  }
-
   async function more() {
     if (!cursor) return;
     try {
@@ -73,11 +51,11 @@ export function DashboardPage() {
   if (loadError) return <PageFeedback title="房间加载失败" retry={() => setAttempt(value => value + 1)}><p>{loadError}</p></PageFeedback>;
   if (!me) return <PageFeedback title="正在验证会话…" loading>正在加载你可以访问的房间。</PageFeedback>;
   return <>
-    <section className="page-heading"><div><p className="eyebrow">你好，{me.account.displayName}</p><h1>游戏大厅</h1><p>找一张游戏桌，或邀请朋友开始新的一局。</p></div>
-      <a className="button-link" href="/rooms/new">创建房间</a>
+    <section className="page-heading"><div><p className="eyebrow">你好，{me.account.displayName}</p><h1>游戏大厅</h1><p>先选择游戏，再创建房间或加入朋友的游戏桌。</p></div>
+
     </section>
     {error && <p className="error-notice" role="alert">{error}</p>}
-    <div className="dashboard-grid">
+    <GameCatalog />
       <section className="panel"><h2>继续游戏</h2>
         {rooms.filter(room => room.status !== 'closed').length === 0 ? <p className="muted">暂时没有正在参与的房间。可以加入公开房间，或创建自己的房间。</p> : rooms.filter(room => room.status !== 'closed').map(room =>
           <button className="room-row" key={room.id} onClick={() => navigate(`/rooms/${room.id}`)}>
@@ -85,12 +63,6 @@ export function DashboardPage() {
           </button>)}
         {cursor && <button className="secondary" onClick={() => void more()}>加载更多参与房间</button>}
       </section>
-      <section className="panel"><h2>邀请码加入</h2><form className="form-stack" onSubmit={join}>
-        <label>12 位邀请码<input name="invite" placeholder="ABCD-EFGH-JK23" required /></label>
-        <label>邀请码房间密码（如有）<input name="password" type="password" maxLength={128} autoComplete="off" /></label>
-        <button disabled={joining}>{joining ? '加入中…' : '加入私人房间'}</button>
-      </form></section>
-    </div>
-    <Lobby />
+
   </>;
 }

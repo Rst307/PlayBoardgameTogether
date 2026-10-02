@@ -1,3 +1,4 @@
+import { openInviteJoin } from './fixtures.js';
 import { test, expect, type Page } from "./fixtures.js";
 import { demoPng } from "../../scripts/seed-assets.js";
 
@@ -146,7 +147,7 @@ test("locked image packs, actual Web Audio, duplicate live delivery and recovery
       .getByRole("combobox", { name: "资源包", exact: true })
       .selectOption({ label: "纸张几何 · 1.0.0" });
     const invite = await a.locator(".invite-box strong").textContent();
-    await b.getByLabel("12 位邀请码").fill(invite!);
+    await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(invite!);
     await b.getByRole("button", { name: "加入私人房间" }).click();
     await b.getByRole("button", { name: "坐这里" }).click();
     await b.getByRole("button", { name: "准备", exact: true }).click();

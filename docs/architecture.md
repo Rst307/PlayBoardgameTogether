@@ -1,5 +1,11 @@
 # 架构
 
+## 游戏目录与详情入口（2026-10-02）
+
+首页的 GameCatalog 消费既有公开游戏目录，经本地 Zod schema 解析 unknown，排除 developmentOnly；登录与未登录页面共用目录。`/games/:id/:version` 按页加载 GameDetailPage，`/games/:id/:version/new` 复用 NewRoomPage/RoomCreateForm 并带入精确目录版本，缺失时禁用创建而不自动换版本；旧 `/rooms/new` 保留兼容。navigation 的页面链接白名单包含新路由，延续 history、焦点及无刷新导航。
+
+详情页展开加入后复用 Lobby 的 gameId 筛选、密码与分页；原 DashboardPage 邀请逻辑提取为 RoomInviteForm，邀请码仍决定实际房间，服务端权限与校验保持。公开加入增加请求锁与页面世代检查，卸载或筛选变更后的迟到回复不导航。首页保留参与房间。几何 SVG 封面属于目录展示，不消费秘密 State、外部素材或资源包，也不增加规则分支。API、协议、数据库和正式动作事务未变化。
+
 ## 平台外壳与依赖检查（2026-10-02）
 
 Web 的 app/routes.tsx 统一路由、工作区标题和按页加载；App 只保留站点外壳、导航和文档标题更新，RootPage 管理首页会话状态。app/developer-guides.ts 为路由标题与文档目录提供同一份元数据，文档页不再在卸载时覆盖下一页标题。app/PageBoundary.tsx 隔离页面加载/绘制失败，保留导航和整页重新加载入口；main 的路径 key 与房间/对局 ID 隔离继续保留。

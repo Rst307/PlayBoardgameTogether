@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 
 test('model settings save and test an explicitly labelled mock profile', async ({ page }) => {
@@ -41,7 +42,7 @@ test('model settings save and test an explicitly labelled mock profile', async (
   await expect(page.getByRole('heading', { name: '浏览器模拟配置', exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('model-settings.png'), fullPage: true });
   await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('color-match@1.0.0');
   await page.getByLabel('房间名').fill(`模型托管 ${test.info().project.name}`);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
@@ -106,4 +107,3 @@ test('model settings preserve keys on edit, show actionable failures and allow c
   await page.reload();
   await expect(card).toHaveCount(0);
 });
-

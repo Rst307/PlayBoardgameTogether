@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import {expect,test} from './fixtures.js';
 
 test('host plays a human seat alongside script AI without human script delegation',async({page})=>{
@@ -7,7 +8,7 @@ test('host plays a human seat alongside script AI without human script delegatio
   await page.getByLabel('密码').fill('stage two password');
   await page.getByRole('button',{name:'登录',exact:true}).click();
   await expect(page.getByRole('heading',{name:'游戏大厅'})).toBeVisible();
-  await page.getByRole('link',{name:'创建房间'}).click();
+  await openRoomCreation(page);
   const games=page.getByLabel('游戏与版本');
   await expect(games).toContainText('Color Match');
   await games.selectOption('color-match@1.0.0');

@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import { expect, test, type BrowserContext, type Page } from './fixtures.js';
 
 test('two browsers play Color Match from login to a saved winner', async ({ browser, viewport, isMobile, hasTouch, deviceScaleFactor }, testInfo) => {
@@ -55,7 +56,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
   try {
     await login(a, 'stage3_a');
     await login(b, 'stage3_b');
-    await a.getByRole('link', { name: '创建房间' }).click();
+    await openRoomCreation(a);
     await a.getByLabel('游戏与版本').selectOption('color-match@1.0.0');
     await expect(a.getByLabel('游戏与版本')).toHaveValue('color-match@1.0.0');
     await expect(a.getByLabel('游戏选项（JSON）')).toHaveValue('{}');
@@ -64,7 +65,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await expect(a.getByText(/color-match@1.0.0/)).toBeVisible();
     const invite = await a.locator('.invite-box strong').textContent();
     expect(invite).toBeTruthy();
-    await b.getByLabel('12 位邀请码').fill(invite!);
+    await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(invite!);
     await b.getByRole('button', { name: '加入私人房间' }).click();
     await b.getByRole('button', { name: '坐这里' }).click();
     await b.getByRole('button', { name: '准备', exact: true }).click();
@@ -269,4 +270,3 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await second.close();
   }
 });
-

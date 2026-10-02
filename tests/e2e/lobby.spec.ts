@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import {test,expect} from './fixtures.js';
 
 test('quick creation opens the room, copies invite, and exposes password rooms through filtered lobby',async({browser},testInfo)=>{
@@ -14,7 +15,7 @@ test('quick creation opens the room, copies invite, and exposes password rooms t
       await page.getByRole('button',{name:'登录',exact:true}).click();
       await expect(page.getByRole('heading',{name:'游戏大厅',exact:true})).toBeVisible();
     }
-    await a.getByRole('link',{name:'创建房间',exact:true}).click();
+    await openRoomCreation(a);
     await a.getByLabel('游戏与版本').selectOption('color-match@1.0.0');
     await a.getByLabel('房间名',{exact:true}).fill('周五密码桌');
     await a.getByLabel('人数',{exact:true}).fill('3');
@@ -30,11 +31,12 @@ test('quick creation opens the room, copies invite, and exposes password rooms t
     await a.getByRole('button',{name:'复制规则'}).click();
     await expect(a.getByText('规则已复制，可用于模型提示词。',{exact:true})).toBeVisible();
     await a.getByRole('link',{name:'游戏大厅',exact:true}).click();
-    await a.getByRole('link',{name:'创建房间',exact:true}).click();
+    await openRoomCreation(a);
     await a.getByRole('button',{name:'创建并生成邀请码'}).click();
     await expect(a.getByRole('alert')).toContainText('已创建一个有效房间');
 
-    await b.getByLabel('筛选游戏').selectOption('color-match');
+    await openInviteJoin(b);
+    await expect(b.getByLabel('筛选游戏')).toHaveCount(0);
     await b.getByLabel('筛选房间类型').selectOption('password');
     const row=b.locator('article.room-row').filter({hasText:'周五密码桌'});
     await expect(row).toBeVisible();

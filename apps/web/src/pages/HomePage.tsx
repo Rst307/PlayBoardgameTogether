@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'; import { ApiClient } from '@boardgame/client-sdk'; import { Button, ErrorNotice, Panel } from '@boardgame/ui';
-type Game = { id: string; version: string; name: string; description: string; players: { min: number; max: number }; developmentOnly: boolean };
-const api = new ApiClient(import.meta.env.VITE_API_BASE || '/api/v1');
-export function HomePage() { const [games, setGames] = useState<Game[] | null>(null); const [error, setError] = useState(''); const load = () => { setGames(null); setError(''); api.games<Game[]>().then(setGames).catch(e => setError(e instanceof Error ? e.message : '无法加载扩展')); }; useEffect(load, []); return <><div className="hero"><p className="eyebrow">可信扩展 · 服务端权威</p><h1>一起，把桌游搬到浏览器</h1><p>创建私人房间，邀请朋友入座，实时完成 Color Match 对局。</p></div><h2>已启用扩展</h2>{error && <ErrorNotice>{error} <Button onClick={load}>重试</Button></ErrorNotice>}{games === null && !error ? <p aria-live="polite">正在读取真实扩展目录…</p> : games?.length === 0 ? <Panel>尚未安装游戏。</Panel> : <div className="cards">{games?.map(game => <Panel key={`${game.id}@${game.version}`}><div className="card-top"><h3>{game.name}</h3>{game.developmentOnly && <span className="tag">测试</span>}</div><p>{game.description}</p><dl><div><dt>人数</dt><dd>{game.players.min}–{game.players.max}</dd></div><div><dt>版本</dt><dd>{game.version}</dd></div></dl></Panel>)}</div>}</>; }
+import { GameCatalog } from './GameCatalog.js';
 
+export function HomePage() {
+  return <><section className="page-heading"><div><h1>游戏大厅</h1><p>选一款桌游，和朋友一起坐下来玩。</p></div></section><GameCatalog /></>;
+}

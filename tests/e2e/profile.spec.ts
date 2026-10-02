@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { test, expect } from './fixtures.js';
 
 test('lobby owns creation and profile changes persist across reloads', async ({ page }, info) => {
@@ -8,9 +9,10 @@ test('lobby owns creation and profile changes persist across reloads', async ({ 
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await expect(page.locator('nav').getByRole('link', { name: '创建房间' })).toHaveCount(0);
   await expect(page.getByLabel('游戏与版本')).toHaveCount(0);
-  await page.getByRole('link', { name: '创建房间', exact: true }).click();
-  await expect(page).toHaveURL('/rooms/new');
+  await openRoomCreation(page);
+  await expect(page).toHaveURL('/games/color-match/1.0.0/new');
   await expect(page.getByLabel('游戏与版本')).toBeVisible();
+  await page.getByRole('link', { name: '返回游戏详情' }).click();
   await page.getByRole('link', { name: '返回游戏大厅' }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('lobby.png'), fullPage: true, animations: 'disabled' });

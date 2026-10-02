@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 
 test('四人璀璨宝石：五位贵族、完整市场和玩家侧栏适配小尺寸桌面与手机', async ({ page }, testInfo) => {
@@ -5,7 +6,7 @@ test('四人璀璨宝石：五位贵族、完整市场和玩家侧栏适配小�
   await page.getByLabel('用户名').fill('stage3_a');
   await page.getByLabel('密码').fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('splendor.base@1.0.0');
   await page.getByLabel('人数', { exact: true }).fill('4');
   await page.getByLabel('房间名').fill('四人棋盘布局');

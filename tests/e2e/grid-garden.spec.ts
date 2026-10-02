@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 
 test('Grid Garden completes three simultaneous rounds with script placement', async ({ page }, testInfo) => {
@@ -7,7 +8,7 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
   await page.getByLabel('密码').fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅' })).toBeVisible();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
   await page.getByLabel('房间名').fill(`Grid Garden ${test.info().project.name}`);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
@@ -83,12 +84,12 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       await page.getByRole('button', { name: '登录', exact: true }).click();
       await expect(page.getByRole('heading', { name: '游戏大厅' })).toBeVisible();
     }
-    await a.getByRole('link', { name: '创建房间' }).click();
+    await openRoomCreation(a);
     await a.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
     await a.getByLabel('房间名').fill('双人花园交互验收');
     await a.getByRole('button', { name: '创建并生成邀请码' }).click();
     const invite = await a.locator('.invite-box strong').textContent();
-    await b.getByLabel('12 位邀请码').fill(invite!);
+    await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(invite!);
     await b.getByRole('button', { name: '加入私人房间' }).click();
     await b.getByRole('button', { name: '坐这里' }).click();
     await b.getByRole('button', { name: '准备', exact: true }).click();
@@ -182,4 +183,3 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     await second.close();
   }
 });
-

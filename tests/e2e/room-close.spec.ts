@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import {test,expect} from './fixtures.js';
 
 for(const started of [false,true])test(`host closes ${started?'active':'waiting'} room and all members return home`,async({browser},testInfo)=>{
@@ -11,12 +12,12 @@ for(const started of [false,true])test(`host closes ${started?'active':'waiting'
       await page.getByRole('button',{name:'登录',exact:true}).click();
       await expect(page.getByRole('heading',{name:'游戏大厅',exact:true})).toBeVisible();
     }
-    await a.getByRole('link',{name:'创建房间',exact:true}).click();
+    await openRoomCreation(a);
     await a.getByLabel('游戏与版本').selectOption('demo.counter-room@1.0.0');
     await a.getByRole('button',{name:'创建并生成邀请码'}).click();
     const code=await a.locator('.invite-box strong').innerText();
     const roomUrl=a.url();
-    await b.getByLabel('12 位邀请码').fill(code);
+    await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(code);
     await b.getByRole('button',{name:'加入私人房间'}).click();
     await expect(b.getByText('实时同步',{exact:true})).toBeVisible();
     await expect(b.getByRole('button',{name:/关闭房间/})).toHaveCount(0);

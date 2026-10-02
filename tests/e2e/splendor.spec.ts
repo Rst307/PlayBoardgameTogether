@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 import { decideBasicSplendor } from '../../games/splendor/src/server/index.js';
 import { names, viewSchema } from '../../games/splendor/src/shared/index.js';
@@ -9,7 +10,7 @@ test('璀璨宝石：真人与脚本AI完成整局、私密预留刷新保留、
   await page.getByLabel('密码').fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅' })).toBeVisible();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('splendor.base@1.0.0');
   await page.getByLabel('房间名').fill('宝石商会 ' + testInfo.project.name);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();

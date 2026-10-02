@@ -6,3 +6,4 @@ createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictM
 import './styles/splendor.css';
 
 import './styles/usability.css';
+import './styles/catalog.css';
