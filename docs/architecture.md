@@ -89,3 +89,6 @@ web -> client-sdk -> HTTP / authenticated WS
 2026-10-02 独立 assets 契约在 API registry 注册，Web registry 将精确 AssetResolver 传入桌面并装配固定素材预览。scripts/seed-splendor-assets.ts 通过现有 AssetService 安装 SVG 空映射和本地 TTS 完整映射，重用媒体隔离、哈希、不可变发布和既有房间/对局绑定。不改变 shared/server/catalog 源码或其摘要，不增加数据库迁移；原空绑定对局保持兼容。素材仅持久于本地资源存储，不放入浏览器包或规则 State。
 
 新增 games/splendor，shared 定义动作/View 和功能牌表，server 拥有权威牌堆、预留、阶段、规则与存档检查，client 绘制原创 SVG 并提供确认式交互。API registry、Web game-registry、AI policy worker 与安装脚本分别装配该包；没有新增平台规则分支、HTTP/WS 协议或数据库表。splendor.base@1.0.0 摘要额外覆盖 catalog 源码。存档恢复按字段验证最终分数，允许 JSONB 键重排。详见 [璀璨宝石](games/splendor.md)。
+
+
+2026-10-02 璀璨宝石可玩性优化：Web registry 将现有 MatchPage 去重后的 live 公开事件传给 SplendorBoard；客户端 Activity 在边界解析事件、按 eventId 保留短记录并展示临时行动／购买卡面。visuals 共享精确资源与失败回退，interaction 用本人 View 的合法候选校验本地宝石草稿，正式提交仍由原 matches 链路处理。没有改变 shared/server/catalog、规则摘要、事件投影、HTTP/WS 或数据库；既有存档和图包锁继续兼容。

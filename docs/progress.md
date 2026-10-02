@@ -1,5 +1,26 @@
 # 开发进度
 
+## 璀璨宝石直接交互与紧凑桌面（2026-10-02）
+
+取消「三种颜色／两枚同色」模式切换，库存点击直接组合宝石；基于本人 View 的合法候选判断同色双拿、混拿和颜色数量，黄金、空库存及非法组合就地解释并保留草稿。支持选中数量标识、逐枚取消／清空、Esc 取消、可购买卡标识、卡牌放大、精确缺口和黄金支付预览。等待对手时可查看卡牌，正式提交仍受阶段／连接／控制权禁用约束。
+
+桌面采用深绿与金色焦点，库存／贵族横向并排，三层四列市场按视口限制卡面；本人预留和各商会位于可滚动侧栏，工具在桌面之后。经典卡面同时显示独立语义费用／声望／折扣；手机紧凑四列、自然纵向滚动。修复全局按钮选择器覆盖、SVG 最小高度、牌堆背面撑大整行与保存反馈占位，1280×720、1366×768 和 1920×1080 四人桌面完整市场均通过测量。320×568／390×844 手机无横向溢出。较多商会和记录在侧栏滚动，不把全部辅助信息强塞进一屏。
+
+Web registry 将已有去重 live 公开事件传给扩展，Activity 解析后展示最近六条行动，并用五秒视口浮层展示行动／买牌卡面、折扣与声望。动画不阻塞操作，计时器卸载／替换时清理；刷新不重播历史，重复 eventId 不重复展示。手机浮层位于导航下方，避免被导航遮挡。预留／盲抽仍不展示对手卡身份；拿取／退币现有公开事件只显示类型，不猜测未提供的颜色。shared/server/catalog、规则摘要、HTTP/WS、数据库、AI 和音效均未改动，旧局与图包锁保留。
+
+本轮实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 最终通过，包含所有游戏的依赖边界。
+- `pnpm test tests/unit/splendor.test.ts tests/unit/splendor-interaction.test.ts tests/unit/splendor-assets.test.ts`：3 文件／15 项通过，无 skip；覆盖三色／同色点击、取消、非法组合／黄金／空库／不足四枚和少于三色的权威候选，保留规则与资产回归。
+- `pnpm test:e2e tests/e2e/splendor-layout.spec.ts tests/e2e/splendor.spec.ts tests/e2e/splendor-assets.spec.ts --project=desktop --output=.data/e2e-splendor-desktop-acceptance`：最终 3 项通过（2.0 分钟）。
+- 同一最终代码的 `pnpm test:e2e tests/e2e/splendor-layout.spec.ts tests/e2e/splendor.spec.ts tests/e2e/splendor-assets.spec.ts --project=mobile --output=.data/e2e-splendor-mobile-acceptance`：3 项通过（2.4 分钟）。两批合计六项，非一次命令的六项全绿。双图包真实真人／脚本 AI 完整对局、非法点击不改变选择、确认面板视口、Enter／Esc／取消、私密预留刷新、实际图片失败回退、对手买牌记录／动画浮层位于导航下方、正常结算与历史结果均覆盖；四人用例另覆盖五位贵族、十二张市场卡和多尺寸布局。已实际查看最终 SVG／TTS 小桌面、四人和手机买牌截图。
+- `pnpm build` 最终通过，包含生产 bundle 与 API runtime 边界检查；5173 预览和 3001 health/live 均返回 200。
+
+开发中的失败回归先复现旧模式按钮和市场超高；后续测量暴露按钮优先级、SVG／牌堆撑高与 720px 下溢出，均修复后重测。四人场景首次误用默认两座位／多个添加按钮，已修正测试设置；刷新断言先等待已有对手行动完成，再区分历史重播与刷新后的新 live 行动，不禁止真实新事件。测试库明确为独立 boardgame_test，不等于开发 boardgame，测试命令串行清理，未清理开发数据。
+
+本轮不重跑无关全量业务／集成套件；没有后端／规则／事务修改。手机为 Chromium Pixel 5 模拟与视口验证，未验收 iOS/WebKit、物理设备或真实外部模型。截图和 TTS 素材仅保留本地 .data，既有用户截图和开发者文档产物不纳入本轮提交。操作／维护同步 games/splendor.md、ui-system.md 和 architecture.md。下一步由用户刷新当前对局体验，并按真实游玩反馈继续调整。
+
+
 ## 公开开发者文档与 SDK（2026-10-02）
 
 完成网站无需登录的 `/developers` 和七篇专项指南，主导航可直接进入；内容按当前 SDK 导出、HTTP 路由和 protocol schema 核对。包括规则/客户端 SDK、认证/房间/对局/资料/模型/资源 API、WebSocket 版本与恢复、游戏扩展装配及 AI 契约。明确当前通过可信源码注册游戏，在线添加游戏接口为未来规划，未伪造占位端点。SDK 以当前 workspace 0.1.0 源码公开下载，不声称 npm 发布或授予未声明许可证。

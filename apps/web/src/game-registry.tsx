@@ -11,7 +11,7 @@ export const clientGames = [
     id: 'splendor.base', version: '1.0.0', name: '璀璨宝石', defaultOptions: {},
     load: async (): Promise<GameBoard> => {
       const { SplendorBoard } = await import('@boardgame/splendor/client');
-      return (view, busy, _events, onAction, assets) => <SplendorBoard view={splendorViewSchema.parse(view)} busy={busy} onAction={onAction} assets={assets} />;
+      return (view, busy, events, onAction, assets) => <SplendorBoard events={events} view={splendorViewSchema.parse(view)} busy={busy} onAction={onAction} assets={assets} />;
     },
   },
   {
