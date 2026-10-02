@@ -1,5 +1,15 @@
 # 开发进度
 
+## 公开开发者文档与 SDK（2026-10-02）
+
+完成网站无需登录的 `/developers` 和七篇专项指南，主导航可直接进入；内容按当前 SDK 导出、HTTP 路由和 protocol schema 核对。包括规则/客户端 SDK、认证/房间/对局/资料/模型/资源 API、WebSocket 版本与恢复、游戏扩展装配及 AI 契约。明确当前通过可信源码注册游戏，在线添加游戏接口为未来规划，未伪造占位端点。SDK 以当前 workspace 0.1.0 源码公开下载，不声称 npm 发布或授予未声明许可证。
+
+规范指南位于 `apps/web/public/developer-docs`，提供 Markdown、`llms.txt`、生成的 `llms-full.txt`。Vite 白名单生成插件从 11 个 SDK/协议源文件和包元数据生成 JSON 源码包、逐文件资源与 SHA-256；不包含 API/游戏 server、凭据、本地 TTS 素材或秘密状态。页面按需加载，支持指南搜索、目录、桌面/手机阅读和真实下载；保留业务授权。
+
+实际验证：`pnpm typecheck` 首次因生成器元组推导失败，修正后通过；`pnpm lint` 通过；`pnpm test tests/unit/developer-publication.test.ts` 四项通过（源码/摘要一致性、全部文档链接、正式 HTTP 路由覆盖、链接协议限制）；`pnpm build` 通过，包括生产 bundle 与 API runtime 检查；`pnpm test:developers` 桌面与 Pixel 5 两项通过，无 skip。浏览器对 API 请求全部断流，仍成功遍历八篇文档、直接刷新子路径、返回、搜索、锚点、Markdown 下载和 SDK 文件/摘要核对，并检查每页无横向溢出。此测试使用独立生产静态预览，不需要数据库或清理 fixture；本轮没有修改认证/动作/数据库逻辑，因此未跑共享库集成或旧整局 E2E。现有 5173 开发站 `/llms-full.txt` 和 SDK 下载均返回 200。
+
+下一步：在明确提交/审核/安装权限与可信执行边界后，再设计在线添加游戏接口；现阶段开发者按公开接入指南贡献独立游戏包。仓库未提供公网部署目标，本轮生成并验证网站静态产物，不宣称已部署到公网域名。
+
 ## 璀璨宝石双图包（2026-10-02）
 
 新增独立 splendor-assets@1.0.0 契约与 109 个可选图片槽：90 张卡面、10 位贵族、3 级牌背和 6 种筹码。原 SVG 通过空映射保留为默认 splendor.original@1.0.0；用户本地 TTS 素材按颜色/声望/费用逐项核对后发布为 splendor.tts-classic@1.0.0。客户端使用精确 AssetResolver，完整卡面、贵族、牌背及筹码可替换；图片失败恢复对应 SVG/规则文字和操作，固定预览覆盖全部素材。规则 shared/server/catalog、旧摘要和身份化 View 未变，未新增数据库迁移或音效。开局沿用已有精确资源绑定与取消准备流程。

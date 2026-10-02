@@ -1,5 +1,11 @@
 # 架构
 
+## 公开开发者文档（2026-10-02）
+
+Web 主导航新增无需 session 的 `/developers` 及指南子页面，页面按需加载并读取 `apps/web/public/developer-docs/*.md`。受限 Markdown 渲染使用 React 文本转义，不解释 HTML 或可执行链接；文档目录、搜索、页内锚点和下载保留浏览器语义。
+
+`apps/web/developer-publication.ts` 是 Vite 构建/开发插件，只读取显式白名单中的 game-sdk、client-sdk、protocol 公开源码及 package.json，生成 `/developer-sdk/sdk-sources.json`、逐文件源码与 `/llms-full.txt`。开发与生产使用同一生成器，源码包记录 SHA-256，避免手工副本漂移；不遍历仓库、不发布 API/游戏 server、环境或本地资源。业务 API 的 session/Origin/CSRF/成员权限不变，没有新增安装游戏的业务端点或 npm 发布流程。
+
 ## 大厅与个人资料（2026-10-01）
 
 首页 DashboardPage 收拢为游戏大厅，展示参与房间、邀请码和公开大厅；创建只通过大厅按钮进入 `/rooms/new`，导航保留游戏大厅与我的资料。`ProfileService` 拥有本人资料更新和参与历史概要查询，app 只装配现有认证/CSRF 与 schema 边界。资料与历史由 protocol/client-sdk 共享类型，ProfilePage 不读取秘密 State。旧对局沿用 MatchPage 身份化 View；初次打开 aborted 对局只读展示，不订阅已关闭房间，在线 active 对局被关闭时仍回大厅。下方快速创建描述为历史实现。

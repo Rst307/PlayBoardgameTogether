@@ -1,5 +1,11 @@
 # 桌游平台
 
+## 公开开发者文档（2026-10-02）
+
+网站 `/developers` 无需登录，主导航提供「开发者文档」。覆盖快速开始、游戏 SDK、客户端 SDK、HTTP API、WebSocket/恢复、添加游戏与 AI 指南；规范源文件在 [公开指南](apps/web/public/developer-docs/index.md)。提供 `/llms.txt`、构建生成的 `/llms-full.txt` 与 `/developer-sdk/sdk-sources.json`，后者按白名单发布当前 game-sdk/client-sdk/protocol 源码及 SHA-256，不含 API/游戏 server 或秘密数据。SDK 当前通过 workspace 使用，不声明已发布 npm 包。在线添加游戏接口尚未实现，当前接入方式见 [添加游戏](apps/web/public/developer-docs/add-game.md)。
+
+`pnpm build` 生成全部静态文档和 SDK 文件；生产托管需保留页面回退及这些静态路径。`pnpm test:developers` 在生产静态预览上验证未登录阅读、桌面/手机导航、刷新和下载，不启动 API、不清理数据库。运行该检查前先构建。
+
 2026-10-02 璀璨宝石支持「原创几何 SVG」与「TTS 经典卡面」两套图包，房主开局前在房间「资源包」选择，旧局保持原绑定。TTS 素材由用户本地模组提取，已安装到本机资源存储，不随 Git 仓库分发；新环境安装/恢复见 [游戏图包](docs/games/splendor.md)。
 
 2026-10-01 新增 [璀璨宝石](docs/games/splendor.md)：2–4 人宝石拿取、发展卡购买与私密预留、黄金替代、退币、贵族与最终轮结算，支持专用脚本 AI 和刷新恢复。创建房间时选择「璀璨宝石」。原创 SVG 美术随客户端加载。

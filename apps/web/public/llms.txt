@@ -1,0 +1,19 @@
+# Boardgame Together developer documentation
+
+> Public developer documentation for humans and coding agents. Business API authorization remains enforced. SDK workspace version: 0.1.0. No online game-upload/install endpoint is implemented.
+
+## Guides
+- [Overview](/developer-docs/index.md)
+- [Quick start](/developer-docs/quickstart.md)
+- [Game SDK](/developer-docs/game-sdk.md)
+- [Client SDK](/developer-docs/client-sdk.md)
+- [HTTP API](/developer-docs/api.md)
+- [WebSocket and recovery](/developer-docs/realtime.md)
+- [Adding a game](/developer-docs/add-game.md)
+- [AI development](/developer-docs/ai.md)
+
+## Machine-readable resources
+- [Full documentation](/llms-full.txt)
+- [SDK source snapshot with SHA-256](/developer-sdk/sdk-sources.json)
+
+Use exact source schemas and current repository instructions. Never infer identity from client seatId, read another player's secrets, or invent planned endpoints. Source publication is not an npm-release or software-license declaration.

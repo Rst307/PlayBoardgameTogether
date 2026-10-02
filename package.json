@@ -11,6 +11,7 @@
     "lint": "eslint . && node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "test:integration": "tsx --env-file=.env scripts/prepare-test-db.ts && tsx --env-file=.env scripts/migrate.ts --test && tsx --env-file=.env scripts/sync-games.ts --test && tsx --env-file=.env scripts/seed-assets.ts --test && vitest run tests/integration",
+    "test:developers": "playwright test --config playwright.developers.config.ts",
     "test:e2e": "pnpm db:test:prepare && tsx --env-file=.env scripts/migrate.ts --test && tsx --env-file=.env scripts/sync-games.ts --test && tsx --env-file=.env scripts/seed-assets.ts --test && tsx --env-file=.env scripts/run-e2e.ts",
     "db:up": "docker compose -f compose.dev.yml up -d postgres",
     "db:down": "docker compose -f compose.dev.yml down",
