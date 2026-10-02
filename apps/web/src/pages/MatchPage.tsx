@@ -276,7 +276,13 @@ export function MatchPage({ id }: { id: string }) {
           storePending(undefined); latest.current = undefined; setData(undefined); setConnection('auth-expired'); return;
         }
         setConnection('offline');
-        retryTimer = window.setTimeout(() => { delay = Math.min(delay * 2, 15000); connect(); }, delay);
+        // An expired session can reject the WS upgrade before the server can
+        // send close code 4001. Recheck via authenticated HTTP so a failed
+        // handshake cannot leave the previous private View on screen forever.
+        void sync(false).then(() => {
+          if (generation.current !== token || socket !== ws || !latest.current) return;
+          retryTimer = window.setTimeout(() => { delay = Math.min(delay * 2, 15000); connect(); }, delay);
+        });
       };
     };
 

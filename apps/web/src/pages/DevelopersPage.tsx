@@ -1,17 +1,9 @@
 import { useEffect, useState } from 'react';
 import { DeveloperMarkdown } from './DeveloperMarkdown.js';
 import '../styles/developers.css';
+import { guides } from '../app/developer-guides.js';
 
-const guides = [
-  { slug: 'index', title: '开发者中心', summary: '公开能力、文档与源码下载' },
-  { slug: 'quickstart', title: '快速开始', summary: '本地环境、workspace、构建' },
-  { slug: 'game-sdk', title: '游戏 SDK', summary: '规则、View、RNG、资源契约' },
-  { slug: 'client-sdk', title: '客户端 SDK', summary: 'ApiClient、动作提交与错误' },
-  { slug: 'api', title: 'HTTP API', summary: '认证、房间、对局、模型与资源' },
-  { slug: 'realtime', title: 'WebSocket 与恢复', summary: '订阅、版本、重连与回执' },
-  { slug: 'add-game', title: '添加游戏', summary: '扩展注册、测试、未来接口' },
-  { slug: 'ai', title: 'AI 开发指南', summary: '编码代理与游戏内 AI' },
-] as const;
+
 
 export function DevelopersPage({ slug = 'index' }: { slug?: string }) {
   const guide = guides.find(item => item.slug === slug);
@@ -24,13 +16,12 @@ export function DevelopersPage({ slug = 'index' }: { slug?: string }) {
     const controller = new AbortController();
     setSource('');
     setError(false);
-    document.title = `${guide.title} · 桌游平台开发文档`;
     void fetch(`/developer-docs/${guide.slug}.md`, { signal: controller.signal }).then(async response => {
       if (!response.ok || !/^(?:text\/|application\/octet-stream)/i.test(response.headers.get('content-type') ?? '')) throw new Error('Document unavailable');
       const text = await response.text();
       if (!controller.signal.aborted) setSource(text);
     }).catch(() => { if (!controller.signal.aborted) setError(true); });
-    return () => { controller.abort(); document.title = '桌游平台'; };
+    return () => { controller.abort(); };
   }, [guide, attempt]);
   if (!guide) return <section><h1>未找到开发文档</h1><a href="/developers">返回开发者中心</a></section>;
   const visible = guides.filter(item => `${item.title} ${item.summary}`.toLowerCase().includes(query.trim().toLowerCase()));

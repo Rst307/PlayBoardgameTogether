@@ -5,6 +5,18 @@ main { line-height: 1.6; }
 button, .button-link, summary { min-height: 44px; }
 summary { align-content: center; }
 button:disabled { cursor: not-allowed; }
+.login-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
+.login-fields input { width: 100%; }
+.password-toggle { justify-self: start; }
+.auth-back { display: inline-flex; align-items: center; min-height: 44px; margin-top: 16px; }
+.recovery-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.empty .recovery-actions { justify-content: center; }
+/* A short desktop viewport still needs every navigation item reachable. */
+.site-header { overflow-y: auto; }
+.desktop-shell--game .site-header { overflow: visible; }
+@media (max-width: 700px) {
+  .site-header { overflow: visible; }
+}
 .status, .eyebrow, .score { font-variant-numeric: tabular-nums; }
 .error-notice { border-left: 3px solid var(--control-line); }
 .error-notice[role="alert"] { border-left-color: var(--danger); }

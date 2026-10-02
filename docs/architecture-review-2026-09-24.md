@@ -133,7 +133,7 @@ Web → client-sdk → Fastify → AuthService / RoomService → PostgreSQL
 
 ### A06：依赖边界检查覆盖不完整（P2）
 
-**证据**：[check-boundaries.mjs](../scripts/check-boundaries.mjs) 写死 `games/test-counter` 的检查目录，主要通过源码字符串匹配判断依赖。
+**历史证据**：当时的 `scripts/check-boundaries.mjs` 写死 `games/test-counter` 的检查目录，主要通过源码字符串匹配判断依赖。2026-10-02 已由 [check-boundaries.ts](../scripts/check-boundaries.ts) 与 AST 检查替代，当前范围和限制见 [本轮审查](project-optimization-2026-10-02.md)。
 
 **影响**：新游戏可能未被检查覆盖；字符串检查也不能完整表达实际导入关系，因此当前 lint 通过不能证明全部模块边界正确。
 

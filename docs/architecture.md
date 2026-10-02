@@ -1,5 +1,13 @@
 # 架构
 
+## 平台外壳与依赖检查（2026-10-02）
+
+Web 的 app/routes.tsx 统一路由、工作区标题和按页加载；App 只保留站点外壳、导航和文档标题更新，RootPage 管理首页会话状态。app/developer-guides.ts 为路由标题与文档目录提供同一份元数据，文档页不再在卸载时覆盖下一页标题。app/PageBoundary.tsx 隔离页面加载/绘制失败，保留导航和整页重新加载入口；main 的路径 key 与房间/对局 ID 隔离继续保留。
+
+scripts/check-boundaries.ts 自动发现游戏，通过 dependency-boundaries.ts 的 TypeScript AST 校验 Web、UI、client-sdk、protocol、game-sdk 及全部游戏源目录；覆盖字面量静态/动态/类型导入与再导出及相对路径归一化。不是第三方依赖完整图或计算型导入校验，生产 bundle/API runtime 检查仍独立执行。没有改变业务 API、数据库、规则、身份或广播。审查和后续批次见 [项目优化](project-optimization-2026-10-02.md)。
+
+MatchPage 在 WS 非专用失效码断线后也通过既有认证 HTTP 读取复核会话，处理升级握手拒绝而没有 4001 的情况。复核发现 UNAUTHENTICATED 时清除旧 View 与待定请求；只有当前页面世代、当前 socket 和有效快照仍存在才安排重连，避免过期异步结果创建额外连接。继续使用同一身份化快照接口，不新增协议或权限通道。
+
 ## 公开开发者文档（2026-10-02）
 
 Web 主导航新增无需 session 的 `/developers` 及指南子页面，页面按需加载并读取 `apps/web/public/developer-docs/*.md`。受限 Markdown 渲染使用 React 文本转义，不解释 HTML 或可执行链接；文档目录、搜索、页内锚点和下载保留浏览器语义。

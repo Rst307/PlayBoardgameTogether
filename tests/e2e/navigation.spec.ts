@@ -39,7 +39,7 @@ test('page links preserve the shell, history and keyboard access without a reloa
   const seats = page.locator('.seat-card');
   expect(await seats.evaluateAll(elements => elements.map(element => getComputedStyle(element).animationDelay)))
     .toEqual(['0.04s', '0.08s', '0.12s', '0.16s']);
-  await page.screenshot({ path: `docs/screenshots/page-motion/seats-${info.project.name}.png`, fullPage: true, animations: 'disabled' });
+  await page.screenshot({ path: info.outputPath('seats.png'), fullPage: true, animations: 'disabled' });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(seats.first()).toHaveCSS('animation-name', 'none');
   await page.evaluate(() => Object.defineProperty(document, 'startViewTransition', { configurable: true, value: undefined }));

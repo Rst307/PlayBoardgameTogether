@@ -1,5 +1,9 @@
 # 桌游平台
 
+## 项目优化（2026-10-02）
+
+平台入口按页面加载并统一路由与浏览器标题，页面加载失败保留导航；登录支持显示/隐藏密码、请求锁和分类反馈，404 提供返回入口。依赖检查改用 TypeScript AST 并覆盖共享 UI 与两个 SDK，维护六项界面原则及后续结构债务见 [项目优化审查](docs/project-optimization-2026-10-02.md)。`pnpm build` 后可执行 `pnpm test:ui`，独立检查生产页面与公开文档，不清理数据库。
+
 ## 公开开发者文档（2026-10-02）
 
 网站 `/developers` 无需登录，主导航提供「开发者文档」。覆盖快速开始、游戏 SDK、客户端 SDK、HTTP API、WebSocket/恢复、添加游戏与 AI 指南；规范源文件在 [公开指南](apps/web/public/developer-docs/index.md)。提供 `/llms.txt`、构建生成的 `/llms-full.txt` 与 `/developer-sdk/sdk-sources.json`，后者按白名单发布当前 game-sdk/client-sdk/protocol 源码及 SHA-256，不含 API/游戏 server 或秘密数据。SDK 当前通过 workspace 使用，不声明已发布 npm 包。在线添加游戏接口尚未实现，当前接入方式见 [添加游戏](apps/web/public/developer-docs/add-game.md)。

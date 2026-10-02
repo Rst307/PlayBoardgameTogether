@@ -129,7 +129,7 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     releaseHeldRequest = undefined;
     await expect(a.getByRole('alert')).toContainText('局面已变化');
     await expect(a.getByText(/待确认草稿：建造/)).toBeVisible();
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/conflict-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('conflict-real.png'), fullPage: true });
     await expect(a.getByRole('button', { name: '建造 -1' })).toHaveAttribute('aria-pressed', 'true');
     await a.getByRole('button', { name: '建造 -1' }).click();
     await a.getByRole('button', { name: '确认选择' }).click();
@@ -150,7 +150,7 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     await expect(a.getByText('对局 · revision 3')).toBeVisible();
     await expect(a.getByText('B1 · 纵向')).toBeVisible();
     await a.screenshot({ path: testInfo.outputPath('garden-keyboard-preview.png'), fullPage: true });
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/garden-preview-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('garden-preview-real.png'), fullPage: true });
     await a.getByRole('button', { name: '确认放置' }).click();
     for (const round of [2, 3]) {
       for (const page of [a, b]) await expect(page.getByText(`第 ${round} / 3 轮`)).toBeVisible();
@@ -175,7 +175,7 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     }
     await a.screenshot({ path: testInfo.outputPath('garden-human-finished.png'), fullPage: true });
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/garden-finished-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('garden-finished-real.png'), fullPage: true });
   } finally {
     releaseHeldRequest?.();
     await first.close();

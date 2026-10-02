@@ -76,7 +76,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await expect(b.getByRole('heading', { name: 'Color Match', exact: true })).toBeVisible();
     await expect(a.locator('.color-hand-cards button')).toHaveCount(5, { timeout: 15_000 });
     await expect(b.locator('.color-hand-cards button')).toHaveCount(5, { timeout: 15_000 });
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/color-initial-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('color-initial.png'), fullPage: true });
     for (let revision = 0; revision < 300; revision++) {
       if (await a.getByRole('region', { name: '本局已结束', exact: true }).count()) break;
       const active = await a.getByText('轮到你行动', { exact: true }).count() ||
@@ -166,7 +166,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
         await active.context().setOffline(true);
         await active.evaluate(() => window.dispatchEvent(new Event('offline')));
         await expect(active.getByText('连接中断或正在同步，操作已暂停。')).toBeVisible();
-        await active.screenshot({ path: `docs/screenshots/stage-9/after/offline-real-${testInfo.project.name}.png`, fullPage: true });
+        await active.screenshot({ path: testInfo.outputPath('offline-real.png'), fullPage: true });
         await active.context().setOffline(false);
         await active.evaluate(() => window.dispatchEvent(new Event('online')));
         await expect(active.getByText('连接中断或正在同步，操作已暂停。')).toHaveCount(0, { timeout: 20_000 });
@@ -190,7 +190,7 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await expect(b.locator('.page-heading').getByText(/已结束/)).toBeVisible();
     await expect(a.getByRole('region', { name: '结束页面' })).toBeVisible();
     await expect(b.getByRole('region', { name: '结束页面' })).toBeVisible();
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/color-finished-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('color-finished.png'), fullPage: true });
     expect(racedTabs).toBe(true);
     await a.reload();
     await expect(a.locator('.page-heading').getByText(/已结束/)).toBeVisible();
@@ -205,12 +205,11 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await login(a, 'stage3_a');
     const heartbeatStart = new Date('2026-10-01T00:00:00Z');
     await a.clock.install({ time: heartbeatStart });
-    // Install alone keeps ticking in real time. Pause before loading the match
-    // so the heartbeat and reconnect deadlines have one deterministic origin.
-    await a.clock.pauseAt(new Date(heartbeatStart.getTime() + 1000));
+    // Let the lazy route render before freezing time for the heartbeat test.
     await a.goto(savedMatchUrl);
     await expect(a.locator('.page-heading').getByText(/已结束/)).toBeVisible();
     await expect(a.getByText('连接中断或正在同步，操作已暂停。')).toHaveCount(0);
+    await a.clock.pauseAt(await a.evaluate(() => new Date(Date.now() + 1000).toISOString()));
     dropPongA = true;
     // Freeze after the 80s heartbeat deadline, before the 1s reconnect timer.
     await a.clock.runFor(80_000);
@@ -219,6 +218,8 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     dropPongA = false;
     await a.clock.fastForward(1_000);
     await expect(a.getByText('连接中断或正在同步，操作已暂停。')).toHaveCount(0, { timeout: 20_000 });
+    // Subsequent reload/navigation assertions exercise normal rendering timers.
+    await a.clock.resume();
     for (let index = 0; index < 3; index++) {
       await a.reload();
       await expect(a.locator('.page-heading').getByText(/已结束/)).toBeVisible();
