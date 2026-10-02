@@ -34,8 +34,11 @@
 | GET | /games/:id/versions/:version | 精确版本清单，缺失 404 |
 | GET | /games/:id/versions/:version/rules | { gameId, version, rules } |
 | GET | /games/:id/ai-policies | 可用策略描述数组，不暴露执行模块 |
+| GET | /games/presentations | 公开展示配置数组，含 gameId/version/revision/iconUrl/coverUrl/backgroundUrl；不含修改者或内部记录 |
 
 目录是查询接口，当前没有 POST /games 上传或安装规则代码接口。
+
+管理员可 PUT /games/:id/versions/:version/presentation，输入 `{ expectedRevision, iconUrl, coverUrl, backgroundUrl }`。三个图片地址可为 null（使用客户端内置图片）、公开 HTTPS URL（不含用户信息、查询参数或片段），或 /game-art/ 下的图片路径；禁止 data/javascript、目录穿越与私密 API 路径。写入需要 administrator、Origin、session 与 CSRF。配置按游戏精确版本保存，并发旧 revision 返回 STATE_CONFLICT；缺失或停用游戏版本返回 GAME_NOT_FOUND。此接口只设置目录图片地址，不上传媒体、安装游戏或修改对局图包。
 
 ## 房间：需要会话
 

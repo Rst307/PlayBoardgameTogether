@@ -4,7 +4,9 @@
 
 首页的 GameCatalog 消费既有公开游戏目录，经本地 Zod schema 解析 unknown，排除 developmentOnly；登录与未登录页面共用目录。`/games/:id/:version` 按页加载 GameDetailPage，`/games/:id/:version/new` 复用 NewRoomPage/RoomCreateForm 并带入精确目录版本，缺失时禁用创建而不自动换版本；旧 `/rooms/new` 保留兼容。navigation 的页面链接白名单包含新路由，延续 history、焦点及无刷新导航。
 
-详情页展开加入后复用 Lobby 的 gameId 筛选、密码与分页；原 DashboardPage 邀请逻辑提取为 RoomInviteForm，邀请码仍决定实际房间，服务端权限与校验保持。公开加入增加请求锁与页面世代检查，卸载或筛选变更后的迟到回复不导航。首页保留参与房间。几何 SVG 封面属于目录展示，不消费秘密 State、外部素材或资源包，也不增加规则分支。API、协议、数据库和正式动作事务未变化。
+详情页默认复用 Lobby 的 gameId 筛选、密码与分页，在列表标题旁提供创建入口；RoomInviteForm 与 GameRules 放到列表下方的折叠区域。邀请码仍决定实际房间，服务端权限与校验保持。公开加入有请求锁与页面世代检查，卸载或筛选变更后的迟到回复不导航。首页保留参与房间。
+
+catalog/GamePresentationService 与独立 routes 拥有目录展示配置，管理员写入继续使用 AuthService 的角色、Origin 和 CSRF 校验。迁移 015 的 game_presentations 按精确安装版本保存图片地址/revision；保存锁安装版本行并在事务内检查 revision，避免并发首写或编辑覆盖。公开只投影三个地址与版本，不暴露修改者。protocol/client-sdk 共用 schema，Web 将游戏清单与公开展示配置合并；客户端 catalog-art 提供游戏专属默认插画，GameArtwork 处理图像加载失败。新增公开源码也进入开发 SDK 下载白名单。图片配置不修改 manifest/rule digest、秘密 State、房间版本或对局资源绑定，不新增媒体上传或规则分支。
 
 ## 平台外壳与依赖检查（2026-10-02）
 

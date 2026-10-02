@@ -33,6 +33,8 @@ const created = await api.createConfiguredRoom({
 | --- | --- |
 | createConfiguredRoom(input) | 共享 schema 校验的建房请求和结果 |
 | lobby(query) | 公开房间分页，仍需要登录 |
+| gamePresentations() | 无需登录读取 schema 解析后的游戏展示配置 |
+| saveGamePresentation(id, version, input) | 管理员保存图标/封面/背景地址，使用 expectedRevision 防止覆盖他人修改 |
 | joinPublicRoom(id, input) | 加入公开房 |
 | gameRules(id, version) | 精确游戏版本规则说明 |
 | matchSnapshot(id) | 解析本人权威快照 |

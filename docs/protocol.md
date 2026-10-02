@@ -1,5 +1,9 @@
 # 协议
 
+## 游戏展示配置（2026-10-02）
+
+`GET /api/v1/games/presentations` 无需登录，返回 `{gameId,version,revision,iconUrl,coverUrl,backgroundUrl}[]`，没有配置时 revision 为 0、地址为 null。`PUT /api/v1/games/:id/versions/:version/presentation` 仅管理员可调用，继续验证 Origin/session/CSRF，输入 `{expectedRevision,iconUrl,coverUrl,backgroundUrl}`。地址为 null、公开 HTTPS（不含凭据/查询/片段）或 `/game-art/` 图片路径；禁止脚本/data/私密 API 和路径穿越。旧 revision 返回 STATE_CONFLICT，停用或不存在版本返回 GAME_NOT_FOUND。接口 no-store；返回公开展示字段，不返回修改者。协议 schema 与 client-sdk 方法共用校验。此配置不进入规则清单、对局状态或图包摘要，不提供上传端点。
+
 ## 本人资料与历史（2026-10-01）
 
 - `GET /api/v1/profile`：返回 id、username、displayName、avatar、bio、createdAt，只能读取当前 session 账户。

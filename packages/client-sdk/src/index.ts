@@ -2,11 +2,21 @@ import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, model
 import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
+import { gamePresentationSchema, gamePresentationInputSchema, type GamePresentationInput } from '@boardgame/protocol';
 import { profileSchema, profileInputSchema, matchHistorySchema, type ProfileInput } from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async gamePresentations() {
+    return gamePresentationSchema.array().parse(await this.request<unknown>('/games/presentations'));
+  }
+  async saveGamePresentation(id: string, version: string, input: GamePresentationInput) {
+    return gamePresentationSchema.parse(await this.request<unknown>(
+      `/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/presentation`,
+      { method: 'PUT', body: JSON.stringify(gamePresentationInputSchema.parse(input)) },
+    ));
+  }
   async profile() { return profileSchema.parse(await this.request<unknown>('/profile')); }
   async saveProfile(input: ProfileInput) {
     return profileSchema.parse(await this.request<unknown>('/profile', {

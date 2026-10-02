@@ -9,6 +9,7 @@ const GameDetailPage = lazy(() => import('../pages/GameDetailPage.js').then(modu
 const RoomPage = lazy(() => import('../pages/RoomPage.js').then(module => ({ default: module.RoomPage })));
 const MatchPage = lazy(() => import('../pages/MatchPage.js').then(module => ({ default: module.MatchPage })));
 const AssetAdminPage = lazy(() => import('../pages/AssetAdminPage.js').then(module => ({ default: module.AssetAdminPage })));
+const GamePresentationAdminPage = lazy(() => import('../pages/GamePresentationAdminPage.js').then(module => ({ default: module.GamePresentationAdminPage })));
 const ModelSettingsPage = lazy(() => import('../pages/ModelSettingsPage.js').then(module => ({ default: module.ModelSettingsPage })));
 const StatusPage = lazy(() => import('../pages/StatusPage.js').then(module => ({ default: module.StatusPage })));
 const DevelopersPage = lazy(() => import('../pages/DevelopersPage.js').then(module => ({ default: module.DevelopersPage })));
@@ -55,6 +56,7 @@ export function resolvePage(path: string): PageRoute {
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };
     case '/admin/assets': return { title: '资源管理', page: <AssetAdminPage /> };
+    case '/admin/games': return { title: '游戏展示', page: <GamePresentationAdminPage /> };
     case '/status': return { title: '系统状态', page: <StatusPage /> };
     case '/dev/lab': if (LabPage) return { title: '扩展实验台', page: <LabPage /> }; break;
     case '/dev/ui': if (UiScenes) return { title: '界面场景', page: <UiScenes /> }; break;

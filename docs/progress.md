@@ -1,5 +1,23 @@
 # 开发进度
 
+## 游戏公开房间与展示图片配置（2026-10-02）
+
+游戏详情现在默认显示该游戏的公开房间，列表上方直接提供「创建房间」；私人邀请码加入和规则放在下方折叠区域。未登录仍可浏览游戏目录，公开房间区域说明需要登录。大厅改为紧凑封面墙，四款已有游戏分别提供原创主题封面和图标，详情使用独立背景；图片加载失败保留可用入口及文字回退。
+
+管理员通过「更多 → 游戏展示」进入 `/admin/games`，配置每个游戏精确版本的图标、大厅封面和详情背景，提供预览、保存及恢复内置图片。当前接受公开 HTTPS 图片地址或内置 `/game-art/` 地址，不支持本地文件上传。新增独立展示 DTO、类型化客户端、目录服务及迁移 `015_game_presentations.sql`，按 revision 防止并发覆盖；写入继续要求管理员 session、Origin 和 CSRF。展示配置不改写游戏 manifest、规则摘要、房间 revision 或已锁定对局资源。本地开发库已通过 `pnpm db:migrate` 应用迁移，未清理开发数据。
+
+实际执行与结果：
+
+- `pnpm typecheck`、`pnpm lint` 通过；最终 `pnpm build` 通过，包含公开 SDK 的新增 schema、生产开发模块排除与 API runtime 检查。
+- `pnpm test tests/unit`：16 文件 / 69 项通过，无 skip。
+- `pnpm test:integration`：14 文件 / 89 项，88 项通过；新增展示配置的 5 项全部通过，覆盖持久化、权限、Origin/CSRF、并发冲突、地址校验及恢复默认。已有资源物理 GC 用例触发 5 秒超时；未修改产品逻辑或放宽时限，随后 `pnpm test tests/integration/stage7-assets.test.ts -t "retries physical GC"` 单独重跑该项通过（4.225 秒），另 11 项因筛选未执行。测试脚本使用独立 boardgame_test，与开发库不同，集成和 E2E 串行执行。
+- `pnpm test:e2e tests/e2e/game-catalog.spec.ts tests/e2e/game-presentation-admin.spec.ts tests/e2e/lobby.spec.ts tests/e2e/profile.spec.ts tests/e2e/room-close.spec.ts --output=.data/e2e-catalog-presentation`：首批 14/16，普通账户权限测试两项在登录完成前跳页失败。补上等待登录完成后，`pnpm test:e2e tests/e2e/game-presentation-admin.spec.ts tests/e2e/game-catalog.spec.ts --output=.data/e2e-catalog-presentation-final`：桌面与 Pixel 5 共 8 项通过（52.1 秒），无 skip。两批覆盖 16 个不同场景项目组合，不描述为单次 16/16；包含默认公开房间、创建入口、浏览器历史/刷新、图片保存/恢复/加载失败、管理员与普通账户权限，首批还通过密码加入、资料及关闭房间回归。
+- 新增/修改测试额外执行严格 TypeScript 检查，包含 `--exactOptionalPropertyTypes` 和 `--noUncheckedIndexedAccess`，通过。实际查看最终桌面目录和手机详情截图，无横向溢出；截图仅保留 `.data`，已有截图改动排除提交。
+
+提交前复核修正配置页「重新加载」：保留当前游戏选择并刷新保存字段，避免继续显示旧草稿。补充交互断言后，`pnpm test:e2e tests/e2e/game-presentation-admin.spec.ts --output=.data/e2e-presentation-reload-final` 桌面与 Pixel 5 共 4 项通过（27.3 秒），无 skip；该修正后的 typecheck、lint 和 build 也通过。本轮暂存 diff 空白、敏感凭据模式及生成产物排除检查通过。
+
+README、架构、资源、数据模型、协议、房间、界面与公开开发者文档已同步。剩余限制：图片目前以地址配置，尚无上传入口；未验收物理设备、WebKit 或公网部署，未接入商业游戏封面和推荐/热度数据。后续可按实际素材与浏览体验继续调整。
+
 ## 游戏大厅先选游戏（2026-10-02）
 
 首页改为真实已启用游戏目录，点击原创几何封面卡片进入 `/games/:id/:version` 详情，查看简介、人数与规则，再选择创建或加入。创建复用原建房表单并带入游戏/精确版本，允许调整设置，目录版本缺失时明确阻止创建；旧 `/rooms/new` 继续兼容。加入展开当前游戏公开房间和邀请码表单，保留类型/状态筛选、分页、密码与成员进入；邀请码仍以实际对应房间为准。首页保留继续游戏，未登录可浏览目录。游戏目录以 unknown + Zod 解析，不新建 API、协议、规则或权限链路。公开加入增加请求锁与迟到回复保护，邀请码表单从首页提取复用。

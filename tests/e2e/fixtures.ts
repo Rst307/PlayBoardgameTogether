@@ -19,5 +19,5 @@ export async function openRoomCreation(page: Page) {
 
 export async function openInviteJoin(page: Page) {
   await page.locator('a.game-card[href="/games/color-match/1.0.0"]').click();
-  await page.getByRole('button', { name: '加入房间', exact: true }).click();
+  await page.getByText('使用邀请码加入私人房间', { exact: true }).click();
 }

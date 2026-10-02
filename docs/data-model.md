@@ -1,5 +1,9 @@
 # 数据模型
 
+## 游戏展示 015（2026-10-02）
+
+`015_game_presentations.sql` 新增 game_presentations，以 game_id/game_version 为主键并引用 game_installations；保存可空 icon_url/cover_url/background_url、递增 revision、updated_by 与 updated_at。公开查询只投影游戏 ID、版本、revision 与图片地址。管理员保存先锁安装版本行，串行化首建和后续编辑，校验 expectedRevision 后单事务写入；冲突或无版本不产生记录。null 使用客户端内置图片。未改写历史迁移、manifest、State、RNG、对局资源摘要或房间 revision；展示地址属于平台目录配置，不是对局资源版本。
+
 ## 个人资料 014（2026-10-01）
 
 `014_account_profiles.sql` 为 accounts 新增 avatar（dice/leaf/cat/rocket/star/coffee，默认 dice）和 bio（最多 300 字，默认空字符串），保留既有 display_name 与账户 UUID。历史列表直接查询 match_participants → matches → rooms 的非秘密概要，不新建第二份对局记录，不读取 State、RNG 或动作。单语句使用 created_at/id 降序游标，每页 20 项，游标也要求属于本人；关闭房间不删除参与历史。

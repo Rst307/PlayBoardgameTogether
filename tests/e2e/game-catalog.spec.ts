@@ -16,9 +16,8 @@ test('catalog opens details, preserves selected game and supports history and re
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: '璀璨宝石', exact: true })).toBeVisible();
   await expect(page.locator('#main-content')).toBeFocused();
-  await expect(page.getByRole('heading', { name: '公开房间', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: '加入房间', exact: true }).click();
   await expect(page.getByRole('heading', { name: '公开房间', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '加入房间', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('筛选游戏')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('detail.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -45,6 +44,7 @@ test('guest can browse games and catalog failures offer retry', async ({ page })
   await page.locator('a.game-card[href="/games/grid-garden/1.0.0"]').click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Grid Garden', exact: true })).toBeVisible();
+  await expect(page.getByText('登录后查看并加入公开房间。')).toBeVisible();
   await page.goto('/games/missing/1.0.0');
   await expect(page.getByRole('heading', { name: '游戏暂不可用' })).toBeVisible();
   await page.route('**/api/v1/games', route => route.fulfill({
