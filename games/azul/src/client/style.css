@@ -779,6 +779,28 @@ to{
 }
 .az-table .az-score-float { display: none; }
 }
+.az-table .az-flying-tile {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  animation: az-tile-flight var(--flight-time) cubic-bezier(.3, 0, .2, 1) both;
+}
+@keyframes az-tile-flight {
+  from { transform: translate(0, 0); }
+  to { transform: translate(var(--flight-x), var(--flight-y)); }
+}
+.az-table .az-discard {
+  position: absolute;
+  pointer-events: none;
+  animation: az-tile-discard 180ms ease-out both;
+}
+@keyframes az-tile-discard {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .az-table .az-discard { display: none; }
+}
 .az-table header {
   height: auto;
   min-height: 0;

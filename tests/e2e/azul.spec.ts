@@ -4,6 +4,16 @@ import { names, viewSchema } from '../../games/azul/src/shared/index.js';
 
 test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、桌面手机操作', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
+  await page.addInitScript(() => {
+    const starts: number[] = [];
+    Object.defineProperty(window, 'azulAudioStarts', { value: starts });
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (...args: Parameters<typeof start>) {
+      starts.push(this.buffer?.duration ?? 0);
+      return start.apply(this, args);
+    };
+  });
+  const sounds = () => page.evaluate(() => Reflect.get(window, 'azulAudioStarts') as number[]);
   await page.goto('/login');
   await page.getByLabel('用户名').fill('stage3_a');
   await page.getByLabel('密码').fill('stage two password');
@@ -18,6 +28,9 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
   await page.getByRole('button', { name: '开始游戏' }).click();
   const table = page.getByRole('region', { name: '花砖物语游戏桌' });
   await expect(table).toBeVisible();
+  await page.getByText('声音设置', { exact: true }).click();
+  await page.getByRole('button', { name: '启用声音 / 测试声音' }).click();
+  await expect(page.getByText('声音已启用，只播放新的实时事件。', { exact: true })).toBeVisible();
   expect(await table.locator('.az-heading').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   expect(await table.locator('.az-offer').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   expect(await table.locator('.az-pattern').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
@@ -30,10 +43,15 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
     await expect(table.locator('.az-score-float').first()).toBeVisible();
     await page.screenshot({ path: `.data/azul-${testInfo.project.name}-scoring.png`, fullPage: true });
     observedAnimation = true;
+    await expect.poll(async () => (await sounds()).some(duration => Math.abs(duration - 0.85) < 0.02)).toBe(true);
+    expect((await sounds()).some(duration => Math.abs(duration - 0.18) < 0.02)).toBe(true);
     await page.reload();
     await expect(table).toBeVisible();
     await expect(table.locator('.az-score-float')).toHaveCount(0);
     await expect(table.locator('.az-landing')).toHaveCount(0);
+    expect(await sounds()).toEqual([]);
+    await page.getByText('声音设置', { exact: true }).click();
+    await page.getByRole('button', { name: '启用声音 / 测试声音' }).click();
     await expect(page.getByText('最近一轮得分明细', { exact: true })).toBeVisible();
     recovered = true;
   }
@@ -67,6 +85,8 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
   expect(observedAnimation).toBe(true); expect(recovered).toBe(true);
   await expect(page.getByRole('region', { name: '花砖物语结算' })).toBeVisible();
   expect((await snapshot()).status).toBe('finished');
+  await expect(table.locator('.az-finale-wait')).toHaveCount(0, { timeout: 180_000 });
+  await expect.poll(async () => (await sounds()).some(duration => Math.abs(duration - 1.25) < 0.02)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   expect(await table.locator('.az-finale').evaluate(el => getComputedStyle(el).animationName)).toBe('none');

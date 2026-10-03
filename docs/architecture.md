@@ -1,5 +1,9 @@
 # 架构
 
+## 花砖计分移动与节拍音效（2026-10-03）
+
+AzulBoard 只使用公开 round.scored 重建待结算满行，TileFlight 测量当前板内源/目标格，通过独立无点击飞行层移动，落位后显示权威分步得分。clientGames 的可选 boardAudio 装配 PresentationAudioPort；MatchPage 授权 PresentationConsumer 接受的可播放 live eventId，BoardAudio 绑定 AudioManager 的失效世代并有界去重。游戏只决定时点，统一播放器继续管理资源、静音、owner、后台和断线取消；教程不提供回调。没有变更服务端规则/摘要、投影/网络 schema、数据库或不可变图包。
+
 ## 注册入口（2026-10-03）
 
 `registration-routes.ts` 管理公开注册的 Origin/JSON/正文上限和有界 IP 限流，app 只装配；AuthService.register 复用既有 Argon2id 和 accounts，在 social-write 锁与单事务中创建普通账户及指定初始好友 ID。协议校验位于 protocol/auth.ts，client-sdk.register 解析输入/公开结果；Web RegisterPage 按需加载，有重复提交锁与卸载清理，成功后返回 LoginPage，仅传递公开 ID。登录支持可选 @，继续使用原 session/CSRF 体系。无新数据库迁移或运行服务。

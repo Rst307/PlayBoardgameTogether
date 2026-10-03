@@ -7,17 +7,19 @@ import { clientGame, type GameBoard } from '../game-registry.js';
 import { AssetResolver, verifyManifest } from '../assets/resolver.js';
 import { audioManager, ownAudio } from '../assets/audio-manager.js';
 import { PresentationConsumer } from '../assets/presentation.js';
+import { BoardAudio } from '../assets/board-audio.js';
 import { AudioControls } from '../assets/AudioControls.js';
-import type { AssetContract } from '@boardgame/game-sdk/assets';
+import type { AssetContract, PresentationAudioPort } from '@boardgame/game-sdk/assets';
 import { ActionHint, GameErrorBoundary, PageFeedback } from '@boardgame/ui';
 
 const aiNames = { idle: '等待行动', queued: '等待处理', running: '正在思考', submitting: '正在保存操作', blocked: '暂时受阻，请收回控制或检查配置' };
 
-function GameSurface({ render, data, disabled, events, act, resolver }: {
+function GameSurface({ render, data, disabled, events, act, resolver, audio }: {
   render: GameBoard; data: MatchView; disabled: boolean; events: unknown[];
   act: (action: unknown) => void; resolver: AssetResolver | undefined;
+  audio?: PresentationAudioPort;
 }) {
-  return render(data.view, disabled, events, act, resolver);
+  return render(data.view, disabled, events, act, resolver, audio);
 }
 
 type Pending = { accountId: string; matchId: string; requestId: string; expectedRevision: number; expectedControllerEpoch:number; action: unknown; attempts: number };
@@ -60,6 +62,10 @@ export function MatchPage({ id }: { id: string }) {
   const [assetError,setAssetError]=useState('');
   const presentation=useRef(new PresentationConsumer());
   const soundResources=useRef<{resolver:AssetResolver;contract:AssetContract}|undefined>(undefined);
+  const boardAudio = useRef(new BoardAudio(() => audioManager.playbackEpoch, cueId => {
+    const resources = soundResources.current;
+    if (resources) void audioManager.play(cueId, resources.resolver.manifest, resources.contract);
+  }));
 
   function returnHome() {
     if(returnedHome.current)return;
@@ -171,6 +177,10 @@ export function MatchPage({ id }: { id: string }) {
     const token = ++generation.current;
     returnedHome.current = false;
     presentation.current=new PresentationConsumer();
+    boardAudio.current = new BoardAudio(() => audioManager.playbackEpoch, cueId => {
+      const resources = soundResources.current;
+      if (resources) void audioManager.play(cueId, resources.resolver.manifest, resources.contract);
+    });
     audioManager.clear();
     latest.current = undefined;
     pendingRef.current = undefined;
@@ -254,6 +264,12 @@ export function MatchPage({ id }: { id: string }) {
               const snapshot=parsed.snapshot;
               if(connected.current&&subscriptionReady&&snapshot.delivery==='live'&&snapshot.events?.length){
                 presentation.current.consume(id,snapshot.revision,snapshot.cues??[],true,cue=>{
+                  const game = clientGame(snapshot.gameId, snapshot.gameVersion);
+                  if ('boardAudio' in game && game.boardAudio) {
+                    if (audioManager.available && audioManager.owner && !audioManager.preferences.muted && !document.hidden)
+                      boardAudio.current.authorize(cue.eventId);
+                    return;
+                  }
                   const resources=soundResources.current;
                   if(resources)void audioManager.play(cue.cueId,resources.resolver.manifest,resources.contract);
                 });
@@ -431,7 +447,7 @@ export function MatchPage({ id }: { id: string }) {
     {(busy || notice) && <ActionHint title={busy ? '正在保存操作…' : notice} />}
     <div className="match-layout">
       <section className="match-table" aria-label="游戏桌">
-    <GameErrorBoundary key={id}>{board ? <GameSurface render={board} data={data} disabled={busy || !!pending || connection !== 'online' || data.status !== 'active'||data.controller.type!=='human'} events={events} act={action => void act(action)} resolver={resolver} /> :
+    <GameErrorBoundary key={id}>{board ? <GameSurface render={board} data={data} disabled={busy || !!pending || connection !== 'online' || data.status !== 'active'||data.controller.type!=='human'} events={events} act={action => void act(action)} resolver={resolver} audio={boardAudio.current.playCue} /> :
       <PageFeedback title="正在加载游戏界面…" loading />}</GameErrorBoundary>
       </section>
       <aside className="match-support" aria-label="对局辅助">

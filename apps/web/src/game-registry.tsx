@@ -2,19 +2,20 @@ import { viewSchema as azulViewSchema } from '@boardgame/azul/shared';
 import { viewSchema as splendorViewSchema } from '@boardgame/splendor/shared';
 import type { ReactNode } from 'react';
 import type { GameTutorial } from '@boardgame/game-sdk/tutorial';
-import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
+import type { AssetResolverPort, PresentationAudioPort } from '@boardgame/game-sdk/assets';
 import { PackageBoard } from './games/PackageBoard.js';
 import { viewSchema as counterViewSchema } from '@boardgame/test-counter/shared';
 import { viewSchema as colorViewSchema } from '@boardgame/color-match/shared';
 import { viewSchema as gardenViewSchema } from '@boardgame/grid-garden/shared';
 
-export type GameBoard = (view: unknown, busy: boolean, events: unknown[], onAction: (action: unknown) => void, assets?:AssetResolverPort) => ReactNode;
+export type GameBoard = (view: unknown, busy: boolean, events: unknown[], onAction: (action: unknown) => void, assets?:AssetResolverPort, audio?: PresentationAudioPort) => ReactNode;
 export const clientGames = [
   {
     id: 'azul.base', version: '1.0.0', name: '花砖物语', defaultOptions: {}, finishBehavior: 'stay',
+    boardAudio: true,
     load: async (): Promise<GameBoard> => {
       const { AzulBoard } = await import('@boardgame/azul/client');
-      return (view, busy, events, onAction) => <AzulBoard view={azulViewSchema.parse(view)} busy={busy} events={events} onAction={onAction} />;
+      return (view, busy, events, onAction, _assets, audio) => <AzulBoard view={azulViewSchema.parse(view)} busy={busy} events={events} onAction={onAction} audio={audio} />;
     },
   },
   {

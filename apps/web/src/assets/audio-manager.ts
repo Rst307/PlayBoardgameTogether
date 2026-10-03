@@ -21,6 +21,7 @@ export class AudioManager {
   preferences: AudioPreferences = { muted: false, game: 0.5, ui: 0.3 };
   available = false;
   owner = false;
+  get playbackEpoch() { return this.generation; }
   setAccount(account: string) {
     if (this.account === account) return;
     this.clear();

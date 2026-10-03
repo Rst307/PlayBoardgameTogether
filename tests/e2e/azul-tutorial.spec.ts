@@ -46,8 +46,25 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
   await draft('工厂 1 钴蓝 1块', 1);
   await expect(page.getByRole('button', { name: /^你图案行 5 2\/5/ })).toBeVisible();
   await advance();
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
   await draft('工厂 1 钴蓝 1块', 3);
   const myBoard = page.getByRole('region', { name: '你的花砖板', exact: true });
+  await expect(myBoard.locator('.az-pattern').nth(2).locator('.az-tile:not(.az-ghost)')).toHaveCount(2);
+  await expect(myBoard.locator('.az-flying-tile')).toHaveCount(1);
+  await expect(myBoard.locator('.az-wall-cell').nth(12).locator('.az-ghost')).toHaveCount(1);
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('0');
+  await myBoard.locator('.az-flying-tile').evaluate(element => {
+    const animation = element.getAnimations()[0]!;
+    animation.pause();
+    animation.currentTime = 150;
+  });
+  await page.screenshot({ path: info.outputPath('azul-tutorial-flight.png'), fullPage: true });
+  await page.clock.runFor(300);
+  await expect(myBoard.locator('.az-flying-tile')).toHaveCount(0);
+  await expect(myBoard.locator('.az-wall-cell').nth(12).locator('.az-ghost')).toHaveCount(0);
+  await expect(myBoard.locator('.az-pattern').nth(2).locator('.az-slot > .az-tile:not(.az-ghost)')).toHaveCount(0);
+  await page.clock.resume();
   await expect(myBoard.locator('.az-score-float')).toHaveText('+3');
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('3');
   await expect(myBoard.locator('.az-score-float')).toHaveText('+3 +3');

@@ -1,5 +1,24 @@
 # 开发进度
 
+## 花砖移动计分与节拍音效修正（2026-10-03）
+
+修复结算后 View 直接清空图案行、右侧独立动画导致左砖提前消失的问题。客户端按公开 round.scored 保留待结算满行，每行最右砖从左侧源格飞入右侧墙格（300ms）；落位前目标格为空、分数不变，落位后弃砖淡出并按原横/竖连线节拍加分。待结算行暂不可选，其余可用行继续操作。TileFlight 按实际格子尺寸定位，不占布局或拦截点击，观察器/计时器卸载清理；减少动态效果直接落位。
+
+花砖 clientGames 通过可选 boardAudio 接入 PresentationAudioPort，移动、逐项得分/奖励、地板与最终胜利跟随动画时点，复用既有锁定图包三个声音映射。MatchPage 只授权可播放的已消费 WS live eventId；BoardAudio 按稳定节拍键有界去重并绑定 AudioManager 世代，静音/后台/断线/主控切换/卸载取消后续节拍，延后解锁不补播。统一声音设置保留，教程不提供正式回调。没有规则/权限/网络 schema/数据库或资源字节变化；对应游戏、SDK、音频及架构文档同步。
+
+本轮验证：
+
+- 修改前桌面教程断言实际失败：计分开始时左侧第三行应保留两砖，实际为零砖，建立可自动复现的回归。
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过。初轮发现 exactOptionalPropertyTypes 的可选 audio 类型问题，限定为允许 undefined 后通过。
+- `pnpm test tests/unit`：29 文件 / 123 项通过，无 skip；包括新增 3 项实时授权、节拍去重、世代过期及有界保留测试。
+- `pnpm build` 通过，生产 bundle/API runtime 检查通过。
+- `pnpm test:e2e tests/e2e/azul-tutorial.spec.ts --project=desktop --output=.data/e2e-azul-motion-repro` 在资源准备环节遇到既有 `Built-in bytes differ from saved hash; restore original backup`，未改写字节或摘要。准备/迁移/扩展同步已完成，后续通过现有 run-e2e 执行专项，明确不称包装脚本全绿。
+- `pnpm exec tsx --env-file=.env scripts/run-e2e.ts tests/e2e/azul-tutorial.spec.ts tests/e2e/azul.spec.ts --output=.data/e2e-azul-motion-audio`：桌面/Pixel 5 共 4 项通过（4.1 分钟），覆盖真实规则整局、飞行途中源砖保留/目标空位/原分数、落位计分、减少动态效果、刷新不重播、无横向溢出及真实 AudioBufferSourceNode.start 的移砖/得分/胜利音源。已实际查看桌面/手机飞行截图，生成产物只留忽略的 .data。
+- 并行工作区新增 025 迁移使一次浏览器运行加载失败；终止该轮后只对独立测试库执行 `pnpm exec tsx --env-file=.env scripts/migrate.ts --test`，再运行上述 4 项全部通过，没有修改其他任务的迁移或清理开发库。
+- E2E 结束后串行执行 `pnpm test tests/integration/azul.test.ts tests/integration/stage7-assets.test.ts`：花砖 4 项全部通过，覆盖权限/去重/冲突/回滚/恢复及 2–4 人完整对局；资源 12 项中 5 项通过、7 项失败，另有 1 个未处理拒绝，错误为已有资源文件不可用以及校验未生成 contentHash（null）。该次命令总体失败，不记为集成全绿；未改资源服务/测试断言或为了通过而删除元数据、替换原字节。
+
+边界：真实解码和音源启动不等同于物理扬声器听音，未测试实机 iOS/Android；资源种子恢复冲突仍需其所属资源工作处理。后续刷新游戏页，在「声音设置」启用声音并人工检查听感。本轮只提交花砖表现、可选音效端口与对应测试/文档，保留工作区其他任务改动。
+
 ## 后台展示与资源页面导航修复（2026-10-03）
 
 `/admin/games` 和 `/admin/assets` 接入既有 AdminLayout，共用标题、后台导航、当前栏目高亮及返回大厅入口，去掉重复标题和返回后台链接。管理员验证统一由布局完成，内容只在验证成功后挂载；展示配置加载失败仍保留后台导航。原展示编辑、资源上传/映射/预览/发布流程保留，无 API、协议或数据库变更。

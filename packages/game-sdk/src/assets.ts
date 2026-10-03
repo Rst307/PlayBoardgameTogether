@@ -186,6 +186,8 @@ export type PresentationCue = {
   cueIndex: number;
   cueId: string;
 };
+/** Optional client presentation playback; the platform authorizes live event IDs. */
+export type PresentationAudioPort = (eventId: string, cueId: string, key: string) => void;
 export interface AssetResolverPort {
   resolveImage(key: string): string | undefined;
 }

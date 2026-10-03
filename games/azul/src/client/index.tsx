@@ -1,23 +1,29 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import type { PresentationAudioPort } from '@boardgame/game-sdk/assets';
 import {
   colors, names, symbols, floorPenalties, scoreEventSchema, wallColor, wallColumn,
   type AzulAction, type AzulView, type Color, type ScoreStep,
 } from '../shared/index.js';
 import './style.css';
 import { impactScore, scoreImpacts, scoreTiming } from './scoring.js';
+import { TileFlight } from './TileFlight.js';
 
 function Tile({ color, ghost = false }: { color: Color; ghost?: boolean }) {
   return <span className={`az-tile az-${color}${ghost ? ' az-ghost' : ''}`} aria-hidden="true"><span>{symbols[color]}</span></span>;
 }
-type Beat = ScoreStep & { key: string; round: number };
-export function AzulBoard({ view, busy, events = [], onAction }: {
+type Beat = ScoreStep & { key: string; eventId: string; round: number };
+export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   view: AzulView; busy: boolean; events?: unknown[]; onAction: (action: AzulAction) => void;
+  audio?: PresentationAudioPort | undefined;
 }) {
   const [selection, setSelection] = useState<{ source: number; color: Color } | null>(null);
   const [row, setRow] = useState<number | null>(null);
   const [beat, setBeat] = useState<Beat | null>(null);
   const [pending, setPending] = useState<Beat[]>([]);
   const [impactProgress, setImpactProgress] = useState({ key: '', count: 0 });
+  const [finishEvent, setFinishEvent] = useState<string | null>(null);
+  const audioRef = useRef(audio);
+  useLayoutEffect(() => { audioRef.current = audio; }, [audio]);
   const seen = useRef(new Set<string>());
   const mine = view.players[view.viewingSeatId]!;
   const myTurn = view.currentSeatId === view.viewingSeatId && view.phase === 'drafting';
@@ -29,33 +35,49 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
   const seatName = (id: string) => id === view.viewingSeatId ? '你' : `玩家 ${view.seats.indexOf(id) + 1}`;
 
   useEffect(() => { setSelection(null); setRow(null); }, [view.round, view.currentSeatId, busy]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const fresh: Beat[] = [];
     for (const raw of events) {
+      if (raw && typeof raw === 'object' && 'eventId' in raw && typeof raw.eventId === 'string'
+        && 'type' in raw && !seen.current.has(raw.eventId) && (raw.type === 'tiles.drafted' || raw.type === 'match.finished')) {
+        seen.current.add(raw.eventId);
+        if (raw.type === 'match.finished') setFinishEvent(raw.eventId);
+        else audioRef.current?.(raw.eventId, 'tiles.drafted', 'draft');
+        continue;
+      }
       const parsed = scoreEventSchema.safeParse(raw);
       if (!parsed.success || seen.current.has(parsed.data.eventId)) continue;
       seen.current.add(parsed.data.eventId);
-      parsed.data.steps.forEach((step, index) => fresh.push({ ...step, key: `${parsed.data.eventId}:${index}`, round: parsed.data.round }));
+      parsed.data.steps.forEach((step, index) => fresh.push({ ...step, key: `${parsed.data.eventId}:${index}`, eventId: parsed.data.eventId, round: parsed.data.round }));
     }
     if (seen.current.size > 100) seen.current = new Set([...seen.current].slice(-50));
     if (fresh.length) setPending(old => [...old, ...fresh].slice(-88));
   }, [events]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (beat || !pending.length) return;
     setBeat(pending[0]!);
     setPending(old => old.slice(1));
   }, [pending, beat]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!beat) return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const count = scoreImpacts(beat).length;
+    if (beat.kind === 'tile') audioRef.current?.(beat.eventId, 'tiles.drafted', `${beat.key}:move`);
     setImpactProgress({ key: beat.key, count: reduced ? count : 0 });
-    const timers = reduced ? [] : Array.from({ length: count }, (_, index) => window.setTimeout(() =>
-      setImpactProgress({ key: beat.key, count: index + 1 }), scoreTiming.landing + index * scoreTiming.impact));
+    if (reduced) audioRef.current?.(beat.eventId, beat.kind === 'floor' ? 'tiles.drafted' : 'round.scored', `${beat.key}:score`);
+    const timers = reduced ? [] : Array.from({ length: count }, (_, index) => window.setTimeout(() => {
+      setImpactProgress({ key: beat.key, count: index + 1 });
+      audioRef.current?.(beat.eventId, beat.kind === 'floor' ? 'tiles.drafted' : 'round.scored', `${beat.key}:score:${index}`);
+    }, scoreTiming.landing + index * scoreTiming.impact));
     timers.push(window.setTimeout(() => setBeat(null), reduced ? scoreTiming.reduced
       : scoreTiming.landing + count * scoreTiming.impact + scoreTiming.hold));
     return () => { timers.forEach(timer => window.clearTimeout(timer)); };
   }, [beat]);
+  useEffect(() => {
+    if (!finishEvent || beat || pending.length) return;
+    audioRef.current?.(finishEvent, 'match.finished', 'victory');
+    setFinishEvent(null);
+  }, [finishEvent, beat, pending]);
   const impacts = beat ? scoreImpacts(beat) : [];
   const revealed = beat && impactProgress.key === beat.key ? impactProgress.count : 0;
   const hit = impacts[revealed - 1];
@@ -97,20 +119,27 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
     <div className="az-players">{order.map(id => {
       const player = view.players[id]!, own = id === view.viewingSeatId;
       const active = beat?.seatId === id ? beat : null;
+      const flying = active?.kind === 'tile' && (impactProgress.key !== active.key || revealed === 0);
       const hidden = allBeats.filter(step => step.seatId === id && step.kind === 'tile' && step.key !== active?.key);
       return <section key={id} className={`az-player${own ? ' az-own' : ''}${active ? ' az-scoring' : ''}`} aria-label={`${seatName(id)}的花砖板`}>
         <header><div><strong>{own ? '你的工坊' : seatName(id)}</strong>{view.currentSeatId === id && view.phase !== 'finished' && <small>正在选砖</small>}</div>
           <div className="az-score" aria-label={`${seatName(id)}得分`}><b key={active ? `${active.key}:${revealed}` : 'steady'} className={active && revealed > 0 ? 'az-score-pop' : ''}>{displayScore(id)}</b><span>分</span></div></header>
         <div className="az-mosaic"><div className="az-patterns"><small>图案行</small>{player.lines.map((line, r) => {
-          const canPlace = own && legalRow(r) && canAct;
+          const waiting = allBeats.find(step => step.seatId === id && step.kind === 'tile' && step.row === r
+            && (step.key !== active?.key || flying));
+          const shown = waiting ? { count: r + 1, color: waiting.color } : line;
+          const canPlace = own && legalRow(r) && canAct && !waiting;
           const previewCount = own && row === r && selection ? Math.min(selectedTiles, r + 1 - line.count) : 0;
-          return <button type="button" key={r} className={`az-pattern${own && row === r ? ' az-selected' : ''}`} aria-label={`${seatName(id)}图案行 ${r + 1} ${line.count}/${r + 1}`}
+          return <button type="button" key={r} className={`az-pattern${own && row === r ? ' az-selected' : ''}`} aria-label={`${seatName(id)}图案行 ${r + 1} ${shown.count}/${r + 1}`}
             disabled={!canPlace} aria-pressed={own && row === r} onClick={() => setRow(r)}>
             <span className="az-line-number">{r + 1}</span><span className="az-line-slots">{Array.from({ length: r + 1 }, (_, index) => {
-              const filled = index >= r + 1 - line.count;
+              const inFlight = flying && active.row === r && index === r;
+              const filled = index >= r + 1 - shown.count && !inFlight;
               const preview = !filled && index >= r + 1 - line.count - previewCount;
+              const discarded = active?.kind === 'tile' && active.row === r && !flying && !waiting && index < r;
               return <span className={`az-slot${preview ? ' az-preview' : ''}`} key={index}>
-                {filled && line.color ? <Tile color={line.color} /> : preview && selection ? <Tile color={selection.color} ghost /> : null}
+                {discarded && active.color && <span className="az-discard" aria-hidden="true"><Tile color={active.color} /></span>}
+                {filled && shown.color ? <Tile color={shown.color} /> : preview && selection ? <Tile color={selection.color} ghost /> : null}
               </span>;
             })}</span><span className="az-arrow">›</span>
           </button>;
@@ -121,12 +150,13 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
           const linked = active && hit?.cells.some(cell => cell.row === r && cell.col === c);
           const future = hidden.some(step => step.row === r && step.col === c);
           const preview = own && row === r && selection && wallColumn(r, selection.color) === c;
-          return <div key={`${r}:${c}:${scoring ? active.key : ''}`} className={`az-wall-cell${linked ? ' az-linked' : ''}${scoring ? ' az-landing' : ''}${preview ? ' az-destination' : ''}`}
+          const visible = filled && !future && !(scoring && flying);
+          return <div key={`${r}:${c}:${scoring ? active.key : ''}`} className={`az-wall-cell${linked ? ' az-linked' : ''}${scoring && !flying ? ' az-landing' : ''}${preview ? ' az-destination' : ''}`}
             style={{ '--link-delay': `${(hit?.cells.findIndex(cell => cell.row === r && cell.col === c) ?? 0) * 85}ms` } as CSSProperties}
-            aria-label={`${names[color]} 第${r + 1}行第${c + 1}列 ${filled ? '已铺' : '空位'}`}>
-            <Tile color={color} ghost={!filled || future} />
+            aria-label={`${names[color]} 第${r + 1}行第${c + 1}列 ${visible ? '已铺' : '空位'}`}>
+            <Tile color={color} ghost={!visible} />
             {linked && <span className="az-link-flash" key={`${active.key}:${revealed}:glow`} />}
-            {scoring && <span className="az-score-burst" key={`${active.key}:${revealed}`}><i>✦</i><i>✧</i><i>◆</i><i>✦</i></span>}
+            {scoring && !flying && <span className="az-score-burst" key={`${active.key}:${revealed}`}><i>✦</i><i>✧</i><i>◆</i><i>✦</i></span>}
           </div>;
         }))}</div>
           {active && revealed > 0 && <span key={`${active.key}:${revealed}`} className={`az-score-float${active.kind === 'floor' ? ' az-penalty' : ''}`}
@@ -134,6 +164,7 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
             {floatingScore}
           </span>}
         </div></div>
+        {flying && active.color && <TileFlight key={active.key} row={active.row} col={active.col} color={active.color} />}
         <div className="az-floor"><span>地板</span>{floorPenalties.map((penalty, index) => <span className="az-floor-slot" key={index}>
           {player.floor[index] === 'first' ? <span className="az-first">1</span> : player.floor[index] ? <Tile color={player.floor[index] as Color} /> : null}<small>−{penalty}</small>
         </span>)}{own && <button type="button" disabled={!canAct || !legalRow(-1)} aria-pressed={row === -1} onClick={() => setRow(-1)}>全部放地板</button>}</div>
