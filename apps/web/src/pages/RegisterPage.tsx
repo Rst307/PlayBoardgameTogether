@@ -28,7 +28,7 @@ export function RegisterPage() {
       const field = parsed.error.issues[0]?.path[0];
       setError(field === 'displayName' ? '用户名须为 1–32 字，不能全为空格。'
         : field === 'userId' ? '用户 ID 须为 3–32 位字母、数字或下划线，开头可加 @。'
-          : '密码须为 12–128 位，至少包含一个字母和一个数字。');
+          : '密码须为 6–128 位，至少包含一个字母和一个数字。');
       return;
     }
     if (input.password !== String(data.get('confirmPassword') ?? '')) {
@@ -67,9 +67,9 @@ export function RegisterPage() {
           <p className="muted" id="register-name-help">1–32 字，支持中文，可在个人资料中修改。</p>
           <label>用户 ID<input name="userId" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="@rst307" minLength={3} maxLength={33} required aria-describedby="register-id-help" /></label>
           <p className="muted" id="register-id-help">3–32 位字母、数字或下划线，不区分大小写。用于登录和初始好友查找，@ 可省略；登录 ID 固定，好友 ID 可另行修改。</p>
-          <label>密码<input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={12} maxLength={128} required aria-describedby="register-password-help" /></label>
-          <p className="muted" id="register-password-help">12–128 位，至少包含一个字母和一个数字，允许符号。建议使用更长的独有密码。</p>
-          <label>确认密码<input name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={12} maxLength={128} required /></label>
+          <label>密码<input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={6} maxLength={128} required aria-describedby="register-password-help" /></label>
+          <p className="muted" id="register-password-help">6–128 位，至少包含一个字母和一个数字，允许符号。建议使用更长的独有密码。</p>
+          <label>确认密码<input name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={6} maxLength={128} required /></label>
           <button type="button" className="secondary password-toggle" aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>
             {showPassword ? '隐藏密码' : '显示密码'}
           </button>

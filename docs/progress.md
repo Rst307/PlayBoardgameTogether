@@ -1,5 +1,11 @@
 # 开发进度
 
+## 注册密码改为 6–128 位（2026-10-03）
+
+按用户要求将共享注册 password schema、注册密码/确认密码和登录表单的最低长度从 12 改为 6，最高仍为 128；至少含 ASCII 字母和数字、允许符号、不 trim 的规则保留。同步当前 README、认证/协议和公开开发文档，历史注册验收记录及 CLI 账户密码策略保持原事实。
+
+单元边界覆盖 5 位拒绝、6/128 位通过、129 位拒绝；集成与桌面/手机 E2E 使用真实 6 位密码注册并登录，已有 CLI fixture 单独使用原合规密码。实际执行 `pnpm typecheck`、`pnpm lint`、`pnpm build` 均通过；`pnpm test tests/unit/registration.test.ts tests/unit/developer-publication.test.ts` 6/6 通过；独立 `boardgame_registration_test` 上串行 `pnpm test:integration` 21 文件 / 142 项通过（110.58 秒），`pnpm test:e2e -- tests/e2e/registration.spec.ts tests/e2e/platform-shell.spec.ts` 桌面/手机 12/12 通过（40.7 秒），无 skip。实际查看两种注册截图，提示为 6–128 位，布局与交互正常。没有修改 `.env`、新增迁移或重置开发数据库。
+
 ## 公开账号注册（2026-10-03）
 
 新增 `/register` 真实注册页，登录页和未登录大厅提供入口。用户名作为显示昵称（trim 后 1–32 字，支持中文），用户 ID 接受 `@rst307` 或无 @ 的名字（3–32 位 ASCII 字母/数字/下划线、大小写不敏感）；规范 ID 同时作为固定登录名和初始好友 ID。密码 12–128 位、含 ASCII 字母和数字、允许符号、不 trim；确认密码仅在浏览器检查。支持显示/隐藏密码、提交锁、具体错误反馈、卸载后忽略迟到回复。注册后返回登录页并预填公开 ID，不携带密码；新旧账户共用原登录/session/CSRF 流程，登录支持可选 @。

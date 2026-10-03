@@ -51,7 +51,7 @@ export function LoginPage() {
       <form className="form-stack" onSubmit={submit} aria-busy={busy} aria-describedby={error ? 'login-error' : undefined}>
         <fieldset className="login-fields" disabled={busy}>
           <label>用户 ID<input name="username" aria-label="用户名" placeholder="@rst307 或原用户名" defaultValue={registeredUserId ? `@${registeredUserId}` : ''} autoComplete="username" autoCapitalize="none" spellCheck={false} minLength={3} maxLength={33} required /></label>
-          <label>密码<input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" minLength={12} maxLength={128} required /></label>
+          <label>密码<input name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" minLength={6} maxLength={128} required /></label>
           <button type="button" className="secondary password-toggle" aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>
             {showPassword ? '隐藏密码' : '显示密码'}
           </button>

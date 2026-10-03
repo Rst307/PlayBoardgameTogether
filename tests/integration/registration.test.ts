@@ -9,7 +9,7 @@ const url = process.env.TEST_DATABASE_URL;
 if (!url || !process.env.DATABASE_URL || new URL(url).pathname === new URL(process.env.DATABASE_URL).pathname)
   throw new Error('An isolated test database is required');
 const origin = 'http://127.0.0.1:5173';
-const input = { displayName: '注册玩家', userId: '@RST307', password: 'LongPassword307!' };
+const input = { displayName: '注册玩家', userId: '@RST307', password: 'Abc307' };
 
 describe('public account registration', () => {
   let db: Database;
@@ -56,7 +56,7 @@ describe('public account registration', () => {
     expect((await db.query('SELECT * FROM accounts')).rowCount).toBe(1);
   });
   it('does not silently rename an ID already used as another account friend ID', async () => {
-    const id = await createAccount(db, { username: 'other_user', displayName: '已有账户', password: input.password, role: 'user' });
+    const id = await createAccount(db, { username: 'other_user', displayName: '已有账户', password: 'LongPassword307!', role: 'user' });
     await db.query('UPDATE accounts SET friend_id=$2 WHERE id=$1', [id, 'rst307']);
     expect((await register()).statusCode).toBe(409);
     expect((await db.query('SELECT * FROM accounts')).rowCount).toBe(1);
@@ -66,7 +66,8 @@ describe('public account registration', () => {
     expect((await app.inject({ method: 'POST', url: '/api/v1/auth/register', headers: { origin: 'https://invalid.example' }, payload: input })).statusCode).toBe(403);
     for (const payload of [
       { ...input, password: 'OnlyLettersHere' }, { ...input, password: '123456789012' },
-      { ...input, password: 'Short307' }, { ...input, role: 'administrator' },
+      { ...input, password: 'Ab307' }, { ...input, password: 'A1' + 'x'.repeat(127) },
+      { ...input, role: 'administrator' },
       { ...input, userId: '@@rst307' }, { ...input, displayName: '  ' },
     ]) {
       const response = await register(payload);

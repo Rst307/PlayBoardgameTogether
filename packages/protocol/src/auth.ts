@@ -4,7 +4,7 @@ import { friendIdInputValueSchema } from './social.js';
 export const registrationIdSchema = friendIdInputValueSchema.refine(value => value.length <= 32, {
   message: '用户 ID 须为 3–32 位字母、数字或下划线',
 });
-export const registrationPasswordSchema = z.string().min(12).max(128)
+export const registrationPasswordSchema = z.string().min(6).max(128)
   .regex(/[A-Za-z]/, '密码至少包含一个字母')
   .regex(/[0-9]/, '密码至少包含一个数字');
 export const registrationInputSchema = z.object({

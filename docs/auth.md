@@ -4,7 +4,7 @@
 
 `/register` 提供用户名（displayName，trim 后 1–32 字，支持中文）、用户 ID（userId，例如 `@rst307`）和密码/确认密码。ID 接受可选单个 @，trim 后规范为 lowercase ASCII 字母/数字/下划线，名字部分 3–32 位；同一 ID 写入不可变登录名 username_canonical 和初始 friend_id。已有登录名或好友 ID 被占用均明确拒绝，不追加后缀。后续修改好友 ID 不改变登录 ID。
 
-新注册密码 12–128 个 JavaScript 字符单位，至少一个 ASCII 字母和一个数字，允许符号、空格，不 trim；确认密码仅由浏览器核对，不发送到 API。既有账户和 CLI 密码策略不变，不强制旧账户改密。登录接受带/不带 @ 的 ID，原用户名继续可用。
+新注册密码 6–128 个 JavaScript 字符单位，至少一个 ASCII 字母和一个数字，允许符号、空格，不 trim；确认密码仅由浏览器核对，不发送到 API。既有账户和 CLI 密码策略不变，不强制旧账户改密。登录接受带/不带 @ 的 ID，原用户名继续可用。
 
 POST `/api/v1/auth/register` 严格 JSON `{displayName,userId,password}`，4 KiB 上限，无 session 要求但必须来自配置的精确 Origin。返回 201 与 `{username,displayName,friendId}`；不创建会话，注册页只把非秘密 ID 放入导航状态并返回登录页。账户角色固定 user、状态 active，不接受 role/status/accountId 等额外字段。Argon2id hash 在服务端计算，账户及指定好友 ID 在与社交编辑共享 advisory lock 的单事务中保存；失败回滚，唯一约束处理并发注册。复用 STATE_CONFLICT 表示 ID 占用，不返回秘密字段。
 

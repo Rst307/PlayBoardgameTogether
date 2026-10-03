@@ -12,10 +12,10 @@ describe('registration input', () => {
     for (const invalid of [
       { ...input, displayName: '   ' }, { ...input, displayName: '字'.repeat(33) },
       ...['@@rst307', '@ab', '@用户307', 'a-b', 'x'.repeat(33)].map(userId => ({ ...input, userId })),
-      ...['Short307', 'OnlyLettersHere', '123456789012', 'A1' + 'x'.repeat(127)].map(password => ({ ...input, password })),
+      ...['Ab307', 'OnlyLettersHere', '123456789012', 'A1' + 'x'.repeat(127)].map(password => ({ ...input, password })),
       { ...input, role: 'administrator' }, { ...input, accountId: 'fake' },
     ]) expect(registrationInputSchema.safeParse(invalid).success).toBe(false);
-    expect(registrationInputSchema.safeParse({ ...input, password: 'a1' + 'x'.repeat(10) }).success).toBe(true);
+    expect(registrationInputSchema.safeParse({ ...input, password: 'a1' + 'x'.repeat(4) }).success).toBe(true);
     expect(registrationInputSchema.safeParse({ ...input, password: 'a1' + 'x'.repeat(126) }).success).toBe(true);
   });
 });

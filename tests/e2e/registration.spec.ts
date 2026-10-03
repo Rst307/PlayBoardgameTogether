@@ -3,8 +3,8 @@ import { test, expect, type Page } from './fixtures.js';
 async function fillRegistration(page: Page, userId = '@rst307') {
   await page.getByLabel('用户名', { exact: true }).fill('新桌游玩家');
   await page.getByLabel('用户 ID', { exact: true }).fill(userId);
-  await page.getByLabel('密码', { exact: true }).fill('LongPassword307!');
-  await page.getByLabel('确认密码', { exact: true }).fill('LongPassword307!');
+  await page.getByLabel('密码', { exact: true }).fill('Abc307');
+  await page.getByLabel('确认密码', { exact: true }).fill('Abc307');
 }
 
 test('registers a real account, logs in and restores the exact friend ID', async ({ page }, info) => {
@@ -23,7 +23,7 @@ test('registers a real account, logs in and restores the exact friend ID', async
   await expect(page.getByRole('status')).toHaveText('注册成功，请输入密码登录。');
   await expect(page.getByLabel('用户名', { exact: true })).toHaveValue('@rst307');
   await expect(page.getByLabel('密码', { exact: true })).toHaveValue('');
-  await page.getByLabel('密码', { exact: true }).fill('LongPassword307!');
+  await page.getByLabel('密码', { exact: true }).fill('Abc307');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await page.getByRole('link', { name: '好友', exact: true }).click();
@@ -44,12 +44,12 @@ test('validates password rules and confirmation before making a request', async 
   await page.getByLabel('密码', { exact: true }).fill('OnlyLettersHere');
   await page.getByLabel('确认密码', { exact: true }).fill('OnlyLettersHere');
   await page.getByRole('button', { name: '注册账号', exact: true }).click();
-  await expect(page.getByRole('alert')).toHaveText('密码须为 12–128 位，至少包含一个字母和一个数字。');
-  await page.getByLabel('密码', { exact: true }).fill('LongPassword307!');
+  await expect(page.getByRole('alert')).toHaveText('密码须为 6–128 位，至少包含一个字母和一个数字。');
+  await page.getByLabel('密码', { exact: true }).fill('Abc307');
   await page.getByRole('button', { name: '注册账号', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('两次输入的密码不一致。');
   expect(calls).toBe(0);
-  await page.getByLabel('确认密码', { exact: true }).fill('LongPassword307!');
+  await page.getByLabel('确认密码', { exact: true }).fill('Abc307');
   await page.getByRole('button', { name: '注册账号', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('暂时无法注册，请检查连接后重试。');
   expect(calls).toBe(1);

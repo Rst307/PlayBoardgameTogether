@@ -29,7 +29,7 @@ const created = await api.createConfiguredRoom({
 // created.inviteCode 只按一次性显示语义提供给用户，不能写入日志。
 ```
 
-示例要求已有账户、数据库已安装对应游戏，账户未超过建房配额。普通用户可通过 `/register` 注册，或调用 `api.register({ displayName: '桌游玩家', userId: '@rst307', password })` 后再 `api.login('rst307', password)`；密码 12–128 位且包含字母和数字。管理员账户仍通过维护命令创建。
+示例要求已有账户、数据库已安装对应游戏，账户未超过建房配额。普通用户可通过 `/register` 注册，或调用 `api.register({ displayName: '桌游玩家', userId: '@rst307', password })` 后再 `api.login('rst307', password)`；密码 6–128 位且包含字母和数字。管理员账户仍通过维护命令创建。
 
 ## 优先使用解析响应的方法
 
