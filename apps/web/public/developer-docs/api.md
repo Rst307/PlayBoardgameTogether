@@ -38,6 +38,21 @@
 
 目录是查询接口，当前没有 POST /games 上传或安装规则代码接口。
 
+## 游戏接入申请
+
+申请只保存纯文本和固定格式 GitHub 仓库地址，不下载、不执行、不安装。详情和完整字段见 [添加游戏](/developer-docs/add-game.md)。
+
+| 方法 | 路径 | 权限 |
+| --- | --- | --- |
+| POST | /game-submissions | 登录 + Origin + CSRF；严格 JSON，8 KiB 上限 |
+| GET | /game-submissions | 本人的申请，每页最多 20，before 为 UUID 游标 |
+| GET | /game-submissions/:id | 本人申请，越权/不存在统一 404 |
+| GET | /admin/game-submissions | 管理员分页查询 |
+| GET | /admin/game-submissions/:id | 管理员详情 |
+| POST | /admin/game-submissions/:id/review | 管理员 + Origin + CSRF，pending → reviewed/rejected |
+
+创建输入 `{ requestId, gameId, version, name, description, repositoryUrl }`；审核输入 `{ requestId, expectedRevision, status, reviewNote }`。两种 requestId 都是 UUID。reviewed 仅标记资料审阅，不代表源码安全或发布。接口均 no-store，不提供代码/文件上传；未知字段拒绝。相同成功请求优先去重，不同内容复用 ID 返回 REQUEST_ID_CONFLICT，竞争审核返回 STATE_CONFLICT，配额返回 RATE_LIMITED，超大正文 413，不支持的内容类型 415，畸形 JSON 400（均使用 VALIDATION_ERROR）。
+
 管理员可 PUT /games/:id/versions/:version/presentation，输入 `{ expectedRevision, iconUrl, coverUrl, backgroundUrl }`。三个图片地址可为 null（使用客户端内置图片）、公开 HTTPS URL（不含用户信息、查询参数或片段），或 /game-art/ 下的图片路径；禁止 data/javascript、目录穿越与私密 API 路径。写入需要 administrator、Origin、session 与 CSRF。配置按游戏精确版本保存，并发旧 revision 返回 STATE_CONFLICT；缺失或停用游戏版本返回 GAME_NOT_FOUND。此接口只设置目录图片地址，不上传媒体、安装游戏或修改对局图包。
 
 ## 房间：需要会话

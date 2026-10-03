@@ -16,7 +16,7 @@
 
 ## 公开开发者文档（2026-10-02）
 
-网站 `/developers` 无需登录，主导航提供「开发者文档」。覆盖快速开始、游戏 SDK、客户端 SDK、HTTP API、WebSocket/恢复、添加游戏与 AI 指南；规范源文件在 [公开指南](apps/web/public/developer-docs/index.md)。提供 `/llms.txt`、构建生成的 `/llms-full.txt` 与 `/developer-sdk/sdk-sources.json`，后者按白名单发布当前 game-sdk/client-sdk/protocol 源码及 SHA-256，不含 API/游戏 server 或秘密数据。SDK 当前通过 workspace 使用，不声明已发布 npm 包。在线添加游戏接口尚未实现，当前接入方式见 [添加游戏](apps/web/public/developer-docs/add-game.md)。
+网站 `/developers` 无需登录，主导航提供「开发者文档」。覆盖快速开始、游戏 SDK、客户端 SDK、HTTP API、WebSocket/恢复、添加游戏与 AI 指南；规范源文件在 [公开指南](apps/web/public/developer-docs/index.md)。提供 `/llms.txt`、构建生成的 `/llms-full.txt` 与 `/developer-sdk/sdk-sources.json`，后者按白名单发布当前 game-sdk/client-sdk/protocol 源码及 SHA-256，不含 API/游戏 server 或秘密数据。SDK 当前通过 workspace 使用，不声明已发布 npm 包。2026-10-03 新增登录用户游戏接入申请及管理员资料审核 API，执行 `pnpm db:migrate` 应用 018；只保存资料，不接收/下载/执行代码，尚无自动安装或热加载。接口与当前可信接入方式见 [添加游戏](apps/web/public/developer-docs/add-game.md)。
 
 `pnpm build` 生成全部静态文档和 SDK 文件；生产托管需保留页面回退及这些静态路径。`pnpm test:developers` 在生产静态预览上验证未登录阅读、桌面/手机导航、刷新和下载，不启动 API、不清理数据库。运行该检查前先构建。
 

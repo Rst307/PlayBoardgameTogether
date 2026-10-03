@@ -1,5 +1,11 @@
 # 架构
 
+## 游戏接入申请（2026-10-03）
+
+catalog/submissions 与 submission-routes 拥有纯资料申请、本人读取及管理员审阅；app 只装配。protocol 定义严格输入/输出，client-sdk 提供六个类型化方法，公开 SDK 白名单包含新协议源码。018 持久化申请与去重/审核记录；事务锁与数据库配额防止并发重复和无限存储，写入内重验 session/active account/管理员角色。申请相关路由有有界、无定时器的单进程 IP 请求限流，错误和成功均 no-store。
+
+不接收文件或规则入口，不使用 fetch、DNS、解压、动态 import、eval、子进程或安装命令；GitHub 地址只作为资料。reviewed 不是源码安全认证，不改变静态 registry、game_installations、房间或旧局版本。现有可信注册流程继续保留；第三方代码隔离运行及动态发布尚未实现。
+
 ## 可选交互教程（2026-10-03）
 
 `game-sdk/tutorial` 定义公开练习帧、步骤、动作反馈与纯进度转换；不依赖 React 或具体游戏规则。Web `game-registry.tsx` 的 `clientTutorials` 按精确 gameId@version 装配可选异步教程，详情仅在提供教程时显示入口。`/games/:id/:version/tutorial` 按页加载，先确认公开目录仍启用该版本，再加载原 GameBoard 与教程。TutorialPlayer 管理步骤、重试、进度、高亮和完成返回；练习操作只调用扩展教程回调。刷新重新开始，不持久化完成记录。

@@ -1,5 +1,13 @@
 # 协议
 
+## 游戏接入申请（2026-10-03）
+
+`POST /api/v1/game-submissions` 接收 gameSubmissionInputSchema：UUID requestId、gameId、version、name、description、固定格式 HTTPS GitHub repositoryUrl。只存纯文本资料，不下载/执行代码或修改游戏目录。登录用户 GET 同一路径（before UUID 游标，20 项分页）与 `/:id` 只读取本人；越权/不存在统一 GAME_NOT_FOUND/404。
+
+管理员 GET `/api/v1/admin/game-submissions`、`/:id` 读取全部申请；POST `/:id/review` 接收 gameSubmissionReviewSchema：UUID requestId、expectedRevision、reviewed/rejected、必填 reviewNote。仅 pending 可审核，revision 1 → 2；reviewed 仅代表资料审阅。写入沿用 Origin/session/CSRF，事务内再次验证账户、会话及管理员角色。创建按账户 + requestId 去重，审核按申请 + 审核者 + requestId 去重，重复成功优先于配额/revision 检查；内容冲突 REQUEST_ID_CONFLICT，竞争审核 STATE_CONFLICT。
+
+DTO 不包含申请人/审核人 ID、请求回执或会话信息，全部响应 no-store。仅 JSON，8 KiB 上限，未知字段拒绝；传输错误按 VALIDATION_ERROR 返回 400/413/415。配额与单进程 IP 限流及完整示例见 [公开接入指南](../apps/web/public/developer-docs/add-game.md)。client-sdk 提供六个类型化方法，逐边界解析共享 schema；没有上传、安装或热加载端点。
+
 ## 游戏展示配置（2026-10-02）
 
 `GET /api/v1/games/presentations` 无需登录，返回 `{gameId,version,revision,iconUrl,coverUrl,backgroundUrl}[]`，没有配置时 revision 为 0、地址为 null。`PUT /api/v1/games/:id/versions/:version/presentation` 仅管理员可调用，继续验证 Origin/session/CSRF，输入 `{expectedRevision,iconUrl,coverUrl,backgroundUrl}`。地址为 null、公开 HTTPS（不含凭据/查询/片段）或 `/game-art/` 图片路径；禁止脚本/data/私密 API 和路径穿越。旧 revision 返回 STATE_CONFLICT，停用或不存在版本返回 GAME_NOT_FOUND。接口 no-store；返回公开展示字段，不返回修改者。协议 schema 与 client-sdk 方法共用校验。此配置不进入规则清单、对局状态或图包摘要，不提供上传端点。

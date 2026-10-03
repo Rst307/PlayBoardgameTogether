@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './game-submissions.js';
 export * from './game-presentation.js';
 export * from './profile.js';
 import { assetBindingSchema, presentationCueSchema } from './assets.js';

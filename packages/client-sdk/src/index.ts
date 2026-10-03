@@ -2,6 +2,10 @@ import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, model
 import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
+import {
+  gameSubmissionInputSchema, gameSubmissionReviewSchema, gameSubmissionSchema, gameSubmissionPageSchema,
+  type GameSubmissionInput, type GameSubmissionReview,
+} from '@boardgame/protocol';
 import { botSeatCommandSchema, roomSnapshotSchema, type BotSeatCommand } from '@boardgame/protocol';
 import { gamePresentationSchema, gamePresentationInputSchema, type GamePresentationInput } from '@boardgame/protocol';
 import { profileSchema, profileInputSchema, matchHistorySchema, type ProfileInput } from '@boardgame/protocol';
@@ -9,6 +13,32 @@ export type { AssetDraft, AssetVersion } from './assets.js';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async submitGame(input: GameSubmissionInput) {
+    return gameSubmissionSchema.parse(await this.request<unknown>('/game-submissions', {
+      method: 'POST', body: JSON.stringify(gameSubmissionInputSchema.parse(input)),
+    }));
+  }
+  async gameSubmissions(before?: string) {
+    return gameSubmissionPageSchema.parse(await this.request<unknown>(
+      `/game-submissions${before ? `?before=${encodeURIComponent(before)}` : ''}`,
+    ));
+  }
+  async gameSubmission(id: string) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/game-submissions/${encodeURIComponent(id)}`));
+  }
+  async adminGameSubmissions(before?: string) {
+    return gameSubmissionPageSchema.parse(await this.request<unknown>(
+      `/admin/game-submissions${before ? `?before=${encodeURIComponent(before)}` : ''}`,
+    ));
+  }
+  async adminGameSubmission(id: string) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/admin/game-submissions/${encodeURIComponent(id)}`));
+  }
+  async reviewGameSubmission(id: string, input: GameSubmissionReview) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/admin/game-submissions/${encodeURIComponent(id)}/review`, {
+      method: 'POST', body: JSON.stringify(gameSubmissionReviewSchema.parse(input)),
+    }));
+  }
   async gamePresentations() {
     return gamePresentationSchema.array().parse(await this.request<unknown>('/games/presentations'));
   }

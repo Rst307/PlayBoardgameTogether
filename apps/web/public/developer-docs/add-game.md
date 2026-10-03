@@ -1,6 +1,46 @@
 # 添加游戏扩展
 
-当前游戏代码是由维护者审核并部署的可信扩展。网站公开 SDK 和 API 文档，尚未开放上传任意服务端代码、自动安装或游戏商店接口。未来在线添加游戏接口应沿用本文契约；其 URL、权限和审核流程尚未确定。
+当前游戏代码是由维护者审核并部署的可信扩展。现在可通过下面的接口提交游戏接入申请；申请和资料审核均不安装游戏。尚未开放任意代码上传、自动下载、自动安装或免重启规则加载。
+
+## 在线接入申请（2026-10-03）
+
+先使用现有账户登录，再携带 session cookie、同源 Origin 和 X-CSRF-Token，发送 `POST /api/v1/game-submissions`。只接受 application/json，正文上限 8 KiB。
+
+```json
+{
+  "requestId": "a1a4c267-2b15-4fa9-84f9-435c1a7a8914",
+  "gameId": "your-game",
+  "version": "1.0.0",
+  "name": "你的游戏",
+  "description": "介绍玩法、人数和开发完成情况。",
+  "repositoryUrl": "https://github.com/example/your-game"
+}
+```
+
+gameId 为小写字母开头、最多 64 位的小写字母/数字/连字符；version 为三段非负整数（每段最多六位，无前导零）。name 最多 80 字符，description 最多 2000 字符，只接受纯文本，不接受 HTML 和控制字符。仓库地址只允许固定格式的 `https://github.com/owner/repo`，不含凭据、查询参数、片段或额外路径。平台只保存该地址，不请求它、不解析 DNS、不下载仓库。
+
+身份来自 session；不接收 accountId、status、代码、Base64 文件、压缩包、serverEntry/clientEntry 等额外字段。资料不能作为 HTML、脚本或命令执行；未来管理页面必须使用文本转义，不能用 innerHTML 渲染。
+
+| 方法 | 路径 | 权限与用途 |
+| --- | --- | --- |
+| POST | /api/v1/game-submissions | 登录用户提交申请 |
+| GET | /api/v1/game-submissions | 本人的申请；`?before=上一页nextCursor` 翻页 |
+| GET | /api/v1/game-submissions/:id | 本人申请，其他人的 ID 与不存在均返回 404 |
+| GET | /api/v1/admin/game-submissions | 仅管理员，全部申请分页 |
+| GET | /api/v1/admin/game-submissions/:id | 仅管理员，申请详情 |
+| POST | /api/v1/admin/game-submissions/:id/review | 仅管理员，记录资料审阅或拒绝 |
+
+审核输入为 `{ requestId, expectedRevision: 1, status: "reviewed" | "rejected", reviewNote }`，requestId 为 UUID，reviewNote 为最多 1000 字符的必填纯文本。只能从 pending 转到 reviewed/rejected，revision 从 1 变为 2。reviewed 仅表示资料已审阅，不代表源码安全、允许执行或已上架；没有 approved/published 状态或安装操作。
+
+所有成功响应沿用 `{ ok: true, data, traceId }`，单项 data 为 `{ id, gameId, version, name, description, repositoryUrl, status, revision, reviewNote, createdAt, reviewedAt }`；列表为 `{ items, nextCursor }`，每页最多 20 项。不公开申请人账户 ID、session、token、内部请求回执或审核者 ID，响应包括错误均 no-store。
+
+提交去重按账户 + requestId；相同内容重试返回同一申请的当前快照，不重新占用配额。不同内容复用 requestId 返回 REQUEST_ID_CONFLICT。审核去重按申请 + 审核者 + requestId，重复成功审核先返回原结果，再检查 revision；竞争审核只能一个成功，其余 STATE_CONFLICT。审核不会通知游戏 registry 或修改 game_installations。
+
+每个账户最多 3 个 pending、滚动 24 小时最多 5 次新申请、累计最多 100 次；全平台累计最多 10000 次。配额在数据库事务锁下检查，API 重启不会清零，成功重试不额外计数。累计上限达到后需维护者处理容量策略。另有单 API 进程每 IP 每分钟最多 120 次申请相关请求，最多保留 1024 个未过期 IP 桶，满时拒绝新来源；不信任客户端 X-Forwarded-For。反向代理需另外配置全站限流、连接/请求超时和真实来源策略；这不构成多副本全局网络限流。
+
+使用 client-sdk 的 `submitGame`、`gameSubmissions`、`gameSubmission`、`adminGameSubmissions`、`adminGameSubmission`、`reviewGameSubmission`，请求和响应均通过共享 schema 校验。SDK 仍以 workspace/公开源码交付，不声明已发布 npm 包。
+
+上线新接口需要部署本轮 API 并执行 `pnpm db:migrate`（018）。现有服务尚不支持游戏热加载。后续安装必须独立设计可信发布、依赖审核和隔离执行；杀毒扫描或文件摘要都不能单独证明代码安全，未经审核的第三方代码不得导入主 API 进程。
 
 ## 推荐目录
 
@@ -74,4 +114,4 @@ GameBoard 在当前 Web registry 中接收 view:unknown、busy:boolean、events:
 
 后续接口应以现有 manifest/版本、公开规则、View/Action schema 和资源契约为基础，并明确提交、审核、安装和启用的权限。服务端规则需要可信部署边界；不能通过普通 HTTP 请求执行任意上传代码。
 
-现阶段开发者可按照以上流程贡献独立游戏包；在线提交接口仍为规划，本文不提供占位地址或宣称已可调用。
+现阶段开发者可通过本文申请接口提交资料，再按照可信源码流程贡献独立游戏包。代码包上传、隔离审核、安装启用与动态加载仍为后续工作，不由资料审核接口触发。

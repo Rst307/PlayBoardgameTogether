@@ -1,5 +1,24 @@
 # 开发进度
 
+## 安全游戏接入申请 API（2026-10-03）
+
+新增 `POST /api/v1/game-submissions`、本人列表/详情、管理员列表/详情与资料审核接口；protocol 严格 schema、client-sdk 六个类型化方法、公开 SDK 下载与开发指南同步。迁移 018 已应用本地开发库和独立 boardgame_test，没有改写历史迁移或清理开发数据。本地 3001 申请接口未登录返回 UNAUTHENTICATED/401、Cache-Control: no-store，确认运行中的开发 API 已加载路由。
+
+安全边界：只收 8 KiB 内 JSON 纯文本及固定格式 GitHub 仓库地址，未知字段/HTML/控制字符/凭据 URL/额外路径拒绝；不接收代码、压缩包、二进制或入口路径，不 fetch/DNS/解压/import/eval/运行命令。Origin/session/CSRF 和管理员角色沿用现有认证；事务内重验 active account、session 与管理员角色。本人读取与游标均隔离，返回不含申请人/审核人身份及内部回执。pending 只能转 reviewed/rejected；reviewed 仅为资料审阅，不代表源码安全，不修改 registry/game_installations、已有房间、State 或版本。
+
+创建与审核有事务锁/去重/冲突/回滚；成功重试优先于配额和 revision。持久化配额每账户 pending 3、24 小时新建 5、累计 100，全平台累计 10000；单进程每 IP 每分钟 120 请求、最多 1024 未过期桶，拒绝伪造 X-Forwarded-For 绕过。接口成功与错误均 no-store/nosniff，畸形 JSON/正文过大/内容类型错误使用安全 VALIDATION_ERROR envelope（400/413/415）。配额不是无限保留方案，全局上限及跨副本网络限流需另行运营管理。
+
+实际执行与结果：
+
+- `pnpm typecheck` 最终通过；`pnpm lint` 最终通过，17 个源目录 AST 边界通过。首轮 lint 检出未使用解构字段和控制字符正则，改为显式 DTO 投影与字符码校验后通过，没有禁用规则。
+- `pnpm test tests/unit`：18 文件 / 75 项通过，无 skip；最终 schema 与文档修正后 `pnpm test tests/unit/game-submissions.test.ts tests/unit/developer-publication.test.ts`：6 项通过。
+- `pnpm test:integration` 首轮：16 文件 / 106 项，103 通过、3 失败，无 skip；本轮新增申请安全用例 11 项全部通过。原有 Color Match in-flight/COMMIT 前恢复与管理员 CLI reset 用例失败；随后用原断言执行 `pnpm test tests/integration/game-submissions.test.ts tests/integration/color-match.test.ts tests/integration/stage2-flow.test.ts -t 'inert game application security|returns not_found during an in-flight|recovers an action after a real API process exits before|runs administrator initialization'`：14 项通过，38 项因名称过滤未执行，不计为通过。
+- 为复核整体稳定性复跑全量，出现 Grid Garden crash、AI 登录及房间权限等不同失败；只读进程检查发现另有 run-e2e/Playwright 进程链运行，存在共享测试库干扰风险，已 Ctrl+C 停止本轮复跑，未停止他人进程。该次申请 11 项仍通过；不宣称全量集成最终全绿，也未修改原断言或时限。后续需在没有其他共享测试库任务时串行补验。
+- `pnpm build` 通过，包含 production bundle 与编译 API runtime 检查；最终公开指南文字修正后 `pnpm --filter @boardgame/web build` 通过，重新生成公开文档和 SDK 源码下载。
+- `pnpm db:migrate` 成功新增开发库 018；测试库由既有 test:integration 包装脚本核对隔离、迁移、同步游戏和资源。本轮未运行浏览器 E2E，没有新增申请/审核页面。
+
+剩余边界：实现的是资料申请入口，没有病毒扫描、代码上传、自动安装或游戏热加载。任意第三方代码的可信发布、依赖审查、隔离执行和动态客户端加载需要独立实现，不能通过资料审核绕过。下一步先串行复核全量集成，再按具体发布需求设计隔离审核与安装；不能把杀毒扫描或 SHA-256 当作代码安全证明。本轮仅提交申请接口、测试和相应文档，保留用户已有页面、样式和截图改动。
+
 ## 模型设置与 AI 控制台重构（2026-10-03）
 
 对用户个人中心「模型配置」（`/settings/models`）界面进行了全面重构升级，彻底解决原有表单简陋生硬、缺少常用厂商预设、缺少高级参数调节、API Key 明暗文盲盒及整体视觉质感不足的问题：

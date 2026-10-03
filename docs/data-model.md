@@ -1,5 +1,11 @@
 # 数据模型
 
+## 游戏接入申请 018（2026-10-03）
+
+game_submissions 持久化申请人 account_id、UUID request_id、严格校验的 input JSONB（纯文本与 GitHub 地址），唯一键为账户 + 请求 ID。id、created_at 组成分页顺序与索引。状态 pending/reviewed/rejected；pending revision=1，审核后 revision=2，review_note/reviewed_by/review_input/reviewed_at 由 CHECK 约束保持同步；审核回执只用于同一申请和审核者去重，不作为代码安全或安装许可。
+
+新申请在独立 advisory transaction lock 与账户/session 锁内去重、检查配额、写入；每账户 pending≤3、24 小时新申请≤5、累计≤100，全平台累计≤10000。去重先于配额；审核锁申请并检查原 revision，原子保存审阅与回执。失败回滚；quota/receipt 不依赖进程内存。无自动清理以保留回执，累计容量需维护者另行管理。申请与 game_installations 没有外键/触发器或激活逻辑，申请游戏 ID 无需已安装。
+
 ## 游戏展示 015（2026-10-02）
 
 `015_game_presentations.sql` 新增 game_presentations，以 game_id/game_version 为主键并引用 game_installations；保存可空 icon_url/cover_url/background_url、递增 revision、updated_by 与 updated_at。公开查询只投影游戏 ID、版本、revision 与图片地址。管理员保存先锁安装版本行，串行化首建和后续编辑，校验 expectedRevision 后单事务写入；冲突或无版本不产生记录。null 使用客户端内置图片。未改写历史迁移、manifest、State、RNG、对局资源摘要或房间 revision；展示地址属于平台目录配置，不是对局资源版本。

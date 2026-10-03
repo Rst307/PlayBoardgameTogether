@@ -1,5 +1,9 @@
 # 客户端 SDK
 
+## 游戏接入申请
+
+登录后调用 `api.submitGame({ requestId, gameId, version, name, description, repositoryUrl })` 提交纯资料申请；`api.gameSubmissions(before?)`、`api.gameSubmission(id)` 读取本人申请。管理员使用 `adminGameSubmissions(before?)`、`adminGameSubmission(id)`、`reviewGameSubmission(id, { requestId, expectedRevision, status, reviewNote })`。所有这些方法在边界校验请求与响应，不接受任意泛型断言。reviewed 只表示资料审阅，不能安装或执行游戏；字段、配额和示例见 [添加游戏](/developer-docs/add-game.md)。
+
 包：@boardgame/client-sdk，当前版本 0.1.0。ApiClient 默认基址 /api/v1，使用同源 cookie；登录或 me 响应中的 CSRF token 会用于后续写请求。ApiError 提供 code、message、retryable、traceId。
 
 ## 登录与创建房间

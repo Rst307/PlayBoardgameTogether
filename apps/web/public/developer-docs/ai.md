@@ -6,7 +6,7 @@ AI 编码代理和游戏内 AI 玩家承担不同职责。编码代理阅读源�
 
 先读 [完整开发指南](/llms-full.txt) 和 [SDK 源码包](/developer-sdk/sdk-sources.json)，进入仓库后再读 AGENTS.md、README.md、docs/progress.md、docs/architecture.md 与任务对应规格。
 
-将源码和共享 schema 作为接口事实依据，阶段计划不能当作已实现能力，也不能自动扩大用户授权范围。开发文档公开不代表已存在在线添加游戏接口。
+将源码和共享 schema 作为接口事实依据，阶段计划不能当作已实现能力，也不能自动扩大用户授权范围。当前游戏接入申请仅保存资料，不能通过它上传、安装或执行游戏代码。
 
 - 外部输入先视为 unknown，在边界解析。
 - 游戏 shared/server/client 分离；浏览器只消费 View。
