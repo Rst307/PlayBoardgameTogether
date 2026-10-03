@@ -1,5 +1,9 @@
 # 数据模型
 
+## 公开注册（2026-10-03）
+
+无新增迁移。注册复用 accounts 与现有唯一约束，在共享 social-write advisory lock 的事务中同时写入规范 username_canonical、显示昵称、Argon2id password_hash、固定 user/active 和相同的显式 friend_id。登录 ID 或好友 ID 冲突整笔回滚，不由默认 ID trigger 添加后缀；不创建 session 或保存明文密码。social_revision、好友 ID 修改时间等继续使用原默认值，注册 ID 是初始值，首次后续自定义遵循现有政策。
+
 ## 好友 ID 修改规则 022（2026-10-03）
 
 `022_friend_id_policy.sql` 新增单行 social_settings（friend_id_change_days 0–3650、revision），默认 30 天；accounts.friend_id_changed_at 保存最后一次成功显式修改时间。旧时间由返回 friendId/revision 的历史回执补齐，不把默认分配或 021 迁移计入。管理员设置与 ID 修改共用社交写锁；设置/revision/摘要回执或 ID/时间/revision/回执在单事务提交，失败回滚。0 不限；冷却由服务端 clock_timestamp 与固定 24 小时天数计算。

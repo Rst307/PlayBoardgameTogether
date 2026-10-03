@@ -33,9 +33,9 @@ export default function RootPage() {
           <a className="login-link button-link" href="/login">
             登录后创建或加入私人房间 →
           </a>
+          <a className="auth-back" href="/register">注册账号</a>
         </p>
       </section>
     </>
   );
 }
-

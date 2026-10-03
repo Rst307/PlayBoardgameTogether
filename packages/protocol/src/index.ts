@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './auth.js';
 export * from './admin.js';
 export * from './game-submissions.js';
 export * from './game-presentation.js';

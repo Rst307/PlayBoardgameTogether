@@ -1,5 +1,9 @@
 # 架构
 
+## 注册入口（2026-10-03）
+
+`registration-routes.ts` 管理公开注册的 Origin/JSON/正文上限和有界 IP 限流，app 只装配；AuthService.register 复用既有 Argon2id 和 accounts，在 social-write 锁与单事务中创建普通账户及指定初始好友 ID。协议校验位于 protocol/auth.ts，client-sdk.register 解析输入/公开结果；Web RegisterPage 按需加载，有重复提交锁与卸载清理，成功后返回 LoginPage，仅传递公开 ID。登录支持可选 @，继续使用原 session/CSRF 体系。无新数据库迁移或运行服务。
+
 ## 社交模块（2026-10-03）
 
 022 将好友 ID 修改间隔与最后修改时间持久化于 social_settings/accounts；social 服务拥有管理员设置的规则/事务，与 ID 修改共用社交写锁和回执，不新增独立配置服务。后台总览 SocialSettingsPanel 经 typed client-sdk 编辑；FriendIdCard 消费服务端 eligibility。平台后台导航补齐 SPA 白名单，「更多」只保留管理入口、个人设置与开发专用工具，管理子项集中在后台。

@@ -12,7 +12,7 @@ GET `/admin/social-settings` 返回 `{friendIdChangeDays,revision}`；PUT 使用
 
 ## 认证与响应
 
-登录使用 POST /auth/login，输入 { username, password }。登录校验 Origin，成功设置 session cookie，data 返回 account、csrfToken、expiresAt。GET /auth/me 恢复本人身份与 CSRF，POST /auth/logout 注销。没有公开注册、API key 或任意跨域授权接口。
+注册使用 POST /auth/register，严格输入 { displayName, userId, password }。displayName 为 1–32 字昵称，userId 允许可选 @ 加 3–32 位字母/数字/下划线且大小写不敏感，password 12–128 位并含字母和数字。成功 201 返回 { username, displayName, friendId }，不会自动登录。仅允许配置 Origin，每 IP 每分钟 5 次，ID 占用返回 STATE_CONFLICT。登录使用 POST /auth/login，输入 { username, password }，username 接受带/不带 @ 的注册 ID 或旧用户名。登录校验 Origin，成功设置 session cookie，data 返回 account、csrfToken、expiresAt。GET /auth/me 恢复本人身份与 CSRF，POST /auth/logout 注销。没有 API key 或任意跨域授权接口。
 
 需要会话的写请求携带 X-CSRF-Token，并满足部署配置的同源 Origin；cookie 必须随请求发送。公开文档无需登录不意味着下面的业务接口无需登录。
 

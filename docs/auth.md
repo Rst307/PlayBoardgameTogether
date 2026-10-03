@@ -1,5 +1,15 @@
 # 认证与账户管理
 
+## 公开注册（2026-10-03）
+
+`/register` 提供用户名（displayName，trim 后 1–32 字，支持中文）、用户 ID（userId，例如 `@rst307`）和密码/确认密码。ID 接受可选单个 @，trim 后规范为 lowercase ASCII 字母/数字/下划线，名字部分 3–32 位；同一 ID 写入不可变登录名 username_canonical 和初始 friend_id。已有登录名或好友 ID 被占用均明确拒绝，不追加后缀。后续修改好友 ID 不改变登录 ID。
+
+新注册密码 12–128 个 JavaScript 字符单位，至少一个 ASCII 字母和一个数字，允许符号、空格，不 trim；确认密码仅由浏览器核对，不发送到 API。既有账户和 CLI 密码策略不变，不强制旧账户改密。登录接受带/不带 @ 的 ID，原用户名继续可用。
+
+POST `/api/v1/auth/register` 严格 JSON `{displayName,userId,password}`，4 KiB 上限，无 session 要求但必须来自配置的精确 Origin。返回 201 与 `{username,displayName,friendId}`；不创建会话，注册页只把非秘密 ID 放入导航状态并返回登录页。账户角色固定 user、状态 active，不接受 role/status/accountId 等额外字段。Argon2id hash 在服务端计算，账户及指定好友 ID 在与社交编辑共享 advisory lock 的单事务中保存；失败回滚，唯一约束处理并发注册。复用 STATE_CONFLICT 表示 ID 占用，不返回秘密字段。
+
+注册按 IP 限制每分钟 5 次尝试（含成功及校验失败），限流 map 最多 1024 个有效 IP 桶；到期请求惰性清理，不增加计时器。超限 RATE_LIMITED/429 与 Retry-After: 60。此为单 API 进程保护，重启清零。所有认证响应继续 no-store。不提供邮箱/短信验证或密码找回。
+
 ## 好友 ID（2026-10-03）
 
 022 增加可由管理员配置的修改间隔（默认 30 天，0 不限，最大 3650）；首次自定义不受限，后续从上次成功修改时间计算。服务端在同一社交写事务内强制冷却，identity 返回当前规则/下一可修改时间/可修改状态。失败、原请求重试或相同 ID 保存不重置计时；旧显式修改时间从回执补齐，默认 ID 自动迁移不计入。详情见 [社交功能](social.md)。

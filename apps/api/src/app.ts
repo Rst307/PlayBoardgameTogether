@@ -10,6 +10,7 @@ import { type GameRegistry } from './registry/index.js';
 import { LabRunner, RunnerError } from './runtime/runner.js';
 import { AppError } from './errors.js';
 import { AuthService } from './auth.js';
+import { registerRegistrationRoutes } from './registration-routes.js';
 import { ProfileService } from './profiles.js';
 import { profileInputSchema, matchHistoryQuerySchema } from '@boardgame/protocol';
 import { RoomService } from './rooms.js';
@@ -95,7 +96,8 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
     return ok(request,{gameId:p.id,version:p.version,rules});
   });
   app.get('/api/v1/games/:id/ai-policies',async request=>{const id=(request.params as{id:string}).id;const supported=deps.registry.manifests().some(item=>item.id===id&&!!deps.registry.get(item.id,item.version)?.getDecisionContext);return ok(request,supported?[{id:'basic-v1',version:'1.0.0',name:'基础脚本 AI'}]:[]);});
-  const loginSchema=z.object({username:z.string().min(1).max(32),password:z.string().min(1).max(128)}).strict();
+  const loginSchema=z.object({username:z.string().min(1).max(33),password:z.string().min(1).max(128)}).strict();
+  registerRegistrationRoutes(app, auth);
   app.post('/api/v1/auth/login',async(request,reply)=>{auth.assertOrigin(request);const body=loginSchema.parse(request.body);const previous=await auth.authenticate(request,true);const result=await auth.login(body.username,body.password,request.ip);await auth.logout(previous);auth.setCookie(reply,result.token,result.csrfToken);return ok(request,{account:result.account,csrfToken:result.csrfToken,expiresAt:result.expiresAt.toISOString()});});
   app.get('/api/v1/auth/me',async request=>{const current=await requireAuth(request);return ok(request,{account:current!.account,csrfToken:auth.csrfFor(request,current!),expiresAt:current!.expiresAt.toISOString()});});
   const profiles = new ProfileService(deps.db);

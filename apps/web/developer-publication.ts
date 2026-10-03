@@ -14,6 +14,7 @@ export const publicSdkFiles = [
   'packages/client-sdk/src/assets.ts',
   'packages/protocol/package.json',
   'packages/protocol/src/index.ts',
+  'packages/protocol/src/auth.ts',
   'packages/protocol/src/assets.ts',
   'packages/protocol/src/profile.ts',
   'packages/protocol/src/social.ts',

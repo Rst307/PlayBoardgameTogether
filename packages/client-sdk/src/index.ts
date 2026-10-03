@@ -24,8 +24,15 @@ import {
 } from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
 
+import { registrationInputSchema, registrationResultSchema, type RegistrationInput } from '@boardgame/protocol';
+
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async register(input: RegistrationInput) {
+    return registrationResultSchema.parse(await this.request<unknown>('/auth/register', {
+      method: 'POST', body: JSON.stringify(registrationInputSchema.parse(input)),
+    }));
+  }
   async socialSettings() {
     return socialSettingsSchema.parse(await this.request<unknown>('/admin/social-settings'));
   }

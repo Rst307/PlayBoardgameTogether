@@ -3,6 +3,7 @@ import { guides } from './developer-guides.js';
 
 const RootPage = lazy(() => import('./RootPage.js'));
 const LoginPage = lazy(() => import('../pages/LoginPage.js').then(module => ({ default: module.LoginPage })));
+const RegisterPage = lazy(() => import('../pages/RegisterPage.js').then(module => ({ default: module.RegisterPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
 const FriendsPage = lazy(() => import('../pages/FriendsPage.js').then(module => ({ default: module.FriendsPage })));
 const NewRoomPage = lazy(() => import('../pages/NewRoomPage.js').then(module => ({ default: module.NewRoomPage })));
@@ -62,6 +63,7 @@ export function resolvePage(path: string): PageRoute {
   switch (path) {
     case '/': return { title: '游戏大厅', page: <RootPage /> };
     case '/login': return { title: '账户登录', page: <LoginPage /> };
+    case '/register': return { title: '账号注册', page: <RegisterPage /> };
     case '/profile': return { title: '我的资料', page: <ProfilePage /> };
     case '/friends': return { title: '好友', page: <FriendsPage /> };
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
