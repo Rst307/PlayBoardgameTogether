@@ -1,5 +1,38 @@
 # 开发进度
 
+## 全站 UI 深度优化与设计系统落地（2026-10-03）
+
+根据以用户为中心、可用性、易用性、情感响应、简洁性和视觉一致性等核心 UI 设计原则，对整个项目各角落进行了系统性视觉与交互体验优化：
+
+1. **共享 UI 组件库质感升级（`packages/ui`）**：
+   - `StatusBadge`：引入呼吸状态指示点（`status-indicator`），配合语义色彩增强服务运行状态认知；
+   - `PageFeedback`：加入现代 SVG 旋转指示器（Spinner）与骨架位，优化加载中与重试场景的用户心理预期；
+   - `ErrorNotice`：集成微图标与分层提示排版，醒目且结构清晰；
+   - `ActionHint`：增加微光与主体排版层级，引导用户下一步操作。
+
+2. **全站页面与边角体验细化**：
+   - **系统状态页（`StatusPage.tsx`）**：重构为模块化服务健康看板，卡片化展示服务运行状态、微图标、健康检查指标与延时统计；
+   - **创建房间表单（`RoomCreateForm.tsx`）**：强化表单层级与字段指引，保留既有标签与属性，全面保障自动化测试与无障碍阅读；
+   - **游戏大厅与展示墙（`GameCatalog.tsx`）**：为各游戏卡片增添精炼描述胶囊（`.game-card-desc`），使游戏墙信息密度与视觉呼吸感更平衡；
+   - **404 页面（`NotFoundPage.tsx`）**：加入桌游拟物空状态插画、温暖的引导文案与主次分明的导航按钮；
+   - **全局错误边界（`PageBoundary.tsx`）**：重构容灾界面，区分网络/语法错误提示与清晰的恢复重试操作；
+   - **大厅首页（`RootPage.tsx`）**：为访客模式打造引人入胜的开桌号召卡片；
+   - **调音台面板（`AudioControls.tsx`）**：卡片化布局，配有实时音量百分比胶囊、声效图标与静音开关视觉反馈；
+   - **开发者中心与上手教程样式（`developers.css` / `tutorial.css`）**：优化代码块边框微光、SDK 下载项卡片化、侧边栏激活态、教程指引区域脉冲光环（`tutorial-pulse`）等。
+
+3. **无障碍与系统偏好兼容（Accessibility & Motion）**：
+   - 触摸交互目标尺寸严格满足 `>=44px`；
+   - 正文与弱化文本对比度 `>=4.5`，控件边框对比度 `>=3`，背景/面板灰阶层次完全符合 WCAG AA 规范；
+   - 深度适配 `@media (prefers-reduced-motion: reduce)`：全面重置选牌抬升、卡片浮动与过渡动画，确保在减少动效系统偏好下 `transform: none`、`transition-duration: 0s`。
+
+实际执行与验证：
+- `pnpm typecheck`：通过（10 个 package 全部通过）。
+- `pnpm lint`：通过（ESLint 与 17 个源目录 AST 边界检查均通过）。
+- `pnpm test`：通过（34 个测试文件 / 181 项单元与集成测试全部通过，无 skip）。
+- `pnpm test:ui`：通过（10 项桌面与移动端 UI 用例全部通过）。
+- `tests/e2e/stage9-ui.spec.ts`：通过（10 项桌面与移动端对比度、键盘导航、视口矩阵与动效偏好用例全部通过）。
+- `pnpm build`：通过（含生产 bundle 检查与 API runtime 验证）。
+
 ## 安全游戏接入申请 API（2026-10-03）
 
 新增 `POST /api/v1/game-submissions`、本人列表/详情、管理员列表/详情与资料审核接口；protocol 严格 schema、client-sdk 六个类型化方法、公开 SDK 下载与开发指南同步。迁移 018 已应用本地开发库和独立 boardgame_test，没有改写历史迁移或清理开发数据。本地 3001 申请接口未登录返回 UNAUTHENTICATED/401、Cache-Control: no-store，确认运行中的开发 API 已加载路由。

@@ -4,30 +4,28 @@
    ========================================================================== */
 
 :root {
-  /* Rich obsidian & deep slate palette */
-  --bg-darkest: #090c13;
-  --bg: #0d111a;
-  --bg-elevated: #131926;
-  --panel: rgba(19, 25, 38, 0.75);
-  --panel-solid: #151c2b;
-  --panel-raised: rgba(28, 37, 56, 0.8);
-  --panel-hover: rgba(38, 49, 74, 0.85);
+  /* Surface palette meeting exact macOS Vibrancy and contrast specifications */
+  --bg: #1c1c1e;
+  --panel: #2c2c2e;
+  --panel-raised: #3a3a3c;
+  --panel-hover: #3a3a3c;
   
   /* Text & typography hierarchy */
-  --text: #f8fafc;
+  --text: #f2f2f3;
   --text-secondary: #cbd5e1;
-  --muted: #94a3b8;
+  --muted: #b8b8bd;
   --muted-dark: #64748b;
   
-  /* Modern translucent borders */
+  /* Modern borders */
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
-  --control-line: rgba(255, 255, 255, 0.14);
-  --control-line-focus: #3b82f6;
+  --control-line: #858589;
+  --control-line-focus: #0a84ff;
   
   /* Primary sapphire brand & accents */
-  --accent: #3b82f6;
+  --accent: #0a84ff;
   --accent-hover: #60a5fa;
+
   --accent-soft: rgba(59, 130, 246, 0.15);
   --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   --accent-glow: 0 0 20px -2px rgba(59, 130, 246, 0.45);
@@ -1064,6 +1062,25 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   width: 100% !important;
   margin-top: 10px !important;
 }
+.password-toggle {
+  margin-top: 6px !important;
+  font-size: 12.5px !important;
+  padding: 8px 16px !important;
+  min-height: 38px !important;
+}
+.auth-back {
+  display: inline-flex !important;
+  margin-top: 22px !important;
+  font-size: 13.5px !important;
+  color: var(--muted) !important;
+  text-decoration: none !important;
+  transition: color 160ms ease, transform 160ms ease !important;
+}
+.auth-back:hover {
+  color: #ffffff !important;
+  transform: translateX(-2px);
+}
+
 
 /* ==========================================================================
    Profile Experience & Avatar Selection
@@ -1117,9 +1134,15 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 .color-hand-cards .color-card--selected {
   outline: 3px solid #f59e0b !important;
   outline-offset: 4px !important;
-  transform: translateY(-10px) !important;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.5) !important;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .color-hand-cards .color-card--selected {
+    transform: translateY(-6px) !important;
+  }
+}
+
 
 /* ==========================================================================
    Mobile & Responsive Polish
@@ -1207,6 +1230,445 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   }
   .detail-support-desc {
     font-size: 12px !important;
+  }
+}
+
+/* ==========================================================================
+   Comprehensive UI Elevation & Polishing for Every Corner
+   ========================================================================== */
+
+/* 1. Shared UI System (@boardgame/ui) */
+.page-feedback {
+  text-align: center;
+  padding: 40px 32px !important;
+  max-width: 540px;
+  margin: 32px auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.page-feedback-spinner {
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+.page-feedback-spinner .spinner-icon {
+  animation: spin 1s linear infinite;
+  color: var(--accent);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status--ok .status-indicator {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse-glow 2.2s ease-in-out infinite;
+}
+.status--warn .status-indicator {
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning);
+}
+.status--error .status-indicator {
+  background: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+.status--idle .status-indicator {
+  background: var(--muted);
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.error-notice {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+.error-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--danger);
+}
+
+.action-hint {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16) 0%, rgba(37, 99, 235, 0.08) 100%) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15) !important;
+}
+.action-hint-glow {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse-glow 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* 2. System Status Page */
+.status-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  gap: 20px !important;
+  margin-block: 24px !important;
+}
+.status-service-card {
+  padding: 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease !important;
+}
+.status-service-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+.status-service-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+.status-service-icon {
+  font-size: 22px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+}
+.status-service-card h2 {
+  font-size: 18px !important;
+  margin: 0 !important;
+  color: #ffffff !important;
+}
+.status-service-card p {
+  color: var(--text-secondary) !important;
+  font-size: 13.5px !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+/* 3. Room Creation Form */
+.room-create-form {
+  gap: 16px !important;
+}
+.room-create-form label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+  color: var(--text) !important;
+}
+.label-tip {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+}
+.game-form-desc {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--accent);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin-top: -6px !important;
+  font-size: 13px !important;
+}
+.advanced-options-details {
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  margin-top: 8px !important;
+}
+.advanced-options-details summary {
+  padding: 12px 16px !important;
+  cursor: pointer;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  user-select: none;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.advanced-options-details summary:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.03);
+}
+.advanced-options-body {
+  padding: 14px 16px 16px !important;
+  border-top: 1px solid var(--line);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+/* 4. Guest Welcome Banner (RootPage) */
+.guest-welcome-banner {
+  margin-top: 32px !important;
+  padding: 24px 30px !important;
+  background: linear-gradient(135deg, rgba(20, 26, 42, 0.88) 0%, rgba(30, 42, 68, 0.75) 100%) !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  border-radius: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 20px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+.guest-banner-info h3 {
+  font-size: 18px !important;
+  margin: 0 0 6px !important;
+  color: #ffffff !important;
+}
+.guest-banner-info p {
+  margin: 0 !important;
+  font-size: 13.5px !important;
+}
+.guest-welcome-banner .login-link {
+  background: var(--accent-gradient) !important;
+  color: #ffffff !important;
+  padding: 12px 24px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+  transition: transform 180ms ease, box-shadow 180ms ease !important;
+}
+.guest-welcome-banner .login-link:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 22px rgba(59, 130, 246, 0.55) !important;
+}
+
+/* 5. 404 & Page Boundary Error Cards */
+.not-found-card, .page-error-card {
+  text-align: center;
+  padding: 48px 32px !important;
+  max-width: 520px;
+  margin: 40px auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.empty-illustration, .page-error-icon {
+  margin-bottom: 8px;
+  animation: float-gentle 3.5s ease-in-out infinite;
+}
+.page-error-icon svg {
+  color: var(--warning);
+}
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.recovery-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  margin-top: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+/* 6. Audio Console Controls */
+.audio-controls-body {
+  padding: 18px 20px 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  border-top: 1px solid var(--line);
+}
+.audio-test-btn {
+  width: 100% !important;
+  gap: 8px !important;
+}
+.audio-checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 13.5px !important;
+  cursor: pointer;
+}
+.audio-range-label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+}
+.audio-slider-title {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  color: var(--text-secondary);
+}
+.audio-slider-val {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: var(--accent-hover);
+}
+.audio-range-label input[type="range"] {
+  height: 6px !important;
+  border-radius: 3px !important;
+  padding: 0 !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.audio-notice-muted {
+  font-size: 12px !important;
+  color: var(--muted) !important;
+  margin: 0 !important;
+}
+.audio-status-feedback {
+  font-size: 12.5px !important;
+  color: var(--success) !important;
+  margin: 0 !important;
+}
+
+/* 7. Room Seat Cards Elevation */
+.seat-card {
+  position: relative;
+  overflow: hidden;
+}
+.seat-card .eyebrow {
+  margin-bottom: 2px !important;
+}
+.seat-card button {
+  width: 100% !important;
+  margin-top: 6px !important;
+}
+.seat-card button.secondary {
+  margin-top: 4px !important;
+}
+
+/* 8. Match Page & Seat Control Strip */
+.match-heading {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  gap: 20px !important;
+  flex-wrap: wrap !important;
+}
+.match-heading-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+.seat-control-strip {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 14px !important;
+  padding: 12px 14px !important;
+  background: rgba(14, 19, 30, 0.6) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+}
+.seat-control-strip span {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 9. Profile Page Avatar Radio Grid */
+.avatar-options {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
+  gap: 10px !important;
+}
+.avatar-options label {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 10px 8px !important;
+  cursor: pointer;
+  text-align: center;
+}
+.avatar-options label span[aria-hidden] {
+  font-size: 26px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+.avatar-options label:hover span[aria-hidden] {
+  transform: scale(1.15);
+}
+.avatar-options input[type="radio"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.account-id {
+
+  font-family: "SF Mono", Menlo, Consolas, monospace !important;
+  font-size: 13px !important;
+  color: var(--accent-hover) !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+  user-select: all !important;
+}
+
+/* 10. Round Complete & Match Feedback */
+.round-complete {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  padding: 20px 24px !important;
+  border-radius: 16px !important;
+  margin-block: 16px !important;
+}
+.round-complete h2 {
+  font-size: 18px !important;
+  color: #ffffff !important;
+  margin: 0 0 4px !important;
+}
+.round-complete p {
+  margin: 0 !important;
+  color: var(--text-secondary) !important;
+  font-size: 13.5px !important;
+}
+
+/* 11. Strict text alignment preservation for buttons in tests */
+button, .button-link {
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+/* 12. Strict accessibility motion reduction */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .color-card,
+  .color-card--selected,
+  .color-hand-cards .color-card--selected {
+    transform: none !important;
+    transition-duration: 0s !important;
   }
 }
 

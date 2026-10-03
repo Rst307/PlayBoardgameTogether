@@ -19,10 +19,15 @@ export function GameCatalog() {
         <GameCover game={game} />
         <div className="game-card-info">
           <GameArtwork src={gameArt(game).iconUrl} className="game-card-icon" name={game.name} />
-          <div><h3>{game.name}</h3><span>{game.players.min}–{game.players.max} 人</span></div>
+          <div>
+            <h3>{game.name}</h3>
+            <span>{game.players.min}–{game.players.max} 人</span>
+            <p className="game-card-desc">{game.description}</p>
+          </div>
           <span className="game-card-arrow" aria-hidden="true">↗</span>
         </div>
       </a>)}
+
     </div>
   </section>;
 }

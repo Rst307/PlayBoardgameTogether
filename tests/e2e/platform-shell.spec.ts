@@ -78,7 +78,8 @@ test('login locks pending requests and distinguishes connection, credentials and
 });
 
 test('failed page chunk keeps the shell usable and another route recovers', async ({ page }) => {
-  await page.route('**/assets/LoginPage-*.js', route => route.abort());
+  const loginChunk = /(?:\/assets\/LoginPage-.*\.js|\/src\/pages\/LoginPage\.tsx)/;
+  await page.route(loginChunk, route => route.abort());
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: '页面暂时无法显示' })).toBeVisible();
   await expect(page.getByRole('button', { name: '重新加载页面' })).toBeVisible();
@@ -86,7 +87,8 @@ test('failed page chunk keeps the shell usable and another route recovers', asyn
   await page.getByRole('link', { name: '系统状态', exact: true }).click();
   await expect(page.getByRole('heading', { name: '系统状态', exact: true })).toBeVisible();
   await expect(page.locator('main')).toBeFocused();
-  await page.unroute('**/assets/LoginPage-*.js');
+  await page.unroute(loginChunk);
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: '回到游戏桌' })).toBeVisible();
 });
+
