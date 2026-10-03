@@ -61,14 +61,8 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
   const hit = impacts[revealed - 1];
   const displayScore = (id: string) => beat?.seatId === id ? impactScore(beat, impacts, revealed)
     : pending.find(step => step.seatId === id)?.from ?? view.players[id]!.score;
-  function formula() {
-    return <div className="az-score-formula" aria-label="逐步计分">
-      {impacts.slice(0, revealed).map((part, index) => <span key={`${beat?.key}:${index}`} className={index === revealed - 1 ? 'az-impact-number' : ''}>
-        {part.points >= 0 ? '+' : '−'}{Math.abs(part.points)}
-      </span>)}
-      {revealed === impacts.length && <b className="az-impact-total">＝{beat && beat.points >= 0 ? '+' : '−'}{Math.abs(beat?.points ?? 0)}</b>}
-    </div>;
-  }
+  const floatingScore = impacts.slice(0, revealed)
+    .map(part => `${part.points >= 0 ? '+' : '−'}${Math.abs(part.points)}`).join(' ');
   function pick(source: number, color: Color) {
     if (!canAct) return;
     setSelection(old => old?.source === source && old.color === color ? null : { source, color });
@@ -134,14 +128,17 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
             {linked && <span className="az-link-flash" key={`${active.key}:${revealed}:glow`} />}
             {scoring && <span className="az-score-burst" key={`${active.key}:${revealed}`}><i>✦</i><i>✧</i><i>◆</i><i>✦</i></span>}
           </div>;
-        }))}</div></div></div>
+        }))}</div>
+          {active && revealed > 0 && <span key={`${active.key}:${revealed}`} className={`az-score-float${active.kind === 'floor' ? ' az-penalty' : ''}`}
+            aria-hidden="true" style={{ '--float-life': `${revealed === impacts.length ? scoreTiming.impact + scoreTiming.hold : scoreTiming.impact}ms` } as CSSProperties}>
+            {floatingScore}
+          </span>}
+        </div></div>
         <div className="az-floor"><span>地板</span>{floorPenalties.map((penalty, index) => <span className="az-floor-slot" key={index}>
           {player.floor[index] === 'first' ? <span className="az-first">1</span> : player.floor[index] ? <Tile color={player.floor[index] as Color} /> : null}<small>−{penalty}</small>
         </span>)}{own && <button type="button" disabled={!canAct || !legalRow(-1)} aria-pressed={row === -1} onClick={() => setRow(-1)}>全部放地板</button>}</div>
-        <div className="az-reward-space" aria-live="polite">{active && <div key={active.key} className={`az-reward${active.kind === 'floor' ? ' az-penalty' : ''}${active.points >= 6 || active.kind === 'bonus' ? ' az-big-reward' : ''}`}>
-          <span>{revealed === 0 ? '花砖落位…' : hit?.label}</span>{formula()}
-          <small>{active.kind === 'floor' ? `实际扣除 ${active.from - active.total} 分` : revealed < impacts.length ? `分步计算 ${revealed}/${impacts.length}` : `本次合计 +${active.points} · ${active.from} → ${active.total} 分`}</small>
-        </div>}</div>
+        <span className="az-score-announcement" aria-live="polite">{active && revealed > 0
+          ? `${hit?.label} ${floatingScore}，当前 ${displayScore(id)} 分${active.kind === 'floor' ? `，实际扣除 ${active.from - active.total} 分` : ''}` : ''}</span>
       </section>;
     })}</div>
     {view.phase === 'drafting' && <section className="az-confirm" aria-label="确认选砖">
@@ -158,10 +155,5 @@ export function AzulBoard({ view, busy, events = [], onAction }: {
     </section>}
     {view.lastRound.length > 0 && <details className="az-breakdown"><summary>最近一轮得分明细</summary>{order.map(id => <div key={id}><strong>{seatName(id)}</strong>{view.lastRound.filter(step => step.seatId === id).map((step, index) => <span key={index}>{step.label} {step.points > 0 ? '+' : ''}{step.points} → {step.total}分</span>)}</div>)}</details>}
     <p className="az-legend">横行 +2 · 竖列 +7 · 同色五砖 +10 · 任意完整横行触发终局</p>
-    {beat && <aside className={`az-impact-dock${beat.kind === 'floor' ? ' az-penalty' : ''}`} aria-hidden="true">
-      <div className="az-impact-caption">{seatName(beat.seatId)} · {beat.label}<span>{revealed === 0 ? '落砖' : hit?.label}</span></div>
-      <div key={`${beat.key}:${revealed}`} className={revealed > 0 ? 'az-impact-punch' : ''}>{revealed === 0 ? <strong className="az-impact-ready">准备计分</strong> : formula()}</div>
-      <div className="az-impact-running">{beat.from} <span>→</span> <b>{displayScore(beat.seatId)}</b> 分</div>
-    </aside>}
   </section>;
 }

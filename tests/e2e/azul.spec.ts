@@ -27,12 +27,12 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   let observedAnimation = false, recovered = false;
   async function verifyScoring() {
-    await expect(table.locator('.az-reward').first()).toBeVisible();
+    await expect(table.locator('.az-score-float').first()).toBeVisible();
     await page.screenshot({ path: `.data/azul-${testInfo.project.name}-scoring.png`, fullPage: true });
     observedAnimation = true;
     await page.reload();
     await expect(table).toBeVisible();
-    await expect(table.locator('.az-reward')).toHaveCount(0);
+    await expect(table.locator('.az-score-float')).toHaveCount(0);
     await expect(table.locator('.az-landing')).toHaveCount(0);
     await expect(page.getByText('最近一轮得分明细', { exact: true })).toBeVisible();
     recovered = true;

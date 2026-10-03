@@ -48,20 +48,28 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
   await advance();
   await draft('工厂 1 钴蓝 1块', 3);
   const myBoard = page.getByRole('region', { name: '你的花砖板', exact: true });
-  await expect(myBoard.locator('.az-score-formula')).toHaveText('+3');
+  await expect(myBoard.locator('.az-score-float')).toHaveText('+3');
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('3');
-  await expect(myBoard.locator('.az-score-formula')).toHaveText('+3+3＝+6');
+  await expect(myBoard.locator('.az-score-float')).toHaveText('+3 +3');
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6');
-  await expect(page.locator('.az-impact-dock .az-score-formula')).toHaveText('+3+3＝+6');
+  await expect(page.locator('.az-impact-dock, .az-reward-space')).toHaveCount(0);
+  expect(await myBoard.locator('.az-score-float').evaluate(element => ({
+    position: getComputedStyle(element).position,
+    animation: getComputedStyle(element).animationName,
+    pointerEvents: getComputedStyle(element).pointerEvents,
+  }))).toEqual({ position: 'absolute', animation: 'az-score-float', pointerEvents: 'none' });
+  await expect.poll(() => myBoard.locator('.az-score-float').evaluate(element =>
+    Number(getComputedStyle(element).opacity))).toBeGreaterThan(0.9);
   await page.screenshot({ path: info.outputPath('azul-tutorial-cross.png'), fullPage: true });
+  await expect(myBoard.locator('.az-score-float')).toHaveCount(0, { timeout: 4000 });
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6');
   await page.getByRole('button', { name: '重试本步', exact: true }).click();
-  await expect(page.locator('.az-impact-dock')).toHaveCount(0);
+  await expect(page.locator('.az-score-float')).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await draft('工厂 1 钴蓝 1块', 3);
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6', { timeout: 1000 });
-  expect(await page.locator('.az-impact-dock .az-impact-punch').evaluate(element =>
-    getComputedStyle(element).animationName)).toBe('none');
-  await expect(page.locator('.az-impact-dock')).toHaveCount(0, { timeout: 1000 });
+  await expect(page.locator('.az-score-float')).not.toBeVisible();
+  await expect(page.locator('.az-score-float')).toHaveCount(0, { timeout: 1000 });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await advance();
   await draft('中央 朱红 1块', -1);
