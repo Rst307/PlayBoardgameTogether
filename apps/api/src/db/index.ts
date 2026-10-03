@@ -9,7 +9,7 @@ export async function databaseStatus(db: Database, expected: GameManifest[]) {
     await db.query('SELECT 1');
     const migration = await db.query<{ exists: boolean }>("SELECT to_regclass('public.game_installations') IS NOT NULL AS exists");
     if (!migration.rows[0]?.exists) return { ready: false, reason: 'migrations-required' as const };
-    for (const game of expected) { const found = await db.query<{ manifest: unknown }>('SELECT manifest FROM game_installations WHERE game_id=$1 AND game_version=$2 AND enabled=true', [game.id, game.version]); if (found.rowCount !== 1 || canonical(found.rows[0]?.manifest) !== canonical(game)) return { ready: false, reason: 'games-sync-required' as const }; }
+    for (const game of expected) { const found = await db.query<{ manifest: unknown }>('SELECT manifest FROM game_installations WHERE game_id=$1 AND game_version=$2', [game.id, game.version]); if (found.rowCount !== 1 || canonical(found.rows[0]?.manifest) !== canonical(game)) return { ready: false, reason: 'games-sync-required' as const }; }
     return { ready: true as const };
   } catch { return { ready: false as const, reason: 'database-unavailable' as const }; }
 }

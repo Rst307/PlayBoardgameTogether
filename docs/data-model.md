@@ -1,5 +1,11 @@
 # 数据模型
 
+## 管理员后台 019（2026-10-03）
+
+新增 accounts.admin_revision 与 game_installations.admin_revision，初始 1；数据库触发器仅在 status/enabled 实质改变时递增，覆盖既有账户 CLI 和管理接口，避免外部更新绕过并发检查。
+
+admin_command_receipts 使用 account_id + UUID request_id 主键，保存仅含非秘密目标/命令字段的 input、公开结果 DTO 和创建时间；管理员命令去重先于 revision 校验。罕见管理写入通过独立事务 advisory lock 串行化，账户/session 重验、目标行锁、状态变更、会话撤销、pg_notify 与回执在同一事务提交。回执无自动清理；账户的既有不物理删除约束保留。不读取或修改 State/RNG、动作、match participants 或锁定资源。旧迁移未改写。
+
 ## 游戏接入申请 018（2026-10-03）
 
 game_submissions 持久化申请人 account_id、UUID request_id、严格校验的 input JSONB（纯文本与 GitHub 地址），唯一键为账户 + 请求 ID。id、created_at 组成分页顺序与索引。状态 pending/reviewed/rejected；pending revision=1，审核后 revision=2，review_note/reviewed_by/review_input/reviewed_at 由 CHECK 约束保持同步；审核回执只用于同一申请和审核者去重，不作为代码安全或安装许可。

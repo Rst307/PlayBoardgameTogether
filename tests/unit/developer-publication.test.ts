@@ -11,6 +11,7 @@ describe('public developer publication', () => {
       files: Record<string, { content: string; sha256: string }>;
     };
     expect(Object.keys(snapshot.files)).toEqual([...publicSdkFiles]);
+    expect(snapshot.files['packages/protocol/src/admin.ts']).toBeDefined();
     for (const [path, file] of Object.entries(snapshot.files)) {
       expect(path).toMatch(/^packages\/(game-sdk|client-sdk|protocol)\/(package\.json|src\/[^/]+\.ts)$/);
       const source = await readFile(path, 'utf8');

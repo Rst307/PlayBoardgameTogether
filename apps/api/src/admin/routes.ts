@@ -1,0 +1,77 @@
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import {
+  adminAccountQuerySchema,
+  adminAccountCommandSchema,
+  adminGameCommandSchema,
+} from '@boardgame/protocol';
+import type { AuthService } from '../auth.js';
+import { AppError } from '../errors.js';
+import type { AdminService } from './service.js';
+
+export function registerAdminRoutes(
+  app: FastifyInstance,
+  auth: AuthService,
+  service: AdminService,
+) {
+  const administrator = async (request: FastifyRequest, write = false) => {
+    if (write) auth.assertOrigin(request);
+    const current = await auth.authenticate(request);
+    if (!current) throw new AppError('UNAUTHENTICATED', '请先登录', 401);
+    if (write) auth.assertCsrf(request, current);
+    if (current.account.role !== 'administrator')
+      throw new AppError('FORBIDDEN', '需要管理员权限', 403);
+    return current;
+  };
+  const ok = (request: FastifyRequest, data: unknown) => ({
+    ok: true,
+    data,
+    traceId: request.id,
+  });
+  app.get('/api/v1/admin/overview', async (request) => {
+    await administrator(request);
+    return ok(request, await service.overview());
+  });
+  app.get('/api/v1/admin/accounts', async (request) => {
+    await administrator(request);
+    const query = adminAccountQuerySchema.parse(request.query);
+    return ok(request, await service.accounts(query.search, query.before));
+  });
+  app.put('/api/v1/admin/accounts/:id/status', async (request) => {
+    const current = await administrator(request, true);
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    return ok(
+      request,
+      await service.setAccount(
+        current,
+        id,
+        adminAccountCommandSchema.parse(request.body),
+      ),
+    );
+  });
+  app.get('/api/v1/admin/games', async (request) => {
+    await administrator(request);
+    return ok(request, await service.games());
+  });
+  app.put(
+    '/api/v1/admin/games/:id/versions/:version/status',
+    async (request) => {
+      const current = await administrator(request, true);
+      const params = z
+        .object({
+          id: z.string().min(1).max(128),
+          version: z.string().min(1).max(32),
+        })
+        .parse(request.params);
+      return ok(
+        request,
+        await service.setGame(
+          current,
+          params.id,
+          params.version,
+          adminGameCommandSchema.parse(request.body),
+        ),
+      );
+    },
+  );
+}

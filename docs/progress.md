@@ -1,4 +1,23 @@
 # 开发进度
+
+## 管理员后台与版本启停（2026-10-03）
+
+新增 `/admin` 统一入口、真实统计总览、账户搜索/20 项分页与普通账户启停、`/admin/catalog` 全安装版本筛选及即时上架/下架、`/admin/submissions` 真实资料审核与分页；接入原展示图片和资源页面。后台在渲染操作前验证管理员，API 独立强制 Origin/session/CSRF/role，并在写事务内重新验证活跃管理员和会话。
+
+019 新迁移增加 accounts/game_installations 的 admin_revision 与状态触发器（包含既有 CLI 更新）、管理员非秘密命令回执。状态更新、session 全撤销、撤销通知和回执原子提交，重复成功先于 revision；失败回滚。后台不能停用管理员或修改角色。游戏下架隐藏目录并阻止新建/等待房间开局；既有对局仍按原版本读取。房间安装检查加共享行锁，与版本启停串行化；健康检查核对安装/清单而不要求全部 enabled，避免下架一个游戏令整个大厅不可用。SDK 管理 DTO、五个客户端方法和公开下载白名单同步，管理指南、认证/协议/模型/架构文档更新。
+
+实际执行与结果：
+
+- `pnpm typecheck` 最终通过；`pnpm lint` 最终通过，17 个源目录 AST 边界通过。初次类型检查发现客户端缺失闭合括号，网络重试钩子的 React useRef 初始化也经后续检查修正，没有类型逃逸。lint 首次扫描其他任务生成的 `.data` 验证副本；新增生成目录忽略，未放宽源代码检查规则。
+- `pnpm test tests/unit`：20 文件 / 80 项通过，无 skip；补齐公开 SDK 白名单后 `pnpm test tests/unit/developer-publication.test.ts`：4 项通过。
+- `pnpm test:integration` 首轮：109/111 通过，新测试复用已成功 requestId 导致预期正确的 REQUEST_ID_CONFLICT、旧 Color Match 崩溃恢复用例 beforeEach/TRUNCATE 出现死锁。修正测试的新请求 ID 并补充回执失败回滚/等待房间开局后，`pnpm test tests/integration/admin-management.test.ts tests/integration/color-match.test.ts`：23 项通过，无 skip，没有修改旧断言。
+- 最终串行 `pnpm test:integration`：17 文件 / 112 项，111 通过、1 失败、无 skip；新增后台 6 项全部通过，唯一失败为既有 stage2-flow 管理员初始化/账户 CLI 验收超过 5000ms。随后原时限和原断言单独执行 `pnpm test tests/integration/stage2-flow.test.ts -t 'runs administrator initialization'`：目标 1 项通过、23 项因名称过滤未执行。全量未达到全绿，不用单独通过替代全量事实；本轮没有继续重复整套。
+- `pnpm test:e2e -- tests/e2e/admin-management.spec.ts tests/e2e/game-presentation-admin.spec.ts`：桌面/手机共 12 项通过。截图复查后缩短手机后台导航并补齐搜索宽度，最终 `pnpm test:e2e -- tests/e2e/admin-management.spec.ts`：8 项通过，含导航高度、横向溢出、账户启停持久化、游戏下架/大厅/重新上架、真实申请审核持久化和普通账户拒绝。实际查看桌面与手机截图；没有运行全部历史 E2E 或物理设备验收。
+- `pnpm build` 最终通过，含公开 admin.ts 下载、生产 bundle 排除开发实验台和编译 API runtime 检查；新增文件仅做多行格式整理后 `pnpm lint` 再通过、`pnpm --filter @boardgame/web build` 再生成与最终源码一致的 SDK 字节/哈希；未提交生成产物。
+- `pnpm db:migrate`：开发库新增 019 成功，未重置开发数据；集成/E2E 包装脚本验证独立 boardgame_test 并核对迁移与游戏/资源同步。运行中本地 5173 `/admin` 返回 200，3001 `/api/v1/admin/overview` 未登录返回 401/no-store，确认新路由已加载。
+
+剩余边界与下一步：本轮管理已安装版本和纯资料审核，没有源码上传、自动安装、任意代码热加载或旧局迁移。创建账户/密码重置/管理员生命周期继续走既有 CLI，后台不提供强制关闭房间或他人私密视图。管理回执随账户保留，无自动清理。后续可按实际需求独立实现可信游戏发布流程，并排查全量验收中的旧 CLI 超时稳定性。使用说明见 [管理员后台](admin.md)。
+
 ## 璀璨宝石交互上手教程（2026-10-03）
 
 新增 `/games/splendor.base/1.0.0/tutorial` 与详情「进入教程」，复用现有 TutorialPlayer 和 SplendorBoard。十一课覆盖三色拿取、同色双拿、购买、永久折扣、公开/盲抽预留、黄金购买预留卡、拿取后连续退币、购买后贵族选择、十五声望触发最终轮和最后座位结算。无需登录，不创建房间、不发正式动作、不保存成绩，支持失败反馈、重试、上一步和重新开始，刷新从头开始。

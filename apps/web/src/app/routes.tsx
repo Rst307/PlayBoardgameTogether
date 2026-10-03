@@ -11,6 +11,10 @@ const RoomPage = lazy(() => import('../pages/RoomPage.js').then(module => ({ def
 const MatchPage = lazy(() => import('../pages/MatchPage.js').then(module => ({ default: module.MatchPage })));
 const AssetAdminPage = lazy(() => import('../pages/AssetAdminPage.js').then(module => ({ default: module.AssetAdminPage })));
 const GamePresentationAdminPage = lazy(() => import('../pages/GamePresentationAdminPage.js').then(module => ({ default: module.GamePresentationAdminPage })));
+const AdminOverviewPage = lazy(() => import('../pages/admin/AdminOverviewPage.js').then(module => ({ default: module.AdminOverviewPage })));
+const AdminAccountsPage = lazy(() => import('../pages/admin/AdminAccountsPage.js').then(module => ({ default: module.AdminAccountsPage })));
+const AdminGamesPage = lazy(() => import('../pages/admin/AdminGamesPage.js').then(module => ({ default: module.AdminGamesPage })));
+const AdminSubmissionsPage = lazy(() => import('../pages/admin/AdminSubmissionsPage.js').then(module => ({ default: module.AdminSubmissionsPage })));
 const ModelSettingsPage = lazy(() => import('../pages/ModelSettingsPage.js').then(module => ({ default: module.ModelSettingsPage })));
 const StatusPage = lazy(() => import('../pages/StatusPage.js').then(module => ({ default: module.StatusPage })));
 const DevelopersPage = lazy(() => import('../pages/DevelopersPage.js').then(module => ({ default: module.DevelopersPage })));
@@ -60,6 +64,10 @@ export function resolvePage(path: string): PageRoute {
     case '/profile': return { title: '我的资料', page: <ProfilePage /> };
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };
+    case '/admin': return { title: '管理员后台', page: <AdminOverviewPage /> };
+    case '/admin/accounts': return { title: '账户管理', page: <AdminAccountsPage /> };
+    case '/admin/catalog': return { title: '游戏管理', page: <AdminGamesPage /> };
+    case '/admin/submissions': return { title: '接入审核', page: <AdminSubmissionsPage /> };
     case '/admin/assets': return { title: '资源管理', page: <AssetAdminPage /> };
     case '/admin/games': return { title: '游戏展示', page: <GamePresentationAdminPage /> };
     case '/status': return { title: '系统状态', page: <StatusPage /> };

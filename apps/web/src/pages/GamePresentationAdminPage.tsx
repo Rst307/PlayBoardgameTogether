@@ -95,6 +95,7 @@ export function GamePresentationAdminPage() {
   if (!allowed || !games) return <PageFeedback title="正在加载展示配置…" loading />;
   const defaults = defaultGameArt(game?.id ?? '');
   return <>
+    <a href="/admin">← 返回管理员后台</a>
     <section className="page-heading"><div><p className="eyebrow">管理员</p><h1>游戏展示</h1><p>设置游戏图标、大厅封面与详情背景。</p></div></section>
     <div className="presentation-editor">
       <form className="panel form-stack" onSubmit={save}>

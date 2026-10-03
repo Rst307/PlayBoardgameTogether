@@ -192,6 +192,7 @@ export function AssetAdminPage() {
     JSON.stringify(draft.manifest) !== JSON.stringify(manifest);
   return (
     <>
+      <a href="/admin">← 返回管理员后台</a>
       <section className="page-heading">
         <div>
           <p className="eyebrow">管理员 · 资源工作室</p>

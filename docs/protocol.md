@@ -1,5 +1,13 @@
 # 协议
 
+## 管理员后台（2026-10-03）
+
+新增 GET `/api/v1/admin/overview`（真实非秘密计数）、GET `/api/v1/admin/accounts?search=&before=`（20 项账户概要分页）、PUT `/api/v1/admin/accounts/:id/status`、GET `/api/v1/admin/games`（全部安装版本，包括下架）、PUT `/api/v1/admin/games/:id/versions/:version/status`。均要求管理员 session，响应和错误 no-store/nosniff。写入额外校验 Origin/CSRF，并在事务内重验身份。
+
+账户命令为严格 `{requestId: UUID, expectedRevision: positive integer, status: active|disabled}`；游戏命令为严格 `{requestId,expectedRevision,enabled:boolean}`。同一管理员 UUID 请求跨目标/内容复用返回 REQUEST_ID_CONFLICT，相同成功重试优先返回原 DTO；旧 revision 返回 STATE_CONFLICT。禁止通过 body 修改角色，禁止后台停用管理员账户。上架规则/资源缺失返回 GAME_VERSION_UNAVAILABLE，不存在版本 GAME_NOT_FOUND。共享 schema 位于 protocol/admin.ts；client-sdk 提供五个类型化管理方法并解析请求/响应。
+
+下架仅更改安装启用状态，隐藏目录、阻止新建/开局，已开始对局按原锁定版本继续；游戏安装检查用共享行锁与上下架串行化。健康就绪检查核对安装和清单，不要求所有安装版本启用。申请审核沿用既有接入 API，没有安装或执行代码能力。见 [管理指南](admin.md)。
+
 ## 游戏接入申请（2026-10-03）
 
 `POST /api/v1/game-submissions` 接收 gameSubmissionInputSchema：UUID requestId、gameId、version、name、description、固定格式 HTTPS GitHub repositoryUrl。只存纯文本资料，不下载/执行代码或修改游戏目录。登录用户 GET 同一路径（before UUID 游标，20 项分页）与 `/:id` 只读取本人；越权/不存在统一 GAME_NOT_FOUND/404。

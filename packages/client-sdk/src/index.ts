@@ -3,6 +3,11 @@ import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMess
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
 import {
+  adminOverviewSchema, adminAccountPageSchema, adminAccountSchema, adminGameSchema,
+  adminAccountCommandSchema, adminGameCommandSchema,
+  type AdminAccountCommand, type AdminGameCommand,
+} from '@boardgame/protocol';
+import {
   gameSubmissionInputSchema, gameSubmissionReviewSchema, gameSubmissionSchema, gameSubmissionPageSchema,
   type GameSubmissionInput, type GameSubmissionReview,
 } from '@boardgame/protocol';
@@ -13,6 +18,27 @@ export type { AssetDraft, AssetVersion } from './assets.js';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async adminOverview() {
+    return adminOverviewSchema.parse(await this.request<unknown>('/admin/overview'));
+  }
+  async adminAccounts(search = '', before?: string) {
+    const query = new URLSearchParams({ search });
+    if (before) query.set('before', before);
+    return adminAccountPageSchema.parse(await this.request<unknown>(`/admin/accounts?${query}`));
+  }
+  async setAdminAccountStatus(id: string, input: AdminAccountCommand) {
+    return adminAccountSchema.parse(await this.request<unknown>(`/admin/accounts/${encodeURIComponent(id)}/status`, {
+      method: 'PUT', body: JSON.stringify(adminAccountCommandSchema.parse(input)),
+    }));
+  }
+  async adminGames() {
+    return adminGameSchema.array().parse(await this.request<unknown>('/admin/games'));
+  }
+  async setAdminGameStatus(id: string, version: string, input: AdminGameCommand) {
+    return adminGameSchema.parse(await this.request<unknown>(`/admin/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/status`, {
+      method: 'PUT', body: JSON.stringify(adminGameCommandSchema.parse(input)),
+    }));
+  }
   async submitGame(input: GameSubmissionInput) {
     return gameSubmissionSchema.parse(await this.request<unknown>('/game-submissions', {
       method: 'POST', body: JSON.stringify(gameSubmissionInputSchema.parse(input)),

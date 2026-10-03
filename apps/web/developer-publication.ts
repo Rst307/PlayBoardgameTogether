@@ -18,6 +18,7 @@ export const publicSdkFiles = [
   'packages/protocol/src/profile.ts',
   'packages/protocol/src/game-presentation.ts',
   'packages/protocol/src/game-submissions.ts',
+  'packages/protocol/src/admin.ts',
 ] as const;
 const guides = ['index', 'quickstart', 'game-sdk', 'client-sdk', 'api', 'realtime', 'add-game', 'ai'];
 const repository = new URL('../../', import.meta.url);
