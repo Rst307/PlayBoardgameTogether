@@ -52,6 +52,10 @@ export function clientGame(id: string, version: string) {
 
 // Optional, exact-version authoring. Games without an entry keep their existing rules page.
 export const clientTutorials: Readonly<Record<string, () => Promise<GameTutorial>>> = {
+  'splendor.base@1.0.0': async () => {
+    const { splendorTutorial } = await import('@boardgame/splendor/tutorial');
+    return splendorTutorial;
+  },
   'color-match@1.0.0': async () => {
     const { colorMatchTutorial } = await import('@boardgame/color-match/client');
     return colorMatchTutorial;

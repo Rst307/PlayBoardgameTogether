@@ -10,7 +10,7 @@ catalog/submissions 与 submission-routes 拥有纯资料申请、本人读取�
 
 `game-sdk/tutorial` 定义公开练习帧、步骤、动作反馈与纯进度转换；不依赖 React 或具体游戏规则。Web `game-registry.tsx` 的 `clientTutorials` 按精确 gameId@version 装配可选异步教程，详情仅在提供教程时显示入口。`/games/:id/:version/tutorial` 按页加载，先确认公开目录仍启用该版本，再加载原 GameBoard 与教程。TutorialPlayer 管理步骤、重试、进度、高亮和完成返回；练习操作只调用扩展教程回调。刷新重新开始，不持久化完成记录。
 
-Color Match 的 `client/tutorial.ts` 只使用固定公开练习 View 和投影格式事件；游戏语义与动作解析由扩展拥有。客户端不导入 server、不读取正式 State、不调用正式动作 API、不创建练习房间，不改变既有规则 manifest/源码摘要、对局事务或权限。单元测试将每步动作和 View/事件与真实 server 规则对照，防止练习漂移；正式规则仍只在 server 执行。公开 SDK 白名单包含教程契约源码，开发者可选择不注册教程。
+Color Match 的 `client/tutorial.ts` 只使用固定公开练习 View 和投影格式事件；游戏语义与动作解析由扩展拥有。客户端不导入 server、不读取正式 State、不调用正式动作 API、不创建练习房间，不改变既有规则 manifest/源码摘要、对局事务或权限。单元测试将每步动作和 View/事件与真实 server 规则对照，防止练习漂移；正式规则仍只在 server 执行。 璀璨宝石的独立 ./tutorial 导出复用同一播放器，十一个固定场景仅加载合成公开投影；离线作者脚本调用真实规则生成练习数据，测试逐动作核对完整 View 与投影事件。正式桌面不加载练习数据，规则摘要与存档不变。公开 SDK 白名单包含教程契约源码，开发者可选择不注册教程。
 
 ## 游戏目录与详情入口（2026-10-02）
 

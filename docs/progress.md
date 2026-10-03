@@ -1,4 +1,18 @@
 # 开发进度
+## 璀璨宝石交互上手教程（2026-10-03）
+
+新增 `/games/splendor.base/1.0.0/tutorial` 与详情「进入教程」，复用现有 TutorialPlayer 和 SplendorBoard。十一课覆盖三色拿取、同色双拿、购买、永久折扣、公开/盲抽预留、黄金购买预留卡、拿取后连续退币、购买后贵族选择、十五声望触发最终轮和最后座位结算。无需登录，不创建房间、不发正式动作、不保存成绩，支持失败反馈、重试、上一步和重新开始，刷新从头开始。
+
+游戏独立 ./tutorial 导出按精确版本异步加载，正常对局不加载教程数据。离线作者脚本只将合成参考状态的完整公开 View 与 projectEvents 结果写入客户端源文件，按字段差异减少重复；客户端不导入 server，不含隐藏牌堆/对手预留或正式 State。shared/server/catalog、规则摘要、正式动作事务及数据库均无本轮修改。教程数据是明确维护的源码，构建产物、截图、环境文件不提交。
+
+实际验证：
+
+- 主工作区 `pnpm test tests/unit/splendor-tutorial.test.ts tests/unit/tutorial.test.ts tests/unit/splendor.test.ts tests/unit/splendor-interaction.test.ts tests/unit/splendor-assets.test.ts`：5 文件 / 22 项通过，无 skip。新教程测试逐动作核对真实规则完整 View（含 legalActions）、投影事件、三色顺序等价、非法/偏离目标操作、预留隐私及最终轮区别。
+- 主工作区首次类型检查通过；随后并行管理员功能写入导致 client-sdk 暂时缺少闭合括号，阻塞全库 typecheck/lint 与第一轮浏览器启动。未修改该任务代码，停止本轮浏览器命令。另建基于本轮起始 HEAD 6cecc81、仅复制教程改动的本地隔离副本；最终 `pnpm typecheck`、`pnpm lint` 和 `pnpm build` 全部通过，含 17 源目录 AST 边界、production bundle 和 API runtime 检查。教程独立 chunk 约 52.45 kB / gzip 5.54 kB。
+- 隔离副本使用已有测试包装脚本及独立 boardgame_test，串行执行 `pnpm test:e2e tests/e2e/splendor-tutorial.spec.ts tests/e2e/tutorial.spec.ts --output=.data/e2e-splendor-tutorial`：桌面/Pixel 5 共 6 项通过（38.9 秒），无 skip。完整十一课、既有 Color Match 回归、失败目标反馈、多动作未完成锁、重试、上一步、刷新、详情返回及精确版本验证；记录的 API 写请求为零。实际查看桌面/手机贵族场景截图，逐课检测无横向溢出。
+- 隔离副本初次迁移检查遇到 Git checkout 换行字节不同，复制主工作区已有迁移原始字节后通过；资源准备遇到既有测试资源恢复哈希差异，复制主工作区独立测试资源后通过，没有改写迁移、关闭哈希检查或重置开发库。首轮脚本观察到并行管理员迁移 019 仅在测试库应用；这不是教程迁移。
+
+验证边界：全库类型/lint/build 最终证据来自隔离副本，不宣称并行管理员功能也通过。本轮没有服务端/事务修改，因此未运行全量集成或全部游戏 E2E。截图保存在本地 `.data/e2e-splendor-tutorial/`；临时隔离副本验收后移除。下一步从游戏详情进入教程体验；自由练习对局和账号进度保存仍不在当前教程范围。
 
 ## 全站 UI 深度优化与设计系统落地（2026-10-03）
 

@@ -48,3 +48,9 @@ pnpm assets:seed
 - 存档检查卡牌／贵族唯一性与守恒、代币守恒、等级、补牌、退币阶段和最终排名；最终分数比较不依赖 PostgreSQL JSONB 对象键顺序。
 - 首版浏览器验收截图保存在 docs/screenshots/splendor/；本轮界面截图保存在本地 .data/e2e-splendor-ui/，含用户 TTS 图片的截图不提交仓库。
 十位贵族功能要求另核对 [完整贵族表](https://github.com/seal256/splendor/blob/master/src/splendor.cpp)：五个相邻双色四折扣和五个相邻三色三折扣，采用独立黄金回归验证。
+
+## 交互上手教程（2026-10-03）
+
+游戏详情点击「进入教程」，或打开 `/games/splendor.base/1.0.0/tutorial`。无需登录，复用真实璀璨宝石桌面，依次练习三色拿取、同色双拿、购买、永久折扣、公开预留、盲抽预留、黄金购买预留卡、超过十枚退币、多个贵族选择、触发最终轮及最后座位结算。每课使用独立固定场景，完成后点击下一步；支持重试、上一步、重新开始，刷新回到第一课。不创建房间、不发送正式动作、不保存成绩。
+
+教程通过独立 `@boardgame/splendor/tutorial` 客户端导出按精确版本延迟加载，普通正式对局不加载练习数据。固定场景只保存合成公开 View 和投影事件，没有完整 State、牌堆顺序或他人预留身份。`tests/unit/splendor-tutorial-reference.ts` 的合成参考状态仅供开发/测试，用真实 server 校验所有动作和完整结果；修改练习场景后执行 `pnpm exec tsx scripts/generate-splendor-tutorial.ts` 更新客户端公开投影源文件，再运行相关单元/E2E 验证。该命令不读取数据库、不访问外部服务、不重写规则源文件。
