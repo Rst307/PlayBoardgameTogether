@@ -4,6 +4,10 @@
 
 无新增迁移。注册复用 accounts 与现有唯一约束，在共享 social-write advisory lock 的事务中同时写入规范 username_canonical、显示昵称、Argon2id password_hash、固定 user/active 和相同的显式 friend_id。登录 ID 或好友 ID 冲突整笔回滚，不由默认 ID trigger 添加后缀；不创建 session 或保存明文密码。social_revision、好友 ID 修改时间等继续使用原默认值，注册 ID 是初始值，首次后续自定义遵循现有政策。
 
+## 在线游戏包 023/024（2026-10-03）
+
+023 新增 `game_packages`，按 game_id/game_version 关联既有安装版本，持久 SHA-256、独立规则源码、自包含桌面、公开规则与安装审计 UUID/时间，文本总字节数限制 2 MiB；版本不可改写。`game_package_receipts` 按 account_id/request_id 唯一保存输入 hash 和公开结果，与安装行和包同事务提交。024 移除上传者账户外键，保留审计 UUID，使删除上传者或账户生命周期操作不会连带删除旧局规则。回执仍随账户级联，不影响已安装版本。安装全局事务锁保证并发去重与 100 版本/10000 回执配额。
+
 ## 好友 ID 修改规则 022（2026-10-03）
 
 `022_friend_id_policy.sql` 新增单行 social_settings（friend_id_change_days 0–3650、revision），默认 30 天；accounts.friend_id_changed_at 保存最后一次成功显式修改时间。旧时间由返回 friendId/revision 的历史回执补齐，不把默认分配或 021 迁移计入。管理员设置与 ID 修改共用社交写锁；设置/revision/摘要回执或 ID/时间/revision/回执在单事务提交，失败回滚。0 不限；冷却由服务端 clock_timestamp 与固定 24 小时天数计算。

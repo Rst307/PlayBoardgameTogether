@@ -3,6 +3,7 @@ import { viewSchema as splendorViewSchema } from '@boardgame/splendor/shared';
 import type { ReactNode } from 'react';
 import type { GameTutorial } from '@boardgame/game-sdk/tutorial';
 import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
+import { PackageBoard } from './games/PackageBoard.js';
 import { viewSchema as counterViewSchema } from '@boardgame/test-counter/shared';
 import { viewSchema as colorViewSchema } from '@boardgame/color-match/shared';
 import { viewSchema as gardenViewSchema } from '@boardgame/grid-garden/shared';
@@ -55,7 +56,11 @@ export const clientGames = [
 ] as const;
 
 export function clientGame(id: string, version: string) {
-  return clientGames.find(game => game.id === id && game.version === version);
+  return clientGames.find(game => game.id === id && game.version === version) ?? {
+    id, version, name: id, defaultOptions: {}, finishBehavior: 'stay',
+    load: async (): Promise<GameBoard> => (view, busy, events, onAction) =>
+      <PackageBoard id={id} version={version} view={view} busy={busy} events={events} onAction={onAction} />,
+  };
 }
 
 // Optional, exact-version authoring. Games without an entry keep their existing rules page.

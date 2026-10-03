@@ -35,6 +35,10 @@ describe('public developer publication', () => {
         if (href.startsWith('/developers/')) expect(names).toContain(`${href.slice('/developers/'.length)}.md`);
         else if (href.startsWith('/developer-docs/')) expect(names).toContain(href.slice('/developer-docs/'.length));
         else if (href.startsWith('/developer-sdk/')) expect((await developerResources()).has(href)).toBe(true);
+        else if (href === '/api/v1/game-packages/example.zip') {
+          const routes = await readFile('apps/api/src/catalog/package-routes.ts', 'utf8');
+          expect(routes).toContain(`app.get('${href}'`);
+        }
         else expect(['/developers', '/llms.txt', '/llms-full.txt']).toContain(href);
       }
     }

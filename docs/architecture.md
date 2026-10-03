@@ -4,6 +4,12 @@
 
 `registration-routes.ts` 管理公开注册的 Origin/JSON/正文上限和有界 IP 限流，app 只装配；AuthService.register 复用既有 Argon2id 和 accounts，在 social-write 锁与单事务中创建普通账户及指定初始好友 ID。协议校验位于 protocol/auth.ts，client-sdk.register 解析输入/公开结果；Web RegisterPage 按需加载，有重复提交锁与卸载清理，成功后返回 LoginPage，仅传递公开 ID。登录支持可选 @，继续使用原 session/CSRF 体系。无新数据库迁移或运行服务。
 
+## 在线游戏 ZIP（2026-10-03）
+
+catalog/package-service 与 package-routes 拥有固定三文件 ZIP 校验、安装事务与持久回执；registry/package-runtime 使用有界 QuickJS WASM 适配既有 GameExtension，同步 JSON 方法不注入宿主对象或权限。规则与空默认清单只在 registry 装配；已有 rooms/matches 仍拥有身份、状态、RNG、revision、事件投影与事务。Web game-registry 对在线版本装配 PackageBoard，sandbox iframe 只收到本人 View/live 投影事件，动作回到原平台命令链路。
+
+023/024 在 PostgreSQL 保存不可变包，提交后装配；涉及游戏的请求前读取版本目录并补齐新版本，包含下架版本以恢复旧局。安装源码不依赖上传者账户生命周期，不执行 npm/子进程或 Node.js 动态 import，不创建额外服务。桌面 HTML 是公开程序。v1 只支持自包含同步规则/HTML 和真人玩法，原静态扩展保留所有已有能力。详情见 [ADR-005](adr/005-runtime-game-packages.md)。下方关于“没有上传/热加载”的记录为此前能力边界。
+
 ## 社交模块（2026-10-03）
 
 022 将好友 ID 修改间隔与最后修改时间持久化于 social_settings/accounts；social 服务拥有管理员设置的规则/事务，与 ID 修改共用社交写锁和回执，不新增独立配置服务。后台总览 SocialSettingsPanel 经 typed client-sdk 编辑；FriendIdCard 消费服务端 eligibility。平台后台导航补齐 SPA 白名单，「更多」只保留管理入口、个人设置与开发专用工具，管理子项集中在后台。

@@ -6,5 +6,6 @@ export const guides = [
   { slug: 'api', title: 'HTTP API', summary: '认证、房间、对局、模型与资源' },
   { slug: 'realtime', title: 'WebSocket 与恢复', summary: '订阅、版本、重连与回执' },
   { slug: 'add-game', title: '添加游戏', summary: '扩展注册、测试、未来接口' },
+  { slug: 'game-packages', title: '在线游戏 ZIP', summary: '打包、隔离规则与即时安装' },
   { slug: 'ai', title: 'AI 开发指南', summary: '编码代理与游戏内 AI' },
 ] as const;

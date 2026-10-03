@@ -153,3 +153,5 @@ export const matchSnapshotMessageSchema = z.object({
   matchId: z.string().uuid(), revision: z.number().int().nonnegative(),
   snapshot: matchViewSchema,
 }).strict();
+
+export * from './game-packages.js';

@@ -1,6 +1,6 @@
 # 添加游戏扩展
 
-当前游戏代码是由维护者审核并部署的可信扩展。现在可通过下面的接口提交游戏接入申请；申请和资料审核均不安装游戏。尚未开放任意代码上传、自动下载、自动安装或免重启规则加载。
+游戏有两条接入路径：现有 workspace 扩展继续由维护者审核、构建和部署；管理员也可上传 [在线游戏 ZIP](/developers/game-packages)，自动安装独立规则和桌面，立即真人可玩。在线格式不接受普通源码仓库 ZIP，不自动安装 npm 依赖。下方游戏接入申请仍只保存资料，资料审核不会安装游戏。
 
 ## 在线接入申请（2026-10-03）
 
@@ -40,7 +40,7 @@ gameId 为小写字母开头、最多 64 位的小写字母/数字/连字符；v
 
 使用 client-sdk 的 `submitGame`、`gameSubmissions`、`gameSubmission`、`adminGameSubmissions`、`adminGameSubmission`、`reviewGameSubmission`，请求和响应均通过共享 schema 校验。SDK 仍以 workspace/公开源码交付，不声明已发布 npm 包。
 
-上线新接口需要部署本轮 API 并执行 `pnpm db:migrate`（018）。现有服务尚不支持游戏热加载。后续安装必须独立设计可信发布、依赖审核和隔离执行；杀毒扫描或文件摘要都不能单独证明代码安全，未经审核的第三方代码不得导入主 API 进程。
+申请接口使用 018 迁移。后续在线包安装使用 023/024 迁移、QuickJS WASM 规则和 sandbox HTML 桌面，详见 [打包说明](/developers/game-packages)。资料 reviewed 状态不代替代码审核；安装检查和文件摘要也不证明规则或私密投影正确，规则不会导入 Node.js 宿主环境。
 
 ## 推荐目录
 

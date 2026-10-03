@@ -3,6 +3,7 @@ import type { AdminGame } from '@boardgame/protocol';
 import { PageFeedback } from '@boardgame/ui';
 import { api } from '../../platform.js';
 import { AdminLayout, adminError, useAdminRequestId } from './AdminLayout.js';
+import { GamePackageUpload } from './GamePackageUpload.js';
 
 function Games() {
   const requestId = useAdminRequestId();
@@ -84,6 +85,7 @@ function Games() {
   );
   return (
     <>
+      <GamePackageUpload onInstalled={() => setAttempt(value => value + 1)} />
       <section className="panel admin-guidance">
         <h2>按版本管理上架状态</h2>
         <p>
@@ -92,7 +94,7 @@ function Games() {
         <details>
           <summary>如何加入新游戏或发布更新</summary>
           <p>
-            先通过接入审核核对资料，由维护者审查并部署可信游戏代码，再同步安装版本。新版本安装后会出现在这里，旧版本需要继续保留以恢复已有对局。
+            在线格式游戏包可从上方直接上传安装。普通源码项目由维护者审查、部署并同步；新版本使用新版本号，旧版本需继续保留以恢复已有对局。
           </p>
           <a href="/developers/add-game">查看游戏接入指南</a>
         </details>
@@ -141,7 +143,7 @@ function Games() {
                   </p>
                   <p>
                     {game.available
-                      ? '可信规则与资源已加载'
+                      ? '规则与资源已加载'
                       : '规则或资源不可用，需检查部署'}
                   </p>
                 </div>

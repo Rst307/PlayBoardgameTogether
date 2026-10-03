@@ -1,6 +1,6 @@
 # Boardgame Together developer documentation
 
-> Public developer documentation for humans and coding agents. Business API authorization remains enforced. SDK workspace version: 0.1.0. No online game-upload/install endpoint is implemented.
+> Public developer documentation for humans and coding agents. Business API authorization remains enforced. SDK workspace version: 0.1.0. Administrator online installation supports boardgame-package-v1 ZIPs; arbitrary source repositories are not directly installable.
 
 ## Guides
 - [Overview](/developer-docs/index.md)
@@ -10,6 +10,7 @@
 - [HTTP API](/developer-docs/api.md)
 - [WebSocket and recovery](/developer-docs/realtime.md)
 - [Adding a game](/developer-docs/add-game.md)
+- [Runtime game ZIP packages](/developer-docs/game-packages.md)
 - [AI development](/developer-docs/ai.md)
 
 ## Machine-readable resources

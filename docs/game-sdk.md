@@ -1,5 +1,9 @@
 # 游戏扩展 SDK
 
+## 在线 ZIP 适配（2026-10-03）
+
+管理员可在线安装 boardgame-package-v1，自包含 server.js 声明 game 并实现现有同步 JSON GameExtension，client.html 通过 iframe 消息桥收取本人 View 并提交动作。规则契约、确定性 RNG、投影和正式事务继续复用；不接受 Node.js imports/require 或普通源码 ZIP。v1 不装配 AI、平台图包/音效、教程；完整限制与可玩模板见 [在线游戏 ZIP](../apps/web/public/developer-docs/game-packages.md)。
+
 ## 客户端终局展示（2026-10-03）
 
 Web `clientGames` 注册项可选 `finishBehavior: 'stay'`。声明后 MatchPage 在 active → finished 时保留最终身份化 View 和 live 投影事件，游戏可以播完计分/奖励；玩家用已有「返回房间」按钮主动离开。未声明的游戏维持自动返回行为。该项只是客户端表现策略，不改变服务端结算、房间 waiting 复位、权限、协议或版本锁。花砖物语使用此项；平台不按 gameId 添加规则分支。

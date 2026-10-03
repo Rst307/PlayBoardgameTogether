@@ -29,6 +29,8 @@ import { AdminService } from './admin/service.js';
 import { registerAdminRoutes } from './admin/routes.js';
 import { SocialService } from './social/service.js';
 import { registerSocialRoutes } from './social/routes.js';
+import { GamePackageService } from './catalog/package-service.js';
+import { registerGamePackageRoutes } from './catalog/package-routes.js';
 
 export type AppDeps = { config: ApiConfigInput; db: Database; registry: GameRegistry; runner?: LabRunner;
   testMatchFaults?: { beforeCommit?: () => void; afterCommit?: () => void } };
@@ -52,6 +54,11 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
   registerGameSubmissionRoutes(app, auth, new GameSubmissionService(deps.db));
   registerAdminRoutes(app, auth, new AdminService(deps.db, deps.registry, config.NODE_ENV === 'production'));
   registerSocialRoutes(app, auth, new SocialService(deps.db, rooms));
+  const packages = await GamePackageService.create(deps.db, deps.registry);
+  registerGamePackageRoutes(app, auth, packages);
+  app.addHook('onRequest', async request => {
+    if (/^\/api\/v1\/(?:games|rooms|matches|admin|ws\/session)(?:\/|\?|$)/.test(request.url)) await packages.refresh();
+  });
   app.addHook('onSend', async (request, reply, payload) => {
     if (request.url.startsWith('/api/v1/game-submissions') || request.url.startsWith('/api/v1/admin/') || request.url.startsWith('/api/v1/social') || request.url.startsWith('/api/v1/profile')) {
       reply.header('cache-control', 'no-store');

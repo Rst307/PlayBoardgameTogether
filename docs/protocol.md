@@ -4,6 +4,14 @@
 
 POST `/api/v1/auth/register`：严格 JSON `{displayName,userId,password}`，由 `protocol/auth.ts` 共享 schema 校验。displayName trim 后 1–32 字，userId 可带单个 @、名字部分 3–32 位 ASCII 字母/数字/下划线，trim/lowercase；password 12–128 位，含 ASCII 字母和数字，不 trim。成功 201 返回 `{username,displayName,friendId}`，username/friendId 是无 @ 的规范 ID。固定普通账户，不创建 session；Origin 必须匹配，4 KiB 上限，每 IP 每分钟 5 次。ID 已被登录名或好友 ID 使用返回 STATE_CONFLICT/409；无效输入 VALIDATION_ERROR/400，频控 RATE_LIMITED/429。响应 no-store，无密码/摘要/令牌。ApiClient.register 使用共享输入/响应 schema，返回类型由 schema 推导。登录 username 最大 33 位，以接受 32 位 ID 加 @，服务端去前缀后沿用既有身份认证。
 
+## 管理员在线游戏 ZIP（2026-10-03）
+
+POST `/api/v1/admin/game-packages?requestId=UUID` 使用 application/zip 字节（最大 5 MiB），管理员/Origin/CSRF 在读正文前检查，事务内重验活跃身份。共享 `gamePackageResultSchema` 返回 `{gameId,version,name,hash}`，client-sdk `installGamePackage` 解析 unknown。重复成功按账户/requestId/ZIP SHA-256 返回原结果；不同字节复用 ID 为 REQUEST_ID_CONFLICT；同版本不同包/覆盖内置版本为 STATE_CONFLICT。提交后注册并可立即建房，新动作沿用原事务。
+
+GET `/api/v1/game-packages/example.zip` 下载固定时间戳的可玩示例；GET `/api/v1/game-packages/:id/versions/:version/desktop` 返回公开自包含 HTML，CSP 强制 sandbox allow-scripts、限制外部资源与连接。旧版本下架后保留桌面以恢复旧局；源码和 HTML 均不能嵌入秘密。桥接 boardgame:view/ready/action 只面向本人 iframe，不新增正式动作协议。完整限制见 [包格式](../apps/web/public/developer-docs/game-packages.md)。
+
+恢复读取时使用实际源码参与规则摘要；损坏或变更与已保存摘要不一致时，沿用既有 RECOVERY_BLOCKED/503，不重置 State、RNG 或 revision。
+
 ## 好友 ID 冷却规则（2026-10-03）
 
 socialIdentity 增加 changeIntervalDays（0–3650）、nextChangeAt（ISO UTC 或 null）、canChange。首次自定义或 0 天不受限，实际改名后按服务端时间重新计算；失败、原成功请求重试及相同 ID 不重新计时。冷却期间改名为 RATE_LIMITED。GET `/api/v1/admin/social-settings` 返回 `{friendIdChangeDays,revision}`，PUT 接收 `{requestId,expectedRevision,friendIdChangeDays}`，管理员/Origin/CSRF 校验与事务角色重验，严格拒绝额外字段。成功回执先于 revision；设置与改名串行。旧 ID 回执重试保留原 friendId/revision，并补齐当前策略元数据。

@@ -1,5 +1,9 @@
 # HTTP API
 
+## 管理员在线 ZIP 安装
+
+POST `/admin/game-packages?requestId=UUID` 接收 application/zip 二进制（最多 5 MiB），只允许管理员 session + 同源 Origin + X-CSRF-Token；共享响应 `{gameId,version,name,hash}`。重复成功去重，不覆盖同版本，新版本必须提升版本号。GET `/game-packages/example.zip` 为公开示例下载，GET `/game-packages/:id/versions/:version/desktop` 为强制 sandbox CSP 的公开桌面。完整格式、资源限制与桥接见 [在线游戏 ZIP](/developers/game-packages)。这些路径均带 `/api/v1` 前缀。
+
 ## 管理员后台
 
 GET `/admin/social-settings` 返回 `{friendIdChangeDays,revision}`；PUT 使用 `{requestId,expectedRevision,friendIdChangeDays}` 设置好友 ID 修改间隔（0–3650 整数天，默认 30，0 不限）。首次自定义不受限，后续从最后成功改名时间算起；管理员调整立即按原时间重新计算。`/social` 的 identity 与 `/social/id` 返回 changeIntervalDays、nextChangeAt、canChange；冷却期间实际改名返回 RATE_LIMITED。重试先返回原成功结果，相同 ID 不重新计时。schema 与 SDK 方法见公开 social.ts/index.ts 源码。

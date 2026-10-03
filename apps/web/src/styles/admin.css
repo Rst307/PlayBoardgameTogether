@@ -3,6 +3,20 @@
   gap: 20px;
   min-width: 0;
 }
+.package-upload-dialog {
+  width: min(560px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  box-sizing: border-box;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+}
+.package-upload-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.package-upload-dialog input { width: 100%; min-width: 0; box-sizing: border-box; margin: 12px 0; }
+.package-upload-dialog p { overflow-wrap: anywhere; }
 .admin-nav {
   display: flex;
   flex-direction: row;

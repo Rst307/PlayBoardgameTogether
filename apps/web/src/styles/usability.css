@@ -111,3 +111,11 @@ button:disabled { cursor: not-allowed; }
   .button-link { transition: background-color 160ms ease, transform 160ms ease; }
   .button-link:active { transform: translateY(1px); }
 }
+.package-desktop {
+  display: block;
+  width: 100%;
+  min-height: 560px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}

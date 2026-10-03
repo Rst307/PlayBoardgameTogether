@@ -25,8 +25,8 @@
   },
   "devDependencies": {
     "@boardgame/azul": "workspace:*",
-    "@boardgame/game-sdk": "workspace:*",
     "@boardgame/color-match": "workspace:*",
+    "@boardgame/game-sdk": "workspace:*",
     "@boardgame/grid-garden": "workspace:*",
     "@boardgame/splendor": "workspace:*",
     "@boardgame/test-counter": "workspace:*",
@@ -37,6 +37,7 @@
     "@types/ws": "8.18.1",
     "argon2": "0.45.1",
     "eslint": "9.35.0",
+    "fflate": "0.8.2",
     "pg": "8.16.3",
     "tsx": "4.20.5",
     "typescript": "5.9.2",
