@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { avatarSchema } from './profile.js';
 
 export const friendIdSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,36}$/);
+export const friendIdInputValueSchema = z.string().trim()
+  .transform(value => value.replace(/^@/, ''))
+  .pipe(friendIdSchema);
+export const formatFriendId = (value: string) => `@${value}`;
 export const socialPersonSchema = z.object({
   id: z.string().uuid(), friendId: friendIdSchema,
   displayName: z.string(), avatar: avatarSchema,
@@ -9,9 +13,9 @@ export const socialPersonSchema = z.object({
 export const socialIdentitySchema = z.object({ friendId: friendIdSchema, revision: z.number().int().positive() });
 export const socialRequestSchema = z.object({ requestId: z.string().uuid() }).strict();
 export const friendIdInputSchema = socialRequestSchema.extend({
-  friendId: friendIdSchema, expectedRevision: z.number().int().positive(),
+  friendId: friendIdInputValueSchema, expectedRevision: z.number().int().positive(),
 }).strict();
-export const friendRequestInputSchema = socialRequestSchema.extend({ friendId: friendIdSchema }).strict();
+export const friendRequestInputSchema = socialRequestSchema.extend({ friendId: friendIdInputValueSchema }).strict();
 export const friendshipCommandSchema = socialRequestSchema.extend({
   action: z.enum(['accept', 'reject', 'cancel', 'remove']), expectedRevision: z.number().int().positive(),
 }).strict();

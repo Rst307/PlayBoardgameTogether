@@ -1,5 +1,9 @@
 # 数据模型
 
+## 自定义 @好友名字 021（2026-10-03）
+
+021 替换 accounts 的默认好友 ID 分配触发器：默认使用 username_canonical，重名时追加有界 `_2` 等后缀，分配与社交编辑共享 advisory lock。只迁移 social_revision=1 且仍等于原 `p_`+UUID 的账户，保留自定义 ID；迁移推进 social revision，不改变账户 UUID、关系、消息和对局。展示和复制添加 `@`，输入接受可选 `@`，存储/DTO 继续保存无前缀 canonical 名字。下方 020 为历史迁移行为。
+
 ## 社交 020（2026-10-03）
 
 accounts 新增唯一 lowercase friend_id 和 social_revision；迁移及插入 trigger 为既有/新账户分配 `p_` + UUID hex。friendships 使用有序账户 UUID 对作为主键，保存 requested_by、pending/accepted/rejected/removed、revision 和更新时间。direct_messages 保存单调 sequence、消息 UUID、双方身份、文字和时间；direct_message_reads 为每人/peer 保存单调读取水位。friend_room_invitations 保存房间/发送人/接收人、pending/accepted/rejected 和 24 小时 expiry；social_command_receipts 保存 account/requestId 主键、输入 SHA-256 和投影结果，不保存房间密码正文。均有外键及约束，没有完整 State 或对局权限副本。

@@ -191,6 +191,8 @@ GET /assets/contracts、/assets/versions?gameId=...、/assets/versions/:id、/as
 不要依赖错误 message 的文本做程序分支。使用 code，记录必要 traceId，不记录密码、session、CSRF、邀请码、模型密钥或秘密视图。
 ## 好友社交接口（2026-10-03）
 
+编辑、搜索与申请的 friendId 接受可选单个 `@`（例如 `@RST307`），标准化为 `rst307`。DTO 和持久化继续无前缀，展示/复制使用 protocol 的 `formatFriendId`。新账户默认短用户名，冲突加短后缀；内部 UUID 和登录身份不变。
+
 所有以下路径均以 `/api/v1` 为前缀且需 session；写请求保留 Origin 和 CSRF，UUID requestId 对内容去重，响应 no-store。好友 ID 可变，内部账户 UUID 和登录用户名不变。
 
 - GET `/social`：好友 ID/revision、申请、好友/未读和最近 50 条邀请。

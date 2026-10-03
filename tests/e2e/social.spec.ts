@@ -18,13 +18,14 @@ test('two friends change IDs, confirm friendship, chat privately and join a priv
     await login(page, 'stage3_a'); await login(b, 'stage3_b');
     await b.getByRole('link', { name: '好友', exact: true }).click();
     await expect(b.getByRole('heading', { name: '好友', exact: true })).toBeVisible();
-    await b.getByLabel('新好友 ID', { exact: true }).fill('weekend_b');
+    await expect(b.getByLabel('新好友 ID', { exact: true })).toHaveValue('@stage3_b');
+    await b.getByLabel('新好友 ID', { exact: true }).fill('@rst307');
     await b.getByRole('button', { name: '保存好友 ID', exact: true }).click();
     await expect(b.getByRole('status')).toContainText('好友 ID 已保存');
     await b.reload();
-    await expect(b.getByLabel('新好友 ID', { exact: true })).toHaveValue('weekend_b');
+    await expect(b.getByLabel('新好友 ID', { exact: true })).toHaveValue('@rst307');
     await page.getByRole('link', { name: '好友', exact: true }).click();
-    await page.getByLabel('搜索好友 ID').fill('WEEKEND_B');
+    await page.getByLabel('搜索好友 ID').fill('@RST307');
     await page.getByRole('button', { name: '搜索用户' }).click();
     await expect(page.getByText('玩家 E', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '发送好友申请' }).click();

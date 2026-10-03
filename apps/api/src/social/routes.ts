@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
-  friendIdSchema, friendIdInputSchema, friendRequestInputSchema, friendshipCommandSchema,
+  friendIdInputValueSchema, friendIdInputSchema, friendRequestInputSchema, friendshipCommandSchema,
   messageInputSchema, socialPageQuerySchema, readMessagesInputSchema,
   friendInviteInputSchema, friendInviteCommandSchema,
 } from '@boardgame/protocol';
@@ -30,7 +30,7 @@ export function registerSocialRoutes(app: FastifyInstance, auth: AuthService, se
     window.count++;
     if (searches.size >= 10000) searches.delete(searches.keys().next().value!);
     searches.set(context.account.id, window);
-    const query = z.object({ friendId: friendIdSchema }).strict().parse(request.query);
+    const query = z.object({ friendId: friendIdInputValueSchema }).strict().parse(request.query);
     return ok(request, await service.lookup(context, query.friendId));
   });
   app.put('/api/v1/social/id', async request => ok(request, await service.changeId(await current(request, true), friendIdInputSchema.parse(request.body))));

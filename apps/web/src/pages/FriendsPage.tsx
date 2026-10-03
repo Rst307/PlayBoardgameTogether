@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import type { SocialPerson, SocialOverview } from '@boardgame/protocol';
+import { formatFriendId } from '@boardgame/protocol';
 import { PageFeedback } from '@boardgame/ui';
 import { api, navigate } from '../platform.js';
 import { useSocial, useSocialCommand } from '../social/useSocial.js';
@@ -54,21 +55,21 @@ export function FriendsPage() {
     {(error || action.error) && <p className="error-notice" role="alert">{error || action.error}<button className="secondary" onClick={() => void refresh()}>刷新好友信息</button></p>}
     {action.notice && <p role="status">{action.notice}</p>}
     <div className="social-top"><FriendIdCard /><section className="panel"><h2>添加好友</h2>
-      <form className="form-stack" onSubmit={find}><label>搜索好友 ID<input required minLength={3} maxLength={36} pattern="[A-Za-z0-9_]{3,36}" value={search} disabled={action.busy} onChange={event => { setSearch(event.target.value); setResult(undefined); }} /></label>
+      <form className="form-stack" onSubmit={find}><label>搜索好友 ID<input required minLength={3} maxLength={37} pattern="@?[A-Za-z0-9_]{3,36}" placeholder="@rst307" value={search} disabled={action.busy} onChange={event => { setSearch(event.target.value); setResult(undefined); }} /></label>
         <button disabled={action.busy}>搜索用户</button></form>
       {result === null && <p role="status">没有找到这个好友 ID。</p>}
-      {result && <article className="social-row"><div><strong>{result.displayName}</strong><p className="friend-id">{result.friendId}</p></div>
+      {result && <article className="social-row"><div><strong>{result.displayName}</strong><p className="friend-id">{formatFriendId(result.friendId)}</p></div>
         {result.friendId === data.identity.friendId ? <span>这是你自己</span> : data.friends.some(item => item.person.id === result.id) ? <span>已是好友</span> : <button disabled={action.busy} onClick={() => void action.run(`request:${result.friendId}`, id => api.requestFriend({ requestId: id, friendId: result.friendId }), '好友申请已提交，请等待对方确认', () => void refresh())}>发送好友申请</button>}
       </article>}
     </section></div>
     <section className="panel"><h2>好友申请</h2>{data.requests.length === 0 && <p className="muted">暂无待处理申请。</p>}
-      {data.requests.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{item.person.friendId} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div>
+      {data.requests.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div>
         <div className="social-actions">{(item.direction === 'incoming' ? ['accept', 'reject'] as const : ['cancel'] as const).map(operation => <button key={operation} className={operation === 'accept' ? '' : 'secondary'} disabled={action.busy} onClick={() => void action.run(`friend:${item.person.id}:${item.revision}:${operation}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: operation }), operation === 'accept' ? '已成为好友' : '申请已处理', () => void refresh())}>{operation === 'accept' ? '接受申请' : operation === 'reject' ? '拒绝申请' : '撤回申请'}</button>)}</div>
       </article>)}
     </section>
     <div className="social-layout"><section className="panel"><h2>我的好友 <small>({data.friends.length})</small></h2>
       {data.friends.length === 0 && <p className="muted">还没有好友，先用 ID 添加一位朋友吧。</p>}
-      {data.friends.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{item.person.friendId}</p>
+      {data.friends.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)}</p>
         {item.unread > 0 && <span className="unread-count">{item.unread} 条未读</span>}</div><div className="social-actions">
         <button className={selectedId === item.person.id ? '' : 'secondary'} onClick={() => setSelectedId(item.person.id)}>私聊 {item.person.displayName}</button>
         <button className="secondary" disabled={action.busy} onClick={() => {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../apps/api/src/app.js';
 import { createDatabase, type Database } from '../../apps/api/src/db/index.js';
@@ -48,7 +49,7 @@ describe('friends, private messages and room invitations', () => {
     a = await login('social_a'); b = await login('social_b'); c = await login('social_c');
   }, 15000);
   async function friend() {
-    const sent = await post('/api/v1/social/requests', { requestId: randomUUID(), friendId: 'SOCIAL_B' });
+    const sent = await post('/api/v1/social/requests', { requestId: randomUUID(), friendId: '@SOCIAL_B' });
     expect(sent.statusCode).toBe(200);
     const pending = friendshipSchema.parse(sent.json().data);
     const accepted = await post(`/api/v1/social/friends/${aid}`, { requestId: randomUUID(), expectedRevision: pending.revision, action: 'accept' }, b);
@@ -72,7 +73,7 @@ describe('friends, private messages and room invitations', () => {
     expect((await post('/api/v1/social/requests', payload, { ...a, 'x-csrf-token': '' })).statusCode).toBe(403);
     expect((await post('/api/v1/social/requests', { ...payload, accountId: cid })).statusCode).toBe(400);
     expect((await post('/api/v1/social/requests', { ...payload, friendId: 'social_a' })).statusCode).toBe(403);
-    const found = await read('/api/v1/social/search?friendId=SOCIAL_B');
+    const found = await read('/api/v1/social/search?friendId=%40SOCIAL_B');
     expect(found.statusCode).toBe(200);
     expect(found.json().data).toEqual({ id: bid, friendId: 'social_b', displayName: '桌友 B', avatar: 'dice' });
     expect(found.headers['cache-control']).toBe('no-store');
@@ -81,7 +82,7 @@ describe('friends, private messages and room invitations', () => {
   });
   it('changes unique public IDs without changing login, friends or internal account identity', async () => {
     await friend();
-    const input = { requestId: randomUUID(), expectedRevision: 1, friendId: 'NEW_NAME' };
+    const input = { requestId: randomUUID(), expectedRevision: 1, friendId: '@NEW_NAME' };
     const write = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/v1/social/id', headers: a, payload });
     expect((await write(input)).json().data).toEqual({ friendId: 'new_name', revision: 2 });
     expect((await write(input)).json().data).toEqual({ friendId: 'new_name', revision: 2 });
@@ -238,5 +239,24 @@ describe('friends, private messages and room invitations', () => {
     expect(results.filter(item => item.statusCode === 200)).toHaveLength(1);
     expect((await db.query('SELECT * FROM room_members WHERE room_id=$1', [table.id])).rowCount).toBe(2);
     expect((await db.query('SELECT room_revision FROM rooms WHERE id=$1', [table.id])).rows[0].room_revision).toBe(table.revision + 1);
+  });
+  it('shortens only untouched UUID defaults, preserves customized handles and resolves name collisions', async () => {
+    await friend();
+    await post(`/api/v1/social/friends/${bid}/messages`, { requestId: randomUUID(), text: '迁移后保留聊天' });
+    await db.query("UPDATE accounts SET friend_id='p_' || replace(id::text,'-','') WHERE id IN ($1,$2)", [aid, cid]);
+    await db.query("UPDATE accounts SET friend_id='social_a',social_revision=2 WHERE id=$1", [bid]);
+    const migration = await readFile('apps/api/src/db/migrations/021_friend_handles.sql', 'utf8');
+    await db.query(migration);
+    const aIdentity = (await overview()).identity;
+    expect(aIdentity).toEqual({ friendId: 'social_a_2', revision: 2 });
+    expect((await overview(b)).identity).toEqual({ friendId: 'social_a', revision: 2 });
+    expect((await overview(c)).identity).toEqual({ friendId: 'social_c', revision: 2 });
+    expect((await overview(b)).friends[0]!.person.id).toBe(aid);
+    const messages = messagePageSchema.parse((await read(`/api/v1/social/friends/${bid}/messages`)).json().data);
+    expect(messages.items[0]!.text).toBe('迁移后保留聊天');
+    const newId = await createAccount(db, { username: 'social_a_2', displayName: '同名预留', password: 'social test password', role: 'user' });
+    expect((await db.query('SELECT friend_id FROM accounts WHERE id=$1', [newId])).rows[0].friend_id).toBe('social_a_2_2');
+    await db.query(migration);
+    expect((await overview()).identity).toEqual(aIdentity);
   });
 });
