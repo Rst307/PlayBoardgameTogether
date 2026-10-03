@@ -1,5 +1,9 @@
 # 游戏扩展 SDK
 
+## 客户端终局展示（2026-10-03）
+
+Web `clientGames` 注册项可选 `finishBehavior: 'stay'`。声明后 MatchPage 在 active → finished 时保留最终身份化 View 和 live 投影事件，游戏可以播完计分/奖励；玩家用已有「返回房间」按钮主动离开。未声明的游戏维持自动返回行为。该项只是客户端表现策略，不改变服务端结算、房间 waiting 复位、权限、协议或版本锁。花砖物语使用此项；平台不按 gameId 添加规则分支。
+
 ## 可选交互教程（2026-10-03）
 
 `@boardgame/game-sdk/tutorial` 提供 `GameTutorial`、`TutorialStep`、`TutorialFrame`、`TutorialActionResult` 与进度函数。教程独立于服务端 `GameExtension` 与 manifest；开发者可以不编写，有教程才显示详情入口。教程绑定精确版本，不自动降级或使用最新版。

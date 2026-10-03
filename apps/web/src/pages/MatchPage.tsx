@@ -80,7 +80,9 @@ export function MatchPage({ id }: { id: string }) {
   function merge(next: MatchView) {
     if (next.status === 'aborted' && latest.current?.status === 'active') { returnHome(); return; }
     if (latest.current && next.revision < latest.current.revision) return;
-    if (next.status === 'finished' && latest.current?.status === 'active') {
+    const presentationGame = clientGame(next.gameId, next.gameVersion);
+    const keepResult = presentationGame && 'finishBehavior' in presentationGame && presentationGame.finishBehavior === 'stay';
+    if (next.status === 'finished' && latest.current?.status === 'active' && !keepResult) {
       if (returnedHome.current) return;
       returnedHome.current = true;
       connected.current = false;

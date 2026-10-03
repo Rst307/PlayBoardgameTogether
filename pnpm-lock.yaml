@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@boardgame/azul':
+        specifier: workspace:*
+        version: link:games/azul
       '@boardgame/color-match':
         specifier: workspace:*
         version: link:games/color-match
@@ -68,6 +71,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@boardgame/azul':
+        specifier: workspace:*
+        version: link:../../games/azul
       '@boardgame/color-match':
         specifier: workspace:*
         version: link:../../games/color-match
@@ -120,6 +126,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@boardgame/azul':
+        specifier: workspace:*
+        version: link:../../games/azul
       '@boardgame/client-sdk':
         specifier: workspace:*
         version: link:../../packages/client-sdk
@@ -169,6 +178,25 @@ importers:
       vite:
         specifier: 7.1.4
         version: 7.1.4(@types/node@26.6.1)(tsx@4.20.5)
+
+  games/azul:
+    dependencies:
+      '@boardgame/game-sdk':
+        specifier: workspace:*
+        version: link:../../packages/game-sdk
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
+      zod:
+        specifier: 4.1.5
+        version: 4.1.5
+    devDependencies:
+      '@types/react':
+        specifier: 19.1.12
+        version: 19.1.12
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
 
   games/color-match:
     dependencies:

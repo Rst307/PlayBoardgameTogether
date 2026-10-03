@@ -2,6 +2,7 @@ import type { AvailableGame } from './game-catalog.js';
 
 // Presentation only: these defaults do not select rules, assets or game behavior.
 const builtInArt: Record<string, string> = {
+  'azul.base': 'azul',
   'color-match': 'color-match',
   'grid-garden': 'grid-garden',
   'splendor.base': 'splendor',

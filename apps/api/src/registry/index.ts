@@ -1,3 +1,6 @@
+import { azulExtension, azulAssetManifest } from '@boardgame/azul/server';
+import { publicRules as azulRules } from '@boardgame/azul/rules';
+import { azulAssetContract, azulPresentationCues } from '@boardgame/azul/assets';
 import { splendorExtension, splendorAssetManifest } from '@boardgame/splendor/server';
 import { publicRules as splendorRules } from '@boardgame/splendor/rules';
 import { splendorAssetContract } from '@boardgame/splendor/assets';
@@ -31,12 +34,20 @@ export class GameRegistry {
 }
 export function createRegistry(includeDevelopment: boolean) {
   const registry = new GameRegistry();
+  registry.assetContracts.set('azul.base', azulAssetContract);
+  registry.presentation.set('azul.base', azulPresentationCues);
+  registry.rules.set('azul.base@1.0.0', azulRules);
   registry.assetContracts.set('splendor.base', splendorAssetContract);
   registry.assetContracts.set('color-match', colorAssetContract);
   registry.presentation.set('color-match', colorPresentationCues);
   registry.assetContracts.set('grid-garden', gridGardenAssetContract);
   registry.presentation.set('grid-garden', gridGardenPresentationCues);
   const sdk = new URL('../../../../packages/game-sdk/src/index.ts', import.meta.url);
+  registry.register(azulExtension, azulAssetManifest, [
+    sdk,
+    new URL('../../../../games/azul/src/shared/index.ts', import.meta.url),
+    new URL('../../../../games/azul/src/server/index.ts', import.meta.url),
+  ]);
   const counterSources = [
     sdk,
     new URL('../../../../games/test-counter/src/shared/index.ts', import.meta.url),

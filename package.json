@@ -24,6 +24,7 @@
     "assets:check": "tsx --env-file=.env scripts/assets-integrity.ts"
   },
   "devDependencies": {
+    "@boardgame/azul": "workspace:*",
     "@boardgame/game-sdk": "workspace:*",
     "@boardgame/color-match": "workspace:*",
     "@boardgame/grid-garden": "workspace:*",

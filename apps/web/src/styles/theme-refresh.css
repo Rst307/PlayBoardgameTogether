@@ -412,20 +412,20 @@ button, .button-link {
 }
 
 /* Primary buttons */
-button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button),
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):not(.az-table button),
 .button-link:not(.secondary) {
   background: var(--accent-gradient) !important;
   color: #ffffff !important;
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
   box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.45) !important;
 }
-button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):hover:not(:disabled),
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):not(.az-table button):hover:not(:disabled),
 .button-link:not(.secondary):hover {
   filter: brightness(1.1) !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 6px 20px -2px rgba(37, 99, 235, 0.6) !important;
 }
-button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):active:not(:disabled),
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):not(.az-table button):active:not(:disabled),
 .button-link:not(.secondary):active {
   transform: translateY(1px) !important;
   filter: brightness(0.95) !important;

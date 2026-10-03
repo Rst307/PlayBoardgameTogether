@@ -1,3 +1,4 @@
+import { viewSchema as azulViewSchema } from '@boardgame/azul/shared';
 import { viewSchema as splendorViewSchema } from '@boardgame/splendor/shared';
 import type { ReactNode } from 'react';
 import type { GameTutorial } from '@boardgame/game-sdk/tutorial';
@@ -8,6 +9,13 @@ import { viewSchema as gardenViewSchema } from '@boardgame/grid-garden/shared';
 
 export type GameBoard = (view: unknown, busy: boolean, events: unknown[], onAction: (action: unknown) => void, assets?:AssetResolverPort) => ReactNode;
 export const clientGames = [
+  {
+    id: 'azul.base', version: '1.0.0', name: '花砖物语', defaultOptions: {}, finishBehavior: 'stay',
+    load: async (): Promise<GameBoard> => {
+      const { AzulBoard } = await import('@boardgame/azul/client');
+      return (view, busy, events, onAction) => <AzulBoard view={azulViewSchema.parse(view)} busy={busy} events={events} onAction={onAction} />;
+    },
+  },
   {
     id: 'splendor.base', version: '1.0.0', name: '璀璨宝石', defaultOptions: {},
     load: async (): Promise<GameBoard> => {

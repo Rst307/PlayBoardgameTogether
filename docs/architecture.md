@@ -1,5 +1,11 @@
 # 架构
 
+## 花砖物语扩展（2026-10-03）
+
+`games/azul` 的 `azul.base@1.0.0` 拥有经典彩墙规则、隐藏袋序、公开板、逐砖计分与存档守恒检查。API registry 装配摘要/说明/音频契约，Web registry 按需加载桌面，policy worker 装配只消费 View 的策略。复用 rooms/matches 的身份、回执、revision、事务、恢复与终局房间复位，不增加平台规则分支或迁移。
+
+客户端有界队列仅播放 MatchPage 提供的去重 live `round.scored` 投影，最新 View 与服务端计分保持权威，不阻塞操作或补播历史。`scripts/azul-audio.ts` 生成原创短音，经既有 seed-assets 和隔离媒体校验安装；AudioManager 维持偏好和 owner，没有另建播放器。游戏 build 复制 CSS 至生产 client 位置。
+
 ## 管理员后台（2026-10-03）
 
 apps/api/src/admin 拥有平台非秘密统计、账户状态与安装版本启停事务；routes 负责传输和既有认证边界，app 只装配。protocol/admin.ts 与 client-sdk 提供共享 schema 和类型化方法，Web 后台按需加载，并在渲染内容前验证管理员身份。资料审核、展示和资源仍由原 catalog/assets 模块拥有。
