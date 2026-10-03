@@ -1,5 +1,9 @@
 # 协议
 
+## 好友 ID 冷却规则（2026-10-03）
+
+socialIdentity 增加 changeIntervalDays（0–3650）、nextChangeAt（ISO UTC 或 null）、canChange。首次自定义或 0 天不受限，实际改名后按服务端时间重新计算；失败、原成功请求重试及相同 ID 不重新计时。冷却期间改名为 RATE_LIMITED。GET `/api/v1/admin/social-settings` 返回 `{friendIdChangeDays,revision}`，PUT 接收 `{requestId,expectedRevision,friendIdChangeDays}`，管理员/Origin/CSRF 校验与事务角色重验，严格拒绝额外字段。成功回执先于 revision；设置与改名串行。旧 ID 回执重试保留原 friendId/revision，并补齐当前策略元数据。
+
 ## 好友、私聊与邀请（2026-10-03）
 
 好友名字输入（ID 编辑、精确搜索和申请）接受可选单个 `@`，trim 后去前缀、lowercase 并严格校验；`@RST307` 与 `rst307` 指向同一名字。DTO 保持无前缀值，Web 展示与复制使用 `formatFriendId` 输出 `@rst307`。数据库及关系身份仍使用原账户 UUID。

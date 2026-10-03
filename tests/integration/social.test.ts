@@ -42,6 +42,8 @@ describe('friends, private messages and room invitations', () => {
   }
   beforeEach(async () => {
     await db.query('TRUNCATE accounts CASCADE');
+    await db.query('UPDATE social_settings SET friend_id_change_days=30,revision=1');
+    await db.query("UPDATE game_installations SET enabled=true WHERE game_id='color-match' AND game_version='1.0.0'");
     aid = await createAccount(db, { username: 'social_a', displayName: '桌友 A', password: 'social test password', role: 'user' });
     bid = await createAccount(db, { username: 'social_b', displayName: '桌友 B', password: 'social test password', role: 'user' });
     cid = await createAccount(db, { username: 'social_c', displayName: '桌友 C', password: 'social test password', role: 'user' });
@@ -84,17 +86,133 @@ describe('friends, private messages and room invitations', () => {
     await friend();
     const input = { requestId: randomUUID(), expectedRevision: 1, friendId: '@NEW_NAME' };
     const write = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/v1/social/id', headers: a, payload });
-    expect((await write(input)).json().data).toEqual({ friendId: 'new_name', revision: 2 });
-    expect((await write(input)).json().data).toEqual({ friendId: 'new_name', revision: 2 });
+    const saved = (await write(input)).json().data;
+    expect(saved).toMatchObject({ friendId: 'new_name', revision: 2, changeIntervalDays: 30, canChange: false });
+    expect(saved.nextChangeAt).toEqual(expect.any(String));
+    expect((await write(input)).json().data).toEqual(saved);
     expect((await write({ ...input, friendId: 'other_name' })).statusCode).toBe(409);
     expect((await write({ ...input, requestId: randomUUID() })).statusCode).toBe(409);
-    expect((await write({ requestId: randomUUID(), friendId: 'social_b', expectedRevision: 2 })).statusCode).toBe(409);
+    expect((await write({ requestId: randomUUID(), friendId: 'social_b', expectedRevision: 2 })).statusCode).toBe(429);
     expect((await read('/api/v1/auth/me')).json().data.account.id).toBe(aid);
     expect((await overview(b)).friends[0]!.person.friendId).toBe('new_name');
     expect((await read('/api/v1/social/search?friendId=social_a')).json().data).toBeNull();
     expect(await login('social_a')).toBeDefined();
     expect((await db.query('SELECT social_revision FROM accounts WHERE id=$1', [aid])).rows[0].social_revision).toBe(2);
   });
+  it('enforces the current cooldown, allows first customization and never counts a no-op or failed change', async () => {
+    const write = (friendId: string, expectedRevision: number) => app.inject({ method: 'PUT', url: '/api/v1/social/id', headers: a,
+      payload: { requestId: randomUUID(), friendId, expectedRevision } });
+    expect((await overview()).identity).toMatchObject({ canChange: true, nextChangeAt: null, changeIntervalDays: 30 });
+    expect((await write('social_a', 1)).json().data.revision).toBe(1);
+    expect((await write('social_b', 1)).statusCode).toBe(409);
+    expect((await db.query('SELECT friend_id_changed_at FROM accounts WHERE id=$1', [aid])).rows[0].friend_id_changed_at).toBeNull();
+    expect((await write('first_name', 1)).statusCode).toBe(200);
+    const savedTime = (await db.query('SELECT friend_id_changed_at FROM accounts WHERE id=$1', [aid])).rows[0].friend_id_changed_at;
+    expect((await write('first_name', 2)).statusCode).toBe(200);
+    expect((await write('second_name', 2)).statusCode).toBe(429);
+    expect((await db.query('SELECT friend_id_changed_at FROM accounts WHERE id=$1', [aid])).rows[0].friend_id_changed_at).toEqual(savedTime);
+    await db.query("UPDATE accounts SET friend_id_changed_at=clock_timestamp()-interval '30 days'+interval '1 hour' WHERE id=$1", [aid]);
+    expect((await write('second_name', 2)).statusCode).toBe(429);
+    await db.query("UPDATE accounts SET friend_id_changed_at=clock_timestamp()-interval '30 days'-interval '1 second' WHERE id=$1", [aid]);
+    expect((await write('second_name', 2)).statusCode).toBe(200);
+    expect((await overview()).identity).toMatchObject({ friendId: 'second_name', revision: 3, canChange: false });
+  });
+
+  it('replays legacy ID receipts with original identity and current policy metadata', async () => {
+    const payload = { requestId: randomUUID(), expectedRevision: 1, friendId: 'legacy_name' };
+    const write = () => app.inject({ method: 'PUT', url: '/api/v1/social/id', headers: a, payload });
+    expect((await write()).statusCode).toBe(200);
+    await db.query(`UPDATE social_command_receipts SET result=result-'canChange'-'nextChangeAt'-'changeIntervalDays'
+      WHERE account_id=$1 AND request_id=$2`, [aid, payload.requestId]);
+    const result = await write();
+    expect(result.statusCode).toBe(200);
+    expect(result.json().data).toMatchObject({ friendId: 'legacy_name', revision: 2, canChange: false, changeIntervalDays: 30 });
+    expect(result.json().data.nextChangeAt).toEqual(expect.any(String));
+    expect((await db.query('SELECT social_revision FROM accounts WHERE id=$1', [aid])).rows[0].social_revision).toBe(2);
+  });
+
+  it('backfills only historical explicit ID edits without starting a cooldown for default allocation', async () => {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DROP TABLE social_settings');
+      await client.query('ALTER TABLE accounts DROP COLUMN friend_id_changed_at');
+      const receipt = await client.query(`INSERT INTO social_command_receipts(account_id,request_id,input_hash,result,created_at)
+        VALUES($1,$2,$3,$4,clock_timestamp()-interval '2 days') RETURNING created_at`,
+      [aid, randomUUID(), 'a'.repeat(64), { friendId: 'social_a', revision: 2 }]);
+      await client.query(`INSERT INTO social_command_receipts(account_id,request_id,input_hash,result)
+        VALUES($1,$2,$3,$4)`, [bid, randomUUID(), 'b'.repeat(64), { person: { friendId: 'social_b' }, revision: 2 }]);
+      await client.query(await readFile('apps/api/src/db/migrations/022_friend_id_policy.sql', 'utf8'));
+      const rows = await client.query('SELECT id,friend_id_changed_at FROM accounts ORDER BY id');
+      expect(rows.rows.find(row => row.id === aid)?.friend_id_changed_at).toEqual(receipt.rows[0].created_at);
+      expect(rows.rows.filter(row => row.id !== aid).every(row => row.friend_id_changed_at === null)).toBe(true);
+      expect((await client.query('SELECT friend_id_change_days,revision FROM social_settings')).rows[0]).toEqual({ friend_id_change_days: 30, revision: 1 });
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
+  });
+
+  it('restricts policy to administrators, validates inputs and applies new intervals immediately with exact retries', async () => {
+    const path = '/api/v1/admin/social-settings';
+    const input = { requestId: randomUUID(), expectedRevision: 1, friendIdChangeDays: 7 };
+    const update = (payload: unknown, headers = c) => app.inject({ method: 'PUT', url: path, headers, payload });
+    expect((await app.inject({ url: path })).statusCode).toBe(401);
+    expect((await read(path)).statusCode).toBe(403);
+    expect((await update(input, a)).statusCode).toBe(403);
+    await db.query("UPDATE accounts SET role='administrator' WHERE id=$1", [cid]);
+    c = await login('social_c');
+    expect((await read(path, c)).json().data).toEqual({ friendIdChangeDays: 30, revision: 1 });
+    expect((await update(input, { ...c, origin: 'https://evil.example' })).statusCode).toBe(403);
+    expect((await update(input, { ...c, 'x-csrf-token': '' })).statusCode).toBe(403);
+    for (const friendIdChangeDays of [-1, 3651, 0.5, '7']) {
+      expect((await update({ ...input, friendIdChangeDays })).statusCode).toBe(400);
+    }
+    expect((await update({ ...input, accountId: aid })).statusCode).toBe(400);
+    const idInput = { requestId: randomUUID(), expectedRevision: 1, friendId: 'policy_name' };
+    const idWrite = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/v1/social/id', headers: a, payload });
+    const saved = (await idWrite(idInput)).json().data;
+    expect((await update(input)).json().data).toEqual({ friendIdChangeDays: 7, revision: 2 });
+    expect((await update(input)).json().data.revision).toBe(2);
+    expect((await update({ ...input, friendIdChangeDays: 0 })).json().error.code).toBe('REQUEST_ID_CONFLICT');
+    expect((await update({ ...input, requestId: randomUUID() })).json().error.code).toBe('STATE_CONFLICT');
+    expect((await idWrite(idInput)).json().data).toEqual(saved);
+    expect((await overview()).identity.changeIntervalDays).toBe(7);
+    await db.query("UPDATE accounts SET friend_id_changed_at=clock_timestamp()-interval '8 days' WHERE id=$1", [aid]);
+    expect((await overview()).identity.canChange).toBe(true);
+    await update({ requestId: randomUUID(), expectedRevision: 2, friendIdChangeDays: 14 });
+    expect((await overview()).identity.canChange).toBe(false);
+    await update({ requestId: randomUUID(), expectedRevision: 3, friendIdChangeDays: 0 });
+    expect((await overview()).identity).toMatchObject({ canChange: true, nextChangeAt: null });
+    expect((await idWrite({ requestId: randomUUID(), expectedRevision: 2, friendId: 'policy_second' })).statusCode).toBe(200);
+    expect((await idWrite({ requestId: randomUUID(), expectedRevision: 3, friendId: 'policy_third' })).statusCode).toBe(200);
+    await db.query("UPDATE accounts SET role='user' WHERE id=$1", [cid]);
+    expect((await update(input)).statusCode).toBe(403);
+  });
+
+  it('serializes concurrent policy updates and rolls back policy when receipt persistence fails', async () => {
+    await db.query("UPDATE accounts SET role='administrator' WHERE id=$1", [cid]);
+    c = await login('social_c');
+    const update = (payload: unknown) => app.inject({ method: 'PUT', url: '/api/v1/admin/social-settings', headers: c, payload });
+    const input = { requestId: randomUUID(), expectedRevision: 1, friendIdChangeDays: 5 };
+    const results = await Promise.all([update(input), update({ ...input, requestId: randomUUID(), friendIdChangeDays: 10 })]);
+    expect(results.map(result => result.statusCode).sort()).toEqual([200, 409]);
+    const previous = (await read('/api/v1/admin/social-settings', c)).json().data;
+    const retry = { requestId: randomUUID(), expectedRevision: previous.revision, friendIdChangeDays: 0 };
+    await db.query(`CREATE FUNCTION fail_policy_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.result ? 'friendIdChangeDays' THEN RAISE EXCEPTION 'receipt failure'; END IF; RETURN NEW; END $$`);
+    await db.query('CREATE TRIGGER fail_policy_receipt BEFORE INSERT ON social_command_receipts FOR EACH ROW EXECUTE FUNCTION fail_policy_receipt()');
+    try {
+      expect((await update(retry)).statusCode).toBe(500);
+      expect((await read('/api/v1/admin/social-settings', c)).json().data).toEqual(previous);
+      expect((await db.query('SELECT 1 FROM social_command_receipts WHERE request_id=$1', [retry.requestId])).rowCount).toBe(0);
+    } finally {
+      await db.query('DROP TRIGGER fail_policy_receipt ON social_command_receipts');
+      await db.query('DROP FUNCTION fail_policy_receipt()');
+    }
+    expect((await update(retry)).json().data).toEqual({ friendIdChangeDays: 0, revision: previous.revision + 1 });
+  });
+
   it('serializes opposing requests, restricts responses and replays successful commands before revision', async () => {
     const input = { requestId: randomUUID(), friendId: 'social_b' };
     const results = await Promise.all([post('/api/v1/social/requests', input), post('/api/v1/social/requests', { requestId: randomUUID(), friendId: 'social_a' }, b)]);
@@ -248,9 +366,10 @@ describe('friends, private messages and room invitations', () => {
     const migration = await readFile('apps/api/src/db/migrations/021_friend_handles.sql', 'utf8');
     await db.query(migration);
     const aIdentity = (await overview()).identity;
-    expect(aIdentity).toEqual({ friendId: 'social_a_2', revision: 2 });
-    expect((await overview(b)).identity).toEqual({ friendId: 'social_a', revision: 2 });
-    expect((await overview(c)).identity).toEqual({ friendId: 'social_c', revision: 2 });
+    const policy = { changeIntervalDays: 30, canChange: true, nextChangeAt: null };
+    expect(aIdentity).toEqual({ friendId: 'social_a_2', revision: 2, ...policy });
+    expect((await overview(b)).identity).toEqual({ friendId: 'social_a', revision: 2, ...policy });
+    expect((await overview(c)).identity).toEqual({ friendId: 'social_c', revision: 2, ...policy });
     expect((await overview(b)).friends[0]!.person.id).toBe(aid);
     const messages = messagePageSchema.parse((await read(`/api/v1/social/friends/${bid}/messages`)).json().data);
     expect(messages.items[0]!.text).toBe('迁移后保留聊天');

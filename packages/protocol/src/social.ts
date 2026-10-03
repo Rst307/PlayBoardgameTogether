@@ -10,7 +10,20 @@ export const socialPersonSchema = z.object({
   id: z.string().uuid(), friendId: friendIdSchema,
   displayName: z.string(), avatar: avatarSchema,
 });
-export const socialIdentitySchema = z.object({ friendId: friendIdSchema, revision: z.number().int().positive() });
+export const socialIdentitySchema = z.object({
+  friendId: friendIdSchema, revision: z.number().int().positive(),
+  changeIntervalDays: z.number().int().min(0).max(3650),
+  nextChangeAt: z.string().datetime().nullable(),
+  canChange: z.boolean(),
+});
+export const socialSettingsSchema = z.object({
+  friendIdChangeDays: z.number().int().min(0).max(3650),
+  revision: z.number().int().positive(),
+}).strict();
+export const socialSettingsInputSchema = socialSettingsSchema.omit({ revision: true }).extend({
+  requestId: z.string().uuid(), expectedRevision: z.number().int().positive(),
+}).strict();
+export type SocialSettingsInput = z.infer<typeof socialSettingsInputSchema>;
 export const socialRequestSchema = z.object({ requestId: z.string().uuid() }).strict();
 export const friendIdInputSchema = socialRequestSchema.extend({
   friendId: friendIdInputValueSchema, expectedRevision: z.number().int().positive(),

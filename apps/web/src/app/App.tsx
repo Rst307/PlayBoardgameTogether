@@ -24,7 +24,7 @@ export function App() {
         <a href="/developers" aria-current={route.developer ? 'page' : undefined}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 3l-4 18" /></svg>开发者文档</a>
         <details className="nav-tools"><summary>更多</summary><div>
           <a href="/admin" aria-current={path === '/admin' || path.startsWith('/admin/') ? 'page' : undefined}>管理员后台</a>
-          <a href="/settings/models" aria-current={path === '/settings/models' ? 'page' : undefined}>模型设置</a><a href="/admin/assets" aria-current={path === '/admin/assets' ? 'page' : undefined}>资源管理</a><a href="/admin/games" aria-current={path === '/admin/games' ? 'page' : undefined}>游戏展示</a><a href="/status" aria-current={path === '/status' ? 'page' : undefined}>系统状态</a>
+          <a href="/settings/models" aria-current={path === '/settings/models' ? 'page' : undefined}>模型设置</a>
           {labEnabled && <><a href="/dev/lab" aria-current={path === '/dev/lab' ? 'page' : undefined}>扩展实验台</a><a href="/dev/ui" aria-current={path === '/dev/ui' ? 'page' : undefined}>界面场景</a></>}
         </div></details>
       </nav>

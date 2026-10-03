@@ -1,5 +1,9 @@
 # 数据模型
 
+## 好友 ID 修改规则 022（2026-10-03）
+
+`022_friend_id_policy.sql` 新增单行 social_settings（friend_id_change_days 0–3650、revision），默认 30 天；accounts.friend_id_changed_at 保存最后一次成功显式修改时间。旧时间由返回 friendId/revision 的历史回执补齐，不把默认分配或 021 迁移计入。管理员设置与 ID 修改共用社交写锁；设置/revision/摘要回执或 ID/时间/revision/回执在单事务提交，失败回滚。0 不限；冷却由服务端 clock_timestamp 与固定 24 小时天数计算。
+
 ## 自定义 @好友名字 021（2026-10-03）
 
 021 替换 accounts 的默认好友 ID 分配触发器：默认使用 username_canonical，重名时追加有界 `_2` 等后缀，分配与社交编辑共享 advisory lock。只迁移 social_revision=1 且仍等于原 `p_`+UUID 的账户，保留自定义 ID；迁移推进 social revision，不改变账户 UUID、关系、消息和对局。展示和复制添加 `@`，输入接受可选 `@`，存储/DTO 继续保存无前缀 canonical 名字。下方 020 为历史迁移行为。

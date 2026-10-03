@@ -2,6 +2,8 @@
 
 ## 管理员后台
 
+GET `/admin/social-settings` 返回 `{friendIdChangeDays,revision}`；PUT 使用 `{requestId,expectedRevision,friendIdChangeDays}` 设置好友 ID 修改间隔（0–3650 整数天，默认 30，0 不限）。首次自定义不受限，后续从最后成功改名时间算起；管理员调整立即按原时间重新计算。`/social` 的 identity 与 `/social/id` 返回 changeIntervalDays、nextChangeAt、canChange；冷却期间实际改名返回 RATE_LIMITED。重试先返回原成功结果，相同 ID 不重新计时。schema 与 SDK 方法见公开 social.ts/index.ts 源码。
+
 管理员通过 GET `/admin/overview` 读取平台计数，GET `/admin/accounts?search=&before=` 搜索并分页读取账户，GET `/admin/games` 读取全部安装版本。PUT `/admin/accounts/:id/status` 接收 `{requestId,expectedRevision,status}`，status 为 active/disabled；PUT `/admin/games/:id/versions/:version/status` 接收 `{requestId,expectedRevision,enabled}`。requestId 必须为 UUID；写入检查 Origin、session、CSRF 与管理员角色，事务内再次验证身份；相同成功重试返回原结果，内容复用冲突 REQUEST_ID_CONFLICT，旧 revision 返回 STATE_CONFLICT。所有响应 no-store。
 
 只能启停普通账户，不能修改角色；停用撤销全部会话，启用后重新登录。游戏下架隐藏目录并阻止新建/开局，进行中对局继续精确版本；上架要求可信规则与资源已加载。没有上传、安装或任意代码热加载接口。DTO 与类型化方法见 [管理协议源码](/developer-sdk/packages/protocol/src/admin.ts) 和 [客户端 SDK](/developer-sdk/packages/client-sdk/src/index.ts)。

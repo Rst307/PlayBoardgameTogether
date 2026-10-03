@@ -8,14 +8,14 @@ test('more navigation stays expanded across page changes until explicitly collap
   const toggle = more.locator('summary');
   await toggle.click();
   await expect(more).toHaveAttribute('open');
-  await page.getByRole('link', { name: '系统状态', exact: true }).click();
-  await expect(page.locator('.workspace-toolbar strong')).toHaveText('系统状态');
+  await page.getByRole('link', { name: '开发者文档', exact: true }).click();
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('开发者文档');
   await expect(more).toHaveAttribute('open');
   await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
   await expect(page.locator('.workspace-toolbar strong')).toHaveText('游戏大厅');
   await expect(more).toHaveAttribute('open');
   await page.goBack();
-  await expect(page.locator('.workspace-toolbar strong')).toHaveText('系统状态');
+  await expect(page.locator('.workspace-toolbar strong')).toHaveText('开发者文档');
   await expect(more).toHaveAttribute('open');
   await page.goForward();
   await expect(page.locator('.workspace-toolbar strong')).toHaveText('游戏大厅');

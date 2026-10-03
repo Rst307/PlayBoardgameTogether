@@ -21,7 +21,10 @@ export function FriendIdCard() {
       <p className="muted">把这个 ID 发给朋友，对方可在「好友」中搜索你。修改后已有好友和聊天记录仍保留。</p>
       <form className="form-stack" onSubmit={save}><label>新好友 ID<input required pattern="@?[A-Za-z0-9_]{3,36}" minLength={3} maxLength={37} placeholder="@rst307" value={value} disabled={action.busy} onChange={event => setValue(event.target.value)} /></label>
         <small className="muted">自定义你的 @ID，例如 @rst307。名字为 3–36 位字母、数字或下划线，不区分大小写，登录用户名不变。</small>
-        <button disabled={action.busy || friendIdInputValueSchema.safeParse(value).data === data.identity.friendId}>保存好友 ID</button>
+        <p className="muted">{data.identity.changeIntervalDays === 0 ? '当前可随时修改好友 ID。' : `当前每 ${data.identity.changeIntervalDays} 天可修改一次，首次自定义不受限制。`}
+          {!data.identity.canChange && data.identity.nextChangeAt && <><br />下次可修改：<time dateTime={data.identity.nextChangeAt}>{new Date(data.identity.nextChangeAt).toLocaleString('zh-CN')}</time></>}
+        </p>
+        <button disabled={action.busy || !data.identity.canChange || friendIdInputValueSchema.safeParse(value).data === data.identity.friendId}>保存好友 ID</button>
       </form></> : <p>正在读取好友 ID…</p>}
     {(error || action.error) && <p className="error-notice" role="alert">{error || action.error}<button className="secondary" onClick={() => void refresh()}>重新读取</button></p>}
     {(action.notice || copy) && <p role="status">{action.notice || copy}</p>}

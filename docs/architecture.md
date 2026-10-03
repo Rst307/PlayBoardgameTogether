@@ -2,6 +2,8 @@
 
 ## 社交模块（2026-10-03）
 
+022 将好友 ID 修改间隔与最后修改时间持久化于 social_settings/accounts；social 服务拥有管理员设置的规则/事务，与 ID 修改共用社交写锁和回执，不新增独立配置服务。后台总览 SocialSettingsPanel 经 typed client-sdk 编辑；FriendIdCard 消费服务端 eligibility。平台后台导航补齐 SPA 白名单，「更多」只保留管理入口、个人设置与开发专用工具，管理子项集中在后台。
+
 API `social/service` 与独立 routes 拥有可变好友 ID、申请/关系、私聊/单调读取水位、定向房间邀请；复用既有 auth，protocol/social.ts 与 client-sdk 提供严格 schema/DTO。Web `/friends`、FriendIdCard、DirectChat、InviteFriends 各自管理表单和交互，共用可取消的每 5 秒 HTTP 同步 hook，无新运行单元或私聊 WS 广播。浏览器只收到本人有权读取的社交投影。
 
 020 持久化社交表，短写事务通过 PostgreSQL advisory lock 排序，重验活跃账户/session，内容摘要回执在 revision 前去重；只读 REPEATABLE READ 保持一致。定向邀请与 room 锁序保持 room → account/session，接受在同一事务调用 rooms 受信任 joinMemberWithClient，复用原状态/成员/密码/容量/ready/revision 规则，邀请结果与回执一起提交；commit 后经原 room realtime 广播。没有新建认证、座位权限或平行游戏动作系统。完整边界见 [社交功能](social.md)。

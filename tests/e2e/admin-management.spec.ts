@@ -52,6 +52,8 @@ test('administrator downlists and relists a game without breaking catalog readin
   page,
 }, info) => {
   await login(page);
+  await expect(page.locator('a.game-card[href="/games/color-match/1.0.0"]')).toBeVisible();
+  const initialGames = await page.locator('a.game-card').count();
   await page.goto('/admin/catalog');
   const record = page.getByRole('article', {
     name: 'Color Match 1.0.0',
@@ -64,7 +66,7 @@ test('administrator downlists and relists a game without breaking catalog readin
   await record.getByRole('button', { name: '下架版本' }).click();
   await expect(record).toContainText('已下架');
   await page.goto('/');
-  await expect(page.locator('a.game-card')).toHaveCount(3);
+  await expect(page.locator('a.game-card')).toHaveCount(initialGames - 1);
   await expect(
     page.locator('a.game-card[href="/games/color-match/1.0.0"]'),
   ).toHaveCount(0);
@@ -81,7 +83,7 @@ test('administrator downlists and relists a game without breaking catalog readin
     ),
   ).toBe(true);
   await page.goto('/');
-  await expect(page.locator('a.game-card')).toHaveCount(4);
+  await expect(page.locator('a.game-card')).toHaveCount(initialGames);
 });
 
 test('administrator reviews real submissions and preserves review notes after reload', async ({

@@ -20,8 +20,8 @@ test('public pages load independently, retain navigation and fit small screens',
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.locator('.nav-tools summary').click();
-    await page.getByRole('link', { name: '系统状态', exact: true }).scrollIntoViewIfNeeded();
-    await expect(page.getByRole('link', { name: '系统状态', exact: true })).toBeInViewport();
+    await page.getByRole('link', { name: '开发者文档', exact: true }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole('link', { name: '开发者文档', exact: true })).toBeInViewport();
     await page.locator('.nav-tools summary').click();
     await page.getByLabel('用户名').scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath(`login-${viewport.width}.png`), fullPage: true, animations: 'disabled' });
@@ -84,8 +84,8 @@ test('failed page chunk keeps the shell usable and another route recovers', asyn
   await expect(page.getByRole('heading', { name: '页面暂时无法显示' })).toBeVisible();
   await expect(page.getByRole('button', { name: '重新加载页面' })).toBeVisible();
   await page.locator('.nav-tools summary').click();
-  await page.getByRole('link', { name: '系统状态', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '系统状态', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '开发者文档', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '开发者中心', exact: true })).toBeVisible();
   await expect(page.locator('main')).toBeFocused();
   await page.unroute(loginChunk);
   await page.goto('/login');

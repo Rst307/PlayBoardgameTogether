@@ -3,6 +3,7 @@ import type pg from 'pg';
 import {
   socialPersonSchema, socialIdentitySchema, socialOverviewSchema, friendshipSchema,
   socialMessageSchema, messagePageSchema, friendInviteSchema, socialDoneSchema,
+  socialSettingsSchema, type SocialSettingsInput,
   type FriendshipCommand, type FriendInviteCommand,
 } from '@boardgame/protocol';
 import type { AuthContext } from '../auth.js';
@@ -24,6 +25,44 @@ const fingerprint = (value: unknown) => createHash('sha256').update(canonical(va
 
 export class SocialService {
   constructor(private db: Database, private rooms: RoomService) {}
+
+  private async identity(client: Client, accountId: string) {
+    const result = await client.query(`SELECT friend_id AS "friendId",social_revision AS revision,
+      s.friend_id_change_days AS "changeIntervalDays",
+      CASE WHEN friend_id_changed_at IS NULL OR s.friend_id_change_days=0 THEN NULL
+        ELSE friend_id_changed_at + s.friend_id_change_days * interval '24 hours' END AS next_change_at,
+      (friend_id_changed_at IS NULL OR s.friend_id_change_days=0 OR
+        clock_timestamp() >= friend_id_changed_at + s.friend_id_change_days * interval '24 hours') AS "canChange"
+      FROM accounts CROSS JOIN social_settings s WHERE id=$1`, [accountId]);
+    const row = result.rows[0];
+    return socialIdentitySchema.parse({ ...row, nextChangeAt: row.next_change_at?.toISOString() ?? null });
+  }
+
+  private async assertAdministrator(client: Client, current: AuthContext) {
+    const actor = await client.query('SELECT role FROM accounts WHERE id=$1', [current.account.id]);
+    if (actor.rows[0]?.role !== 'administrator') throw new AppError('FORBIDDEN', '需要管理员权限', 403);
+  }
+
+  settings(current: AuthContext) {
+    return this.read(current, async client => {
+      await this.assertAdministrator(client, current);
+      const result = await client.query('SELECT friend_id_change_days AS "friendIdChangeDays",revision FROM social_settings');
+      return socialSettingsSchema.parse(result.rows[0]);
+    });
+  }
+
+  async setSettings(current: AuthContext, input: SocialSettingsInput) {
+    return socialSettingsSchema.parse(await this.write(current, input.requestId,
+      { operation: 'settings', ...input }, async client => {
+        await this.assertAdministrator(client, current);
+        const row = await client.query('SELECT revision FROM social_settings FOR UPDATE');
+        if (row.rows[0].revision !== input.expectedRevision)
+          throw new AppError('STATE_CONFLICT', '修改间隔已变化，请刷新后重试', 409);
+        const saved = await client.query(`UPDATE social_settings SET friend_id_change_days=$1,revision=revision+1
+          RETURNING friend_id_change_days AS "friendIdChangeDays",revision`, [input.friendIdChangeDays]);
+        return saved.rows[0];
+      }, undefined, true));
+  }
 
   private async assertSession(client: Client, current: AuthContext, write: boolean) {
     const account = await client.query(
@@ -51,7 +90,7 @@ export class SocialService {
     } finally { client.release(); }
   }
 
-  private async write<T>(current: AuthContext, requestId: string, input: unknown, fn: (client: Client) => Promise<T>, roomId?: string): Promise<T | unknown> {
+  private async write<T>(current: AuthContext, requestId: string, input: unknown, fn: (client: Client) => Promise<T>, roomId?: string, administrator = false): Promise<T | unknown> {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
@@ -63,14 +102,22 @@ export class SocialService {
         if (!room.rowCount) throw new AppError('ROOM_NOT_FOUND', '房间不存在', 404);
       }
       await this.assertSession(client, current, true);
+      if (administrator) await this.assertAdministrator(client, current);
       const hash = fingerprint(input);
       const old = await client.query<{ input_hash: string; result: unknown }>(
         'SELECT input_hash,result FROM social_command_receipts WHERE account_id=$1 AND request_id=$2', [current.account.id, requestId],
       );
       if (old.rowCount) {
         if (old.rows[0]!.input_hash !== hash) throw new AppError('REQUEST_ID_CONFLICT', '请求编号已用于其他内容', 409);
+        // Receipts written before policy metadata existed retain their original
+        // ID/revision, with current eligibility added for the new DTO.
+        let result = old.rows[0]!.result;
+        if (input && typeof input === 'object' && 'operation' in input && input.operation === 'id'
+          && result && typeof result === 'object' && !('canChange' in result)) {
+          result = { ...await this.identity(client, current.account.id), ...result };
+        }
         await client.query('COMMIT');
-        return old.rows[0]!.result;
+        return result;
       }
       const quota = await client.query<{ count: string }>(
         "SELECT count(*) FROM social_command_receipts WHERE account_id=$1 AND created_at>now()-interval '1 minute'", [current.account.id],
@@ -112,7 +159,7 @@ export class SocialService {
   overview(current: AuthContext) {
     return this.read(current, async client => {
       const accountId = current.account.id;
-      const identity = await client.query('SELECT friend_id AS "friendId", social_revision AS revision FROM accounts WHERE id=$1', [accountId]);
+      const identity = await this.identity(client, accountId);
       const relations = await client.query<PersonRow & Relation & { unread: number }>(
         `SELECT a.id,a.friend_id AS "friendId",a.display_name AS "displayName",a.avatar,f.status,f.requested_by,f.revision,
          (SELECT count(*)::int FROM direct_messages m WHERE m.sender_id=a.id AND m.recipient_id=$1
@@ -127,7 +174,7 @@ export class SocialService {
       const items = relations.rows.map(row => ({ person: socialPersonSchema.parse(row), status: row.status, revision: row.revision, direction: row.requested_by === accountId ? 'outgoing' : 'incoming', unread: row.unread }));
       const invites = [];
       for (const item of invitations.rows) invites.push(await this.invitation(client, item.id, accountId));
-      return socialOverviewSchema.parse({ identity: identity.rows[0], friends: items.filter(item => item.status === 'accepted'), requests: items.filter(item => item.status === 'pending'), invitations: invites });
+      return socialOverviewSchema.parse({ identity, friends: items.filter(item => item.status === 'accepted'), requests: items.filter(item => item.status === 'pending'), invitations: invites });
     });
   }
 
@@ -142,10 +189,13 @@ export class SocialService {
     return socialIdentitySchema.parse(await this.write(current, input.requestId, { operation: 'id', ...input }, async client => {
       const row = await client.query<{ friend_id: string; social_revision: number }>('SELECT friend_id,social_revision FROM accounts WHERE id=$1 FOR UPDATE', [current.account.id]);
       if (row.rows[0]!.social_revision !== input.expectedRevision) throw new AppError('STATE_CONFLICT', '好友 ID 已变更，请刷新', 409);
+      const identity = await this.identity(client, current.account.id);
+      if (row.rows[0]!.friend_id === input.friendId) return identity;
+      if (!identity.canChange) throw new AppError('RATE_LIMITED', `好友 ID 每 ${identity.changeIntervalDays} 天可修改一次，下次可修改时间：${identity.nextChangeAt}`, 429);
       const owner = await client.query('SELECT 1 FROM accounts WHERE friend_id=$1 AND id<>$2', [input.friendId, current.account.id]);
       if (owner.rowCount) throw new AppError('STATE_CONFLICT', '这个好友 ID 已被使用', 409);
-      const updated = await client.query('UPDATE accounts SET friend_id=$2,social_revision=social_revision+1 WHERE id=$1 RETURNING friend_id AS "friendId",social_revision AS revision', [current.account.id, input.friendId]);
-      return updated.rows[0];
+      await client.query('UPDATE accounts SET friend_id=$2,social_revision=social_revision+1,friend_id_changed_at=clock_timestamp() WHERE id=$1', [current.account.id, input.friendId]);
+      return this.identity(client, current.account.id);
     }));
   }
 

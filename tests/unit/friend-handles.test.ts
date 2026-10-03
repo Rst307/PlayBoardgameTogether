@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { friendIdInputValueSchema, friendIdSchema, formatFriendId } from '../../packages/protocol/src/social.js';
+import { friendIdInputValueSchema, friendIdSchema, formatFriendId, socialSettingsInputSchema } from '../../packages/protocol/src/social.js';
 
 describe('custom @friend handles', () => {
   it('accepts optional @ and canonicalizes the same account handle', () => {
@@ -15,5 +15,15 @@ describe('custom @friend handles', () => {
       expect(friendIdInputValueSchema.safeParse(input).success).toBe(false);
     }
     expect(friendIdInputValueSchema.parse('@' + 'a'.repeat(36))).toBe('a'.repeat(36));
+  });
+
+  it('accepts only bounded integer day policies and strict command metadata', () => {
+    const command = { requestId: '00000000-0000-4000-8000-000000000001', expectedRevision: 1, friendIdChangeDays: 0 };
+    expect(socialSettingsInputSchema.parse(command).friendIdChangeDays).toBe(0);
+    expect(socialSettingsInputSchema.parse({ ...command, friendIdChangeDays: 3650 }).friendIdChangeDays).toBe(3650);
+    for (const value of [-1, 3651, 0.5, '7']) {
+      expect(socialSettingsInputSchema.safeParse({ ...command, friendIdChangeDays: value }).success).toBe(false);
+    }
+    expect(socialSettingsInputSchema.safeParse({ ...command, accountId: command.requestId }).success).toBe(false);
   });
 });

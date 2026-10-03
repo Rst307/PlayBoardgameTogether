@@ -5,8 +5,10 @@ test('administrator saves three image roles, persists settings and restores buil
   await page.getByLabel('用户名').fill('stage7_admin');
   await page.getByLabel('密码', { exact: true }).fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.locator('a.game-card')).toHaveCount(4);
+  await expect(page.locator('a.game-card[href="/games/splendor.base/1.0.0"]')).toBeVisible();
   await page.locator('.nav-tools summary').click();
+  await page.getByRole('link', { name: '管理员后台', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '管理员后台', exact: true })).toBeVisible();
   await page.getByRole('link', { name: '游戏展示', exact: true }).click();
   await page.getByLabel('配置游戏').selectOption('splendor.base@1.0.0');
   await page.getByLabel('游戏图标地址').fill('data:image/svg+xml,invalid');

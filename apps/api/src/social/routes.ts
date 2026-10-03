@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   friendIdInputValueSchema, friendIdInputSchema, friendRequestInputSchema, friendshipCommandSchema,
   messageInputSchema, socialPageQuerySchema, readMessagesInputSchema,
-  friendInviteInputSchema, friendInviteCommandSchema,
+  friendInviteInputSchema, friendInviteCommandSchema, socialSettingsInputSchema,
 } from '@boardgame/protocol';
 import type { AuthService } from '../auth.js';
 import { AppError } from '../errors.js';
@@ -20,6 +20,13 @@ export function registerSocialRoutes(app: FastifyInstance, auth: AuthService, se
   const peer = (request: FastifyRequest) => z.object({ id: z.string().uuid() }).strict().parse(request.params).id;
   const ok = (request: FastifyRequest, data: unknown) => ({ ok: true, data, traceId: request.id });
   const searches = new Map<string, { since: number; count: number }>();
+  const administrator = async (request: FastifyRequest, write = false) => {
+    const context = await current(request, write);
+    if (context.account.role !== 'administrator') throw new AppError('FORBIDDEN', '需要管理员权限', 403);
+    return context;
+  };
+  app.get('/api/v1/admin/social-settings', async request => ok(request, await service.settings(await administrator(request))));
+  app.put('/api/v1/admin/social-settings', async request => ok(request, await service.setSettings(await administrator(request, true), socialSettingsInputSchema.parse(request.body))));
   app.get('/api/v1/social', async request => ok(request, await service.overview(await current(request))));
   app.get('/api/v1/social/search', async request => {
     const context = await current(request);

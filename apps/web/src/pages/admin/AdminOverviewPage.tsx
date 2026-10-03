@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { PageFeedback } from '@boardgame/ui';
 import { api } from '../../platform.js';
 import { AdminLayout, adminError } from './AdminLayout.js';
+import { SocialSettingsPanel } from './SocialSettingsPanel.js';
 
 function Overview() {
   const [data, setData] =
@@ -88,6 +89,7 @@ export function AdminOverviewPage() {
       description="管理玩家、游戏版本与接入申请。"
     >
       <Overview />
+      <SocialSettingsPanel />
     </AdminLayout>
   );
 }

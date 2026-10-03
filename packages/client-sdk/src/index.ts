@@ -19,12 +19,21 @@ import {
   friendRequestInputSchema, friendshipSchema, friendshipCommandSchema, socialDoneSchema,
   messagePageSchema, messageInputSchema, socialMessageSchema, readMessagesInputSchema,
   friendInviteInputSchema, friendInviteSchema, friendInviteCommandSchema,
+  socialSettingsSchema, socialSettingsInputSchema, type SocialSettingsInput,
   type FriendshipCommand, type FriendInviteCommand,
 } from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async socialSettings() {
+    return socialSettingsSchema.parse(await this.request<unknown>('/admin/social-settings'));
+  }
+  async setSocialSettings(input: SocialSettingsInput) {
+    return socialSettingsSchema.parse(await this.request<unknown>('/admin/social-settings', {
+      method: 'PUT', body: JSON.stringify(socialSettingsInputSchema.parse(input)),
+    }));
+  }
   async social(signal?: AbortSignal) {
     return socialOverviewSchema.parse(await this.request<unknown>('/social', signal ? { signal } : undefined));
   }
