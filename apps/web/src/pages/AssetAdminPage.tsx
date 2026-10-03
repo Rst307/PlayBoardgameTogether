@@ -11,10 +11,22 @@ import { api, command } from "../platform.js";
 import { AssetResolver } from "../assets/resolver.js";
 import { AudioManager } from "../assets/audio-manager.js";
 import { assetPreviews } from "../game-registry.js";
+import { AdminLayout } from './admin/AdminLayout.js';
 
 export function AssetAdminPage() {
-  const [authorized, setAuthorized] = useState(false),
-    [error, setError] = useState(""),
+  return (
+    <AdminLayout
+      path="/admin/assets"
+      title="图片与短音效"
+      description="上传、映射、校验，再发布一个不可变版本。"
+    >
+      <AssetWorkspace />
+    </AdminLayout>
+  );
+}
+
+function AssetWorkspace() {
+  const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [drafts, setDrafts] = useState<AssetDraft[]>([]),
     [versions, setVersions] = useState<AssetVersionInfo[]>([]);
@@ -71,14 +83,8 @@ export function AssetAdminPage() {
   }
   useEffect(() => {
     let disposed = false;
-    void api
-      .me<{ account: { role: string } }>()
-      .then(async (value) => {
-        if (disposed) return;
-        if (value.account.role !== "administrator")
-          throw new Error("需要管理员权限");
-        setAuthorized(true);
-        const contracts = await api.assets.contracts();
+    void api.assets.contracts()
+      .then(async (contracts) => {
         if (disposed) return;
         setContracts(contracts);
         await reload();
@@ -192,21 +198,11 @@ export function AssetAdminPage() {
     JSON.stringify(draft.manifest) !== JSON.stringify(manifest);
   return (
     <>
-      <a href="/admin">← 返回管理员后台</a>
-      <section className="page-heading">
-        <div>
-          <p className="eyebrow">管理员 · 资源工作室</p>
-          <h1>图片与短音效</h1>
-          <p>上传、映射、校验，再发布一个不可变版本。</p>
-        </div>
-      </section>
       {error && (
         <p className="error-notice" role="alert">
           {error}
         </p>
       )}
-      {authorized && (
-        <>
           <section className="panel">
             <h2>已发布资源</h2>
             <div className="asset-table-scroll">
@@ -711,8 +707,6 @@ export function AssetAdminPage() {
               )}
             </section>
           )}
-        </>
-      )}
     </>
   );
 }

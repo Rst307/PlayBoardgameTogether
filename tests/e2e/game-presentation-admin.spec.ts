@@ -58,6 +58,6 @@ test('ordinary accounts cannot edit game presentation', async ({ page }) => {
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await page.goto('/admin/games');
-  await expect(page.getByText('需要管理员权限才能设置游戏展示图片。')).toBeVisible();
+  await expect(page.getByText('请使用管理员账户登录后访问后台。')).toBeVisible();
   await expect(page.getByRole('button', { name: '保存展示图片' })).toHaveCount(0);
 });

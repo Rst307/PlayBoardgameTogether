@@ -139,6 +139,8 @@ test('ordinary players cannot access administrator controls', async ({
     '/admin/accounts',
     '/admin/catalog',
     '/admin/submissions',
+    '/admin/games',
+    '/admin/assets',
   ]) {
     await page.goto(path);
     await expect(

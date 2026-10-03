@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { z } from 'zod';
 import { ApiError } from '@boardgame/client-sdk';
 import { PageFeedback } from '@boardgame/ui';
 import { gamePresentationInputSchema, publicImageUrlSchema } from '@boardgame/protocol';
@@ -7,8 +6,8 @@ import { api, navigate } from '../platform.js';
 import { loadGames, type AvailableGame } from './game-catalog.js';
 import { defaultGameArt } from './catalog-art.js';
 import { GameArtwork } from './GameArtwork.js';
+import { AdminLayout } from './admin/AdminLayout.js';
 
-const meSchema = z.object({ account: z.object({ role: z.enum(['user', 'administrator']) }) });
 const fields = [
   { key: 'iconUrl', label: '游戏图标地址', hint: '方形图片，用于卡片与游戏标题。' },
   { key: 'coverUrl', label: '大厅封面地址', hint: '建议 16:9 横图，用于游戏大厅。' },
@@ -18,9 +17,20 @@ type ImageDraft = { iconUrl: string; coverUrl: string; backgroundUrl: string };
 const emptyDraft: ImageDraft = { iconUrl: '', coverUrl: '', backgroundUrl: '' };
 
 export function GamePresentationAdminPage() {
+  return (
+    <AdminLayout
+      path="/admin/games"
+      title="游戏展示"
+      description="设置游戏图标、大厅封面与详情背景。"
+    >
+      <GamePresentationEditor />
+    </AdminLayout>
+  );
+}
+
+function GamePresentationEditor() {
   const [games, setGames] = useState<AvailableGame[]>();
   const [choice, setChoice] = useState('');
-  const [allowed, setAllowed] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -32,12 +42,7 @@ export function GamePresentationAdminPage() {
   useEffect(() => {
     let disposed = false;
     active.current = true; setLoadError('');
-    void api.me<unknown>().then(raw => {
-      const me = meSchema.parse(raw);
-      if (disposed) return;
-      if (me.account.role !== 'administrator') { setLoadError('需要管理员权限才能设置游戏展示图片。'); return; }
-      setAllowed(true);
-      return loadGames().then(items => {
+    void loadGames().then(items => {
         if (disposed) return;
         const selected = items.find(item => `${item.id}@${item.version}` === choice) ?? items[0];
         setGames(items);
@@ -49,7 +54,6 @@ export function GamePresentationAdminPage() {
         });
         setError('');
         setNotice('');
-      });
     }).catch(cause => {
       if (disposed) return;
       if (cause instanceof ApiError && cause.code === 'UNAUTHENTICATED') navigate('/login');
@@ -92,11 +96,9 @@ export function GamePresentationAdminPage() {
   }
 
   if (loadError) return <PageFeedback title="展示配置不可用" retry={() => setAttempt(value => value + 1)}>{loadError}</PageFeedback>;
-  if (!allowed || !games) return <PageFeedback title="正在加载展示配置…" loading />;
+  if (!games) return <PageFeedback title="正在加载展示配置…" loading />;
   const defaults = defaultGameArt(game?.id ?? '');
   return <>
-    <a href="/admin">← 返回管理员后台</a>
-    <section className="page-heading"><div><p className="eyebrow">管理员</p><h1>游戏展示</h1><p>设置游戏图标、大厅封面与详情背景。</p></div></section>
     <div className="presentation-editor">
       <form className="panel form-stack" onSubmit={save}>
         <label>配置游戏<select disabled={busy} value={choice} onChange={event => setChoice(event.target.value)}>

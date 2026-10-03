@@ -1,6 +1,7 @@
 import { openInviteJoin } from './fixtures.js';
 import { test, expect, type Page } from "./fixtures.js";
 import { demoPng } from "../../scripts/seed-assets.js";
+import { assetVersionInfoSchema } from '../../packages/protocol/src/assets.js';
 
 async function login(page: Page, name: string) {
   await page.goto("/login");
@@ -17,6 +18,12 @@ test("administrator uploads, maps, previews and publishes a real pack", async ({
   await page.goto("/admin/assets");
   await expect(page.getByRole("heading", { name: "已发布资源" })).toBeVisible();
   await page.getByText("创建资源草稿", { exact: true }).click();
+  await page.getByRole('combobox', { name: '游戏', exact: true }).selectOption('color-match');
+  const response = await page.request.get('/api/v1/assets/versions?gameId=color-match');
+  expect(response.ok()).toBe(true);
+  const versions = assetVersionInfoSchema.array().parse((await response.json()).data);
+  const paper = versions.find(version => version.packId === 'color-match.paper' && version.version === '1.0.0');
+  expect(paper).toBeDefined();
   const packId = `browser-${Date.now()}`;
   await page.getByLabel("包 ID", { exact: true }).fill(packId);
   await page.getByLabel("显示名称").fill("浏览器原创包");
@@ -24,7 +31,7 @@ test("administrator uploads, maps, previews and publishes a real pack", async ({
   await page.getByLabel("来源", { exact: true }).fill("原创程序生成");
   await page
     .getByLabel("复制现有映射")
-    .selectOption({ label: "纸张几何 · 1.0.0" });
+    .selectOption(paper!.id);
   await page.getByRole("button", { name: "创建草稿", exact: true }).click();
   await expect(page.locator(".asset-editor")).toBeVisible();
   await page.getByLabel("上传图片或短音效").setInputFiles({
@@ -176,7 +183,7 @@ test("locked image packs, actual Web Audio, duplicate live delivery and recovery
     await a.locator(".audio-controls summary").click();
     await a.getByRole("button", { name: "启用声音 / 测试声音" }).click();
     await expect.poll(count).toBe(1);
-    await a.getByLabel("游戏音量", { exact: true }).fill("0.25");
+    await a.getByRole('slider', { name: /^游戏音量/ }).fill("0.25");
     const matchUrl = a.url();
     const snapshot = await a.evaluate(async () => {
       const id = location.pathname.split("/").at(-1);
@@ -228,7 +235,7 @@ test("locked image packs, actual Web Audio, duplicate live delivery and recovery
     await a.reload();
     await expect(a.locator(".color-hand-cards button").first()).toBeVisible();
     await a.locator(".audio-controls summary").click();
-    await expect(a.getByLabel("游戏音量", { exact: true })).toHaveValue("0.25");
+    await expect(a.getByRole('slider', { name: /^游戏音量/ })).toHaveValue("0.25");
     expect(await count()).toBe(0);
     await a.getByRole("button", { name: "启用声音 / 测试声音" }).click();
     await expect.poll(count).toBe(1);

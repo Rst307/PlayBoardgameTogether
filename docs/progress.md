@@ -1,5 +1,15 @@
 # 开发进度
 
+## 后台展示与资源页面导航修复（2026-10-03）
+
+`/admin/games` 和 `/admin/assets` 接入既有 AdminLayout，共用标题、后台导航、当前栏目高亮及返回大厅入口，去掉重复标题和返回后台链接。管理员验证统一由布局完成，内容只在验证成功后挂载；展示配置加载失败仍保留后台导航。原展示编辑、资源上传/映射/预览/发布流程保留，无 API、协议或数据库变更。
+
+新增真实浏览器回归，先从后台点击游戏展示复现「后台导航」不存在，再验证两页进入、刷新、互相切换和回总览。普通账户拒绝用例覆盖两页。资源旧用例修正为明确选择 Color Match 和精确纸张图包，并按包含百分比的当前可访问名称选择游戏音量滑块，不改变业务断言或测试时限。
+
+实际验证：`pnpm typecheck`、`pnpm lint` 通过；`pnpm test tests/unit` 26 文件 / 108 项通过。通过临时本地包装脚本将 TEST_DATABASE_URL 指向独立 `boardgame_admin_navigation_test`，串行执行现有 `pnpm test:e2e` 的数据库准备、迁移、游戏与资源同步流程；未修改 `.env` 或清理开发库。第一批 `tests/e2e/admin-navigation.spec.ts tests/e2e/game-presentation-admin.spec.ts tests/e2e/admin-management.spec.ts tests/e2e/stage7-assets.spec.ts`：14 项通过，资源旧用例因默认游戏和旧音量名称产生 4 项超时。修正后专项 `tests/e2e/admin-navigation.spec.ts tests/e2e/stage7-assets.spec.ts`：桌面/Pixel 5 共 6 项全部通过（58.5 秒），追加修改的测试文件 ESLint 通过。实际检查两页桌面与手机截图，无页面横向溢出；截图保留 `.data/e2e-admin-navigation-final`，不提交生成产物。
+
+本轮为局部 Web 布局修复，未执行全量集成、全量 E2E、生产构建或实机验收；不引用历史结果作为本轮通过。下一步刷新后台，进入游戏展示或资源管理即可通过同一后台导航切换。
+
 ## 花砖物语计分节奏小幅加速（2026-10-03）
 
 按试玩反馈将落砖/每段/末尾停留从 450/1100/1000ms 调为 300/800/600ms：单项约 1.7 秒、交叉连线约 2.5 秒。缩短落砖、数字弹跳、墙线闪光与碎光，保留墙面弹动字符串、逐步累加、上飘消失和减少动态效果，不增加面板或设置。
