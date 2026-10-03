@@ -121,9 +121,12 @@ export function RoomPage({id}:{id:string}){
           <h1>{room.name}</h1>
           <p>{gameName || room.gameId} · {room.seatCount} 人桌 · {room.members.length} 位成员</p>
         </div>
-        <span className={`status ${connected ? 'status--ok' : 'status--warn'}`}>
-          {connected ? '实时同步' : '连接中断，状态可能过期'}
-        </span>
+        <div className="room-heading-actions">
+          <span className={`status ${connected ? 'status--ok' : 'status--warn'}`}>
+            {connected ? '实时同步' : '连接中断，状态可能过期'}
+          </span>
+          {!playing && <button className="secondary" disabled={disabled} onClick={() => void run('leave', 'POST')}>退出房间</button>}
+        </div>
       </section>
       {error && <p className="error-notice" role="alert">{error}</p>}
       {completedMatchId && <section className="round-complete" aria-label="本局已结束">
@@ -225,7 +228,6 @@ export function RoomPage({id}:{id:string}){
           <summary>更多操作</summary>
           <fieldset className="room-fieldset room-support-body form-stack" disabled={disabled}>
             {waiting && mine && <button className="secondary" onClick={() => void run('my-seat', 'DELETE')}>离座</button>}
-            {!playing && <button className="secondary" onClick={() => void run('leave', 'POST')}>退出房间</button>}
             {room.permissions.isHost && waiting && room.members.length > 1 && <details className="room-disclosure">
               <summary>转让房主</summary>
               <p className="muted">将房间管理交给另一位成员。</p>
