@@ -1,5 +1,20 @@
 # 开发进度
 
+## Linux 一键公网部署入口（2026-10-03）
+
+新增根目录 `deploy.sh`、`compose.prod.yml`、Caddy 静态镜像及 [部署指南](deployment.md)。首次填写域名后保存独立生产配置和随机数据库密码/模型主密钥；后续保留密钥，复用既有构建、迁移、游戏及资源同步，安装 systemd 用户 API 服务并检查公网 HTTPS/数据库就绪。提供 admin/status/logs/backup/stop；管理员密码不回显，通过 stdin 交给现有 CLI。开发 `.env` 和数据库不变。更新及显式备份会停服，先备份 PostgreSQL、资源及原主密钥，互斥锁拒绝同时维护；失败不删除卷、不自动降级数据库。资源同步改在独立生产目录调用现有 tsx CLI，并清除开发 TTS 路径，不隐式导入本机商业图包。
+
+自动审批拒绝了初稿的 API 容器 Docker socket 挂载，原因是扩大宿主机控制权限；该初稿未应用。最终 API 在宿主机使用部署账户已有本机 Docker 权限，沿用原有无网络、无挂载、非 root 的媒体处理器，不新增 Docker 权限或远程控制接口。数据库和 Caddy 由 Compose 管理，API 3301 / PostgreSQL 5435 仅绑定回环；网站镜像只含生产静态文件，排除 sourcemap。
+
+本轮实际验证：
+
+- `pnpm typecheck`、`pnpm lint`、`pnpm build` 均通过，包含 20 源目录 AST 边界、生产浏览器 bundle 和编译后 API/隔离 ZIP runtime 检查。未修改业务 TypeScript。
+- Linux Python 容器中 `bash -n deploy.sh` 和 `tests/deployment/deploy.test.sh` 通过；6 组流程覆盖首次部署/生产配置/600 权限、密钥保留与停服备份顺序、迁移失败阻止启动、HTTPS 失败不报告成功、显式备份恢复运行状态、非法域名及维护互斥。Docker/systemd/迁移/公网请求在这些流程测试中使用命令替身，不计为真实服务器安装。最后资源目录隔离改动后再次执行脚本验证。
+- `docker compose -f compose.prod.yml config --quiet` 通过；真实 `docker build -f deploy/Dockerfile` 和 `caddy validate` 通过。临时本机 18080 的实际 Caddy 容器验证主页、SPA 深链刷新、公开 SDK/指南下载及 API 故障返回 502 而非 SPA；检查 `/srv` 无 sourcemap、`.env` 或 API 源码。临时容器已移除。
+- 使用全新 `boardgame-deploy-check` Compose 项目/卷和独立 5435/3301 端口，实际执行 001–025 迁移、游戏同步、真实隔离媒体资源同步及重复同步，编译后生产 API `/health/ready` 返回 ready。首次原生资源检查也读到了开发目录现有 TTS 图包，仅写入此独立临时数据库/资源目录；据此调整最终部署入口隔离工作目录，并新增命令替身断言验证清除 TTS 配置。测试后只清理本轮创建的数据库容器/卷，未清理开发库或用户素材。
+
+限制：本机为 Windows/Docker Desktop，没有真实 Linux systemd 用户服务和公网域名；用户服务安装/重启/SSH 退出后存活、公网 DNS/证书申请、真实 HTTPS 登录/WS 和完整备份恢复演练尚未在目标服务器验收。未运行全套业务集成/E2E，既有业务无变更。程序要求预先准备 Node 22、pnpm 11、Docker Compose、systemd linger、域名解析与 80/443；更新有维护窗口，无零停机或自动数据库回滚。下一步在目标 Linux 服务器按部署指南执行 `bash deploy.sh` 并完成上述实机验收。
+
 ## 新建房间与候场页面优化（2026-10-03）
 
 先梳理两页的目标、常驻功能、辅助入口、信息层级与流程，再调整界面。建房改为窄表单，高级规则 JSON 默认折叠；非法 JSON 显示明确提示并保留输入，创建期间锁定字段、卸载后不更新状态。房间标题展示游戏名称，版本移到辅助信息，不常驻展示 revision 和脚本策略代码。准备区位于标题下方，未准备时突出准备，房主准备后突出开始游戏；座位与真人/AI 准备数量、候场成员、在线状态和开局阻塞原因持续可见。

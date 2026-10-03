@@ -1,5 +1,9 @@
 # 架构
 
+## Linux 生产部署入口（2026-10-03）
+
+`deploy.sh` 编排独立生产配置、Compose PostgreSQL/HTTPS 入口、原有迁移/游戏/资源同步及 systemd 用户 API 服务；业务模块和协议不变。生产 API 在宿主机当前部署账户运行，使用其已有本机 Docker 权限调用原有隔离媒体处理器，网站容器不挂载 Docker socket。Caddy 通过 Linux host 网络访问回环 API 3301，生产 PostgreSQL 仅发布回环 5435；开发环境继续使用原配置。网站只复制 Web 构建文件并排除 sourcemap。生产资源和主密钥保存在私有 `.data/deploy`，更新迁移前停服备份；仍为单 API、需要维护窗口，无自动数据库降级或零停机承诺。使用与信任边界见 [部署指南](deployment.md)。
+
 ## 花砖计分移动与节拍音效（2026-10-03）
 
 AzulBoard 只使用公开 round.scored 重建待结算满行，TileFlight 测量当前板内源/目标格，通过独立无点击飞行层移动，落位后显示权威分步得分。clientGames 的可选 boardAudio 装配 PresentationAudioPort；MatchPage 授权 PresentationConsumer 接受的可播放 live eventId，BoardAudio 绑定 AudioManager 的失效世代并有界去重。游戏只决定时点，统一播放器继续管理资源、静音、owner、后台和断线取消；教程不提供回调。没有变更服务端规则/摘要、投影/网络 schema、数据库或不可变图包。

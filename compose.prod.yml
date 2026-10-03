@@ -1,0 +1,41 @@
+name: boardgame-production
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: boardgame
+      POSTGRES_DB: boardgame
+      POSTGRES_PASSWORD: ${BOARDGAME_DB_PASSWORD:?Run bash deploy.sh first}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U boardgame -d boardgame"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: boardgame-production-web:local
+    environment:
+      BOARDGAME_DOMAIN: ${BOARDGAME_DOMAIN:?Run bash deploy.sh first}
+    # Linux host networking reaches the API on loopback without publishing its port.
+    network_mode: host
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  postgres:
+  caddy-data:
+  caddy-config:
