@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
 export { ColorAssetPreview } from './preview.js';
+export { colorMatchTutorial } from './tutorial.js';
 import { publicEventSchema, viewSchema, type ColorAction, type ColorView, type Card } from '../shared/index.js';
 
 const colorNames = { red: '红', blue: '蓝', yellow: '黄', green: '绿' };

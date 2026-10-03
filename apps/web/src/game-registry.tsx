@@ -1,5 +1,6 @@
 import { viewSchema as splendorViewSchema } from '@boardgame/splendor/shared';
 import type { ReactNode } from 'react';
+import type { GameTutorial } from '@boardgame/game-sdk/tutorial';
 import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
 import { viewSchema as counterViewSchema } from '@boardgame/test-counter/shared';
 import { viewSchema as colorViewSchema } from '@boardgame/color-match/shared';
@@ -47,6 +48,18 @@ export const clientGames = [
 
 export function clientGame(id: string, version: string) {
   return clientGames.find(game => game.id === id && game.version === version);
+}
+
+// Optional, exact-version authoring. Games without an entry keep their existing rules page.
+export const clientTutorials: Readonly<Record<string, () => Promise<GameTutorial>>> = {
+  'color-match@1.0.0': async () => {
+    const { colorMatchTutorial } = await import('@boardgame/color-match/client');
+    return colorMatchTutorial;
+  },
+};
+
+export function clientTutorial(id: string, version: string) {
+  return clientTutorials[`${id}@${version}`];
 }
 
 export const assetPreviews:Record<string,()=>Promise<(assets:AssetResolverPort)=>ReactNode>>={

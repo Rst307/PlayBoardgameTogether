@@ -39,6 +39,20 @@ GameBoard 在当前 Web registry 中接收 view:unknown、busy:boolean、events:
 
 扩展先使用自己的 View schema 解析，再渲染与调用 onAction。busy 时禁用提交，非法原因和可操作状态应清楚展示；桌面和手机都能完成整局，不将关键动作隐藏在 hover 中。
 
+## 可选教程接入
+
+在 client 内编写 GameTutorial（从 @boardgame/game-sdk/tutorial 导入类型），由 ./client 导出。参照 Color Match 的 client/tutorial.ts，为每课定义公开初始 View、说明和 onAction 判定；复用原桌面，不导入 server。随后在 apps/web/src/game-registry.tsx 的 clientTutorials 注册精确版本：
+
+```typescript
+// 放入 clientTutorials 对象；省略此项即可不提供教程。
+'your-game@1.0.0': async () => {
+  const { tutorial } = await import('@boardgame/your-game/client');
+  return tutorial;
+},
+```
+
+无需更改 manifest、API 或数据库。详情自动出现入口，/games/:id/:version/tutorial 确认该游戏已启用后运行。测试应覆盖教学目标未完成不能继续、多次操作、重试/完成/刷新、没有教程和版本缺失；固定练习结果与服务端规则对照，桌面及手机实际操作验证。完整契约见 [游戏 SDK](/developers/game-sdk)。
+
 ## 测试清单
 
 - 非法动作、错误阶段和错误 actor 不改变 State/RNG。

@@ -1,5 +1,18 @@
 # 游戏扩展 SDK
 
+## 可选交互教程（2026-10-03）
+
+`@boardgame/game-sdk/tutorial` 提供 `GameTutorial`、`TutorialStep`、`TutorialFrame`、`TutorialActionResult` 与进度函数。教程独立于服务端 `GameExtension` 与 manifest；开发者可以不编写，有教程才显示详情入口。教程绑定精确版本，不自动降级或使用最新版。
+
+- `GameTutorial`：标题、简介与非空的 `steps`，步骤 ID 必须唯一。
+- `TutorialStep`：`id/title/instruction`、固定 `initial: { view, events }`、可选 `focusArea`（桌面区域的 aria-label）和 `onAction({ action, frame })`。
+- 回调先用游戏 schema 解析 unknown；未达教学目标返回 `{ accepted: false, feedback }`；成功返回 `{ accepted: true, frame, complete, feedback }`。允许多次操作完成一课，例如先出数字 5 再确认目标。
+- `startTutorialStep` 克隆初始帧；`applyTutorialAction` 隔离回调输入，拒绝操作保留原帧，完成后忽略重复操作。完成当前课后由玩家主动点击下一步。
+
+在游戏 client 入口导出教程，再在 `apps/web/src/game-registry.tsx` 的 `clientTutorials['gameId@version']` 注册异步 loader。已有 `clientGame` 的 GameBoard 会直接绘制练习 View 并收取本地 onAction，不需要平台理解游戏动作。完整实例见 `games/color-match/src/client/tutorial.ts`。
+
+只提供公开固定场景与投影格式事件，禁止嵌入真实对局完整 State、他人秘密、session 或密钥，禁止调用正式动作 API 或把练习当真实成绩。教程不是一套正式规则执行器；固定结果必须用测试与真实游戏规则对照。当前支持单人分步练习、重试/上一步/重新开始，无账号进度保存、教程编辑器或自由练习对局；刷新从头开始。
+
 扩展实现 `GameExtension<State, Options, Action, View, InternalEvent, PublicEvent>`，包含 manifest、options/action 运行时校验、setup、玩家视图、动作说明、服务端校验与转换、事件投影、结局、序列化、恢复和 AI 合法兜底。支持脚本 AI 的扩展另实现 `getDecisionContext`，返回当前座位的稳定 decisionKey 与完整合法候选；无行动需求返回 null。若同一快照可以等待多个席位，再实现可选 `MultiActorDecisionRequests<State>`，返回所有 `{seatId, decisionKey}`。这只描述需求，不替代 revision、参与者身份或 controller epoch 授权。
 
 State 只在服务端存在；View 是面向一个身份单独构造的类型。内部事件必须经 `projectEvents` 过滤后才能发给客户端。动作列表用于交互提示，不替代 `validateAction`。

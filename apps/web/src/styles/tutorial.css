@@ -1,0 +1,21 @@
+.tutorial-entry, .tutorial-toolbar, .tutorial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tutorial-entry { margin-block: 20px; }
+.tutorial-entry h2, .tutorial-entry p { margin-block: 4px; }
+.tutorial-page { max-width: 1120px; margin-inline: auto; }
+.tutorial-toolbar { margin-bottom: 20px; }
+.tutorial-guide { margin-block: 20px; border-color: var(--accent); }
+.tutorial-guide progress { width: 100%; height: 6px; accent-color: var(--accent); }
+.tutorial-actions { justify-content: flex-start; }
+.tutorial-feedback { min-height: 1.5em; }
+.tutorial-board [data-tutorial-target] { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tutorial-board { min-width: 0; }
+@media (max-width: 600px) {
+  .tutorial-entry { align-items: flex-start; }
+  .tutorial-actions button, .tutorial-actions .button-link { flex: 1 1 120px; }
+}

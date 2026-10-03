@@ -8,6 +8,7 @@ export const publicSdkFiles = [
   'packages/game-sdk/src/index.ts',
   'packages/game-sdk/src/assets.ts',
   'packages/game-sdk/src/multi-action.ts',
+  'packages/game-sdk/src/tutorial.ts',
   'packages/client-sdk/package.json',
   'packages/client-sdk/src/index.ts',
   'packages/client-sdk/src/assets.ts',

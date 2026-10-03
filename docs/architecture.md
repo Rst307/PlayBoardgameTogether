@@ -1,5 +1,11 @@
 # 架构
 
+## 可选交互教程（2026-10-03）
+
+`game-sdk/tutorial` 定义公开练习帧、步骤、动作反馈与纯进度转换；不依赖 React 或具体游戏规则。Web `game-registry.tsx` 的 `clientTutorials` 按精确 gameId@version 装配可选异步教程，详情仅在提供教程时显示入口。`/games/:id/:version/tutorial` 按页加载，先确认公开目录仍启用该版本，再加载原 GameBoard 与教程。TutorialPlayer 管理步骤、重试、进度、高亮和完成返回；练习操作只调用扩展教程回调。刷新重新开始，不持久化完成记录。
+
+Color Match 的 `client/tutorial.ts` 只使用固定公开练习 View 和投影格式事件；游戏语义与动作解析由扩展拥有。客户端不导入 server、不读取正式 State、不调用正式动作 API、不创建练习房间，不改变既有规则 manifest/源码摘要、对局事务或权限。单元测试将每步动作和 View/事件与真实 server 规则对照，防止练习漂移；正式规则仍只在 server 执行。公开 SDK 白名单包含教程契约源码，开发者可选择不注册教程。
+
 ## 游戏目录与详情入口（2026-10-02）
 
 首页的 GameCatalog 消费既有公开游戏目录，经本地 Zod schema 解析 unknown，排除 developmentOnly；登录与未登录页面共用目录。`/games/:id/:version` 按页加载 GameDetailPage，`/games/:id/:version/new` 复用 NewRoomPage/RoomCreateForm 并带入精确目录版本，缺失时禁用创建而不自动换版本；旧 `/rooms/new` 保留兼容。navigation 的页面链接白名单包含新路由，延续 history、焦点及无刷新导航。

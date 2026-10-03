@@ -1,6 +1,16 @@
 # 游戏 SDK
 
-包：@boardgame/game-sdk，当前版本 0.1.0。入口为根包、/assets、/multi-action。浏览器只引用公开类型和资源端口，游戏完整 State 留在 server 入口。
+包：@boardgame/game-sdk，当前版本 0.1.0。入口为根包、/assets、/multi-action、/tutorial。浏览器只引用公开类型和资源端口，游戏完整 State 留在 server 入口。
+
+## 可选交互教程
+
+开发者可自由选择编写教程。只有 Web 注册表按 gameId@version 注册教程后，游戏详情才显示「进入教程」。教程无需登录，复用原游戏桌面，操作成功后才允许下一步，支持重试、返回上一步和重新开始；刷新会从头开始，不创建正式房间或保存成绩。
+
+契约见 [教程 SDK 源码](/developer-sdk/packages/game-sdk/src/tutorial.ts)：GameTutorial 包含 title、description 与非空 steps（步骤 ID 唯一）。每个 TutorialStep 定义 id、title、instruction、initial 的公开 view/events、可选 focusArea（桌面区域的 aria-label）以及 onAction({ action, frame })。
+
+回调通过游戏 schema 解析 unknown 动作和 View。未达目标返回 { accepted:false, feedback }；成功返回 { accepted:true, frame:{ view, events }, complete, feedback }。complete=false 可继续接收操作，适用于先出牌再选目标的多步教学；complete=true 才允许玩家主动进入下一课。每个场景独立，不强制沿用上一课的桌面。
+
+startTutorialStep 克隆初始练习帧，applyTutorialAction 隔离回调输入；拒绝操作不改变场景，完成后忽略重复操作。练习只能含开发者编写的公开固定数据与投影格式事件，不能嵌入正式 State、他人秘密、账号或凭据，不能提交正式动作或调用模型。固定结果需用测试与真实规则对照。当前实例是 games/color-match/src/client/tutorial.ts，其他游戏可不提供教程。
 
 ## 核心契约
 
