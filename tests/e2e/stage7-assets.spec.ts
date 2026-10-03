@@ -150,6 +150,7 @@ test("locked image packs, actual Web Audio, duplicate live delivery and recovery
     await a.getByLabel("游戏与版本").selectOption("color-match@1.0.0");
     await a.getByLabel("房间名").fill("声音与图片验收");
     await a.getByRole("button", { name: "创建并生成邀请码" }).click();
+    await a.getByText("房间设置", { exact: true }).click();
     await a
       .getByRole("combobox", { name: "资源包", exact: true })
       .selectOption({ label: "纸张几何 · 1.0.0" });

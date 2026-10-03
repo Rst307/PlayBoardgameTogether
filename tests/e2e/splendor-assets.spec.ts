@@ -14,9 +14,10 @@ test('璀璨宝石双图包：选择、图片失败回退、私密恢复及完�
   await page.getByLabel('游戏与版本').selectOption('splendor.base@1.0.0');
   await page.getByLabel('房间名').fill('宝石商会 ' + testInfo.project.name);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
-  await expect(page.getByText(/splendor.base@1.0.0/)).toBeVisible();
+  await expect(page.locator('.room-heading').getByText(/璀璨宝石/)).toBeVisible();
   await page.getByRole('button', { name: '添加脚本 AI' }).click();
   await page.getByRole('button', { name: '准备', exact: true }).click();
+  await page.getByText('房间设置', { exact: true }).click();
   const packs = page.getByLabel('资源包');
   await expect(packs.locator('option')).toHaveCount(2);
   await expect(packs.locator('option:checked')).toHaveText('原创几何 SVG · 1.0.0');

@@ -30,6 +30,7 @@ for(const started of [false,true])test(`host closes ${started?'active':'waiting'
       await expect(b).toHaveURL(/\/matches\//);
       await a.getByRole('button',{name:'返回房间'}).click();
     }
+    await a.getByText('更多操作', { exact: true }).click();
     const close=a.getByRole('button',{name:started?'强制关闭房间':'关闭房间',exact:true});
     await expect(close).toBeEnabled();
     a.once('dialog',dialog=>dialog.dismiss());

@@ -4,6 +4,7 @@ import type {AssetVersionInfo} from '@boardgame/protocol/assets';
 import { botSeatCommandSchema, type ModelProfile } from '@boardgame/protocol';
 import { BotSeatSettings } from './BotSeatSettings.js';
 import {GameRules} from './GameRules.js';
+import { loadGames, gamePath } from './game-catalog.js';
 import {mergeRoomSnapshot} from './roomSnapshot.js';
 import { PageFeedback } from '@boardgame/ui';
 import { InviteFriends } from '../social/InviteFriends.js';
@@ -17,6 +18,8 @@ export function RoomPage({id}:{id:string}){
   const[online,setOnline]=useState<string[]>([]);
   const[connected,setConnected]=useState(false);
   const[busy,setBusy]=useState(false);
+  const [gameName, setGameName] = useState('');
+  const [inviteOpen, setInviteOpen] = useState(() => { const state: unknown = history.state; return !!(state && typeof state === 'object' && 'inviteCode' in state && state.inviteCode); });
   const[players,setPlayers]=useState<{min:number;max:number}>({min:2,max:2});
   const [modelProfiles, setModelProfiles] = useState<ModelProfile[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -68,7 +71,15 @@ export function RoomPage({id}:{id:string}){
     Promise.all([api.me<any>(),api.room<any>(id)]).then(([account,snapshot])=>{if(disposed)return;setMe(account);update(snapshot);connect();}).catch(()=>{if(!disposed)setError('无法读取该私人房间。');});
     return()=>{active.current=false;disposed=true;if(retry)clearTimeout(retry);ws?.close();};
   },[id]);
-  useEffect(()=>{if(!room)return;let disposed=false;void api.games<Array<{id:string;version:string;players:{min:number;max:number}}>>().then(games=>{const game=games.find(item=>item.id===room.gameId&&item.version===room.gameVersion);if(game&&!disposed)setPlayers(game.players);}).catch(()=>undefined);return()=>{disposed=true;};},[room?.gameId,room?.gameVersion]);
+  useEffect(() => {
+    if (!room) return;
+    let disposed = false;
+    void loadGames().then(games => {
+      const game = games.find(item => item.id === room.gameId && item.version === room.gameVersion);
+      if (game && !disposed) { setPlayers(game.players); setGameName(game.name); }
+    }).catch(() => undefined);
+    return () => { disposed = true; };
+  }, [room?.gameId, room?.gameVersion]);
   async function run(path:string,method:string,extra={}){
     if(!connected||busy)return;
     setBusy(true);setError('');
@@ -79,7 +90,7 @@ export function RoomPage({id}:{id:string}){
         ?await api.saveRoomBot(id,botPath[1]!,method,botSeatCommandSchema.parse(body))
         :await api.roomCommand<any>(id,path,method,body);
       if(!active.current)return;
-      if(path==='invite'){setInvite(next.inviteCode??'');setCopyNotice(next.inviteCode?'':'本次响应无法重取原码，请重新刷新邀请码。');history.replaceState(null,'',location.href);}
+      if(path==='invite'){setInviteOpen(true);setInvite(next.inviteCode??'');setCopyNotice(next.inviteCode?'':'本次响应无法重取原码，请重新刷新邀请码。');history.replaceState(null,'',location.href);}
       if(path==='start'){enterMatch(next.matchId);return;}
       if(path==='leave'||path==='close'){returnHome();return;}
       updateRoom(next.room??next);
@@ -97,25 +108,140 @@ export function RoomPage({id}:{id:string}){
   const mine=room.seats.find((seat:any)=>seat.ownerAccountId===me.account.id);
   const waiting=room.status==='waiting';
   const playing=room.matchStatus==='active';
-  return <><section className="page-heading"><div><p className="eyebrow">{waiting?'等待开局':room.status==='closed'?'房间已关闭':'对局已创建'}</p><h1>{room.name}</h1><p>{room.gameId}@{room.gameVersion} · {room.members.length}/{room.seatCount} 人 · revision {room.roomRevision}</p></div><span className={`status ${connected?'status--ok':'status--warn'}`}>{connected?'实时同步':'连接中断，状态可能过期'}</span></section>{error&&<p className="error-notice" role="alert">{error}</p>}{invite&&waiting&&<div className="invite-box"><span>点击邀请码即可复制</span><button type="button" className="secondary" aria-label="复制邀请码" onClick={()=>void copyInvite()}><strong>{invite.match(/.{1,4}/g)?.join('-')??invite}</strong></button></div>}{copyNotice&&<p role="status">{copyNotice}</p>}{copyNotice.startsWith('复制失败')&&<label className="form-stack invite-manual">手动复制邀请码<input readOnly value={invite} onFocus={event=>event.currentTarget.select()}/></label>}<GameRules gameId={room.gameId} version={room.gameVersion}/>{playing&&<p className="muted">对局进行中，玩家不能退出；房主可强制关闭房间并终止对局。返回此页不会退出对局。</p>}
-    {completedMatchId&&<section className="round-complete panel" aria-label="本局已结束"><div><h2>本局已结束，已返回房间</h2><p>席位已保留。重新准备后，房主就能开始下一局。</p></div><a className="button-link secondary" href={`/matches/${encodeURIComponent(completedMatchId)}`}>查看本局结果</a></section>}
-    {busy&&<p className="action-hint" role="status">正在保存房间操作，请稍候…</p>}
-    {assetVersions.length>0&&<section className="panel"><h2>图片与音效</h2><p>当前：{assetVersions.find(version=>version.id===room.assetVersionId)?.name??(room.assetVersionId?'已锁定版本（可能已归档）':'历史 CSS 默认包')}</p>
-      {waiting&&room.permissions.isHost&&<label>资源包<select aria-label="资源包" value={room.assetVersionId??''} disabled={busy||!connected} onChange={event=>void run('assets','PUT',{versionId:event.target.value})}>
-        {!assetVersions.some(version=>version.id===room.assetVersionId)&&<option value={room.assetVersionId??''}>保持当前绑定</option>}
-        {assetVersions.map(version=><option value={version.id} key={version.id}>{version.name} · {version.version}</option>)}
-      </select></label>}<p className="muted">更换会取消真人准备；开局后锁定本版本。</p></section>}
-    <fieldset className="room-fieldset" disabled={!connected||busy}><div className="seat-grid">{room.seats.map((seat:any)=>{const member=room.members.find((item:any)=>item.accountId===seat.ownerAccountId);const bot=seat.occupantKind==='bot';return <article className="panel seat-card" key={seat.seatId}><p className="eyebrow">座位 {seat.seatIndex+1}</p><h2>{bot?(seat.botName??'脚本 AI'):(member?.displayName??'空座位')}</h2><p>{bot?(seat.botPolicyId==='model'?'模型 AI · 已就绪':'脚本 AI · basic-v1 · 已就绪'):<>{seat.ownerAccountId===me.account.id?'这是你 · ':''}{seat.ownerAccountId===room.hostAccountId?'房主 · ':''}{seat.ready?'已准备':'未准备'}{member?` · ${online.includes(member.accountId)?'在线':'离线'}`:''}</>}</p>{!seat.ownerAccountId&&!bot&&waiting&&<><button onClick={()=>run('my-seat','PUT',{seatIndex:seat.seatIndex})}>坐这里</button>{room.permissions.isHost&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'PUT',{policyId:'basic-v1'})}>添加脚本 AI</button>}</>}{room.permissions.isHost&&waiting&&(bot||!seat.ownerAccountId)&&<BotSeatSettings
-      key={`${seat.botPolicyId}:${seat.botModelProfileId}`} editing={bot} policyId={seat.botPolicyId} profileId={seat.botModelProfileId??null}
-      profiles={modelProfiles} loading={modelsLoading} error={modelsError} refresh={()=>setModelsRefresh(value=>value+1)}
-      save={settings=>void run(`seats/${seat.seatId}/bot`,bot?'PATCH':'PUT',settings)}
-    />}{bot&&room.permissions.isHost&&waiting&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'DELETE')}>移除 AI</button>}</article>})}</div>
-    {waiting&&<div className="panel room-actions"><h2>房间操作</h2><p className="muted">席位变更会取消真人准备，请全员入座后再准备。</p>{mine?<><button onClick={()=>run('my-ready','PUT',{ready:!mine.ready})}>{mine.ready?'取消准备':'准备'}</button><button className="secondary" onClick={()=>run('my-seat','DELETE')}>离座</button></>:<p className="muted">选择一个空座位后才能准备。</p>}{room.permissions.isHost&&<><button className="secondary" onClick={()=>run('invite','POST')}>刷新邀请码</button><button disabled={!room.permissions.canStart} onClick={()=>run('start','POST')}>开始游戏</button></>}<button className="secondary" onClick={()=>run('leave','POST')}>退出房间</button>{room.startBlockers.length>0&&<ul>{room.startBlockers.map((blocker:string)=><li key={blocker}>{blocker}</li>)}</ul>}</div>}
-    {waiting&&room.members.some((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId))&&<section className="panel waiting-members"><h2>候场成员</h2>{room.members.filter((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId)).map((member:any)=><p key={member.accountId}>{member.displayName} · 请先选择空座位</p>)}</section>}
-    {waiting && <InviteFriends roomId={id} revision={room.roomRevision} memberIds={room.members.map((member: { accountId: string }) => member.accountId)} />}
-    {room.permissions.isHost&&waiting&&<section className="panel host-tools"><h2>房主设置</h2><form className="form-stack" onSubmit={configure}><label>房间名<input name="name" defaultValue={room.name} maxLength={40}/></label><label>座位数<input name="seatCount" type="number" min={players.min} max={players.max} defaultValue={room.seatCount}/></label><button className="secondary">保存配置（规则变更会清除准备）</button></form><h3>转让房主</h3>{room.members.filter((member:any)=>member.accountId!==me.account.id).map((member:any)=><button className="secondary" key={member.accountId} onClick={()=>run('host','POST',{targetAccountId:member.accountId})}>转让给 {member.displayName}</button>)}</section>}
-    {room.permissions.isHost&&room.status!=='closed'&&<button className="danger" onClick={()=>{if(confirm(playing?'强制关闭将终止当前对局，并让所有玩家返回首页。确定关闭吗？':'确定关闭房间并返回首页吗？'))void run('close','POST');}}>{playing?'强制关闭房间':'关闭房间'}</button>}{!waiting&&!playing&&room.status!=='closed'&&<button className="secondary" onClick={()=>run('leave','POST')}>退出房间</button>}{room.activeMatchId&&room.status!=='closed'&&<button onClick={()=>navigate(`/matches/${room.activeMatchId}`)}>进入对局</button>}</fieldset>
-  </>;
+  const seated = room.seats.filter((seat: { ownerAccountId: string | null; occupantKind: string }) => seat.ownerAccountId || seat.occupantKind === 'bot').length;
+  const prepared = room.seats.filter((seat: { ready: boolean }) => seat.ready).length;
+  const primaryStart = room.permissions.isHost && mine?.ready;
+  const disabled = !connected || busy;
+  return (
+    <div className="room-page">
+      <a className="room-back" href={gamePath({ id: room.gameId, version: room.gameVersion })}>← 返回游戏详情</a>
+      <section className="page-heading room-heading">
+        <div>
+          <p className="eyebrow">{waiting ? '等待开局' : '对局进行中'}</p>
+          <h1>{room.name}</h1>
+          <p>{gameName || room.gameId} · {room.seatCount} 人桌 · {room.members.length} 位成员</p>
+        </div>
+        <span className={`status ${connected ? 'status--ok' : 'status--warn'}`}>
+          {connected ? '实时同步' : '连接中断，状态可能过期'}
+        </span>
+      </section>
+      {error && <p className="error-notice" role="alert">{error}</p>}
+      {completedMatchId && <section className="round-complete" aria-label="本局已结束">
+        <div><h2>本局已结束，已返回房间</h2><p>席位已保留，重新准备即可开始下一局。</p></div>
+        <a className="button-link secondary" href={`/matches/${encodeURIComponent(completedMatchId)}`}>查看本局结果</a>
+      </section>}
+      <fieldset className="room-fieldset" disabled={disabled}>
+        <section className="room-ready-bar" aria-label="准备与开局">
+          <div>
+            <h2>{waiting ? (mine?.ready ? '已准备，等待开局' : mine ? '准备好了吗？' : '先选一个座位') : '对局正在进行'}</h2>
+            <p className="muted">{waiting ? '席位、规则或资源包变更会取消真人准备。' : '返回此页不会退出对局。'}</p>
+            {waiting && room.startBlockers.length > 0 && <ul className="room-blockers">{room.startBlockers.map((blocker: string) => <li key={blocker}>{blocker}</li>)}</ul>}
+            {busy && <p role="status">正在保存房间操作，请稍候…</p>}
+          </div>
+          <div className="room-ready-controls">
+            {waiting && mine && <button className={mine.ready ? 'secondary' : ''} onClick={() => void run('my-ready', 'PUT', { ready: !mine.ready })}>{mine.ready ? '取消准备' : '准备'}</button>}
+            {waiting && room.permissions.isHost && <button className={primaryStart ? '' : 'secondary'} disabled={!room.permissions.canStart} onClick={() => void run('start', 'POST')}>开始游戏</button>}
+            {room.activeMatchId && <button onClick={() => enterMatch(room.activeMatchId)}>进入对局</button>}
+          </div>
+        </section>
+        <section className="room-seating" aria-labelledby="room-seats-title">
+          <div className="room-section-heading">
+            <h2 id="room-seats-title">玩家席位</h2>
+            <span className="muted">{seated}/{room.seatCount} 已入座 · {prepared}/{room.seatCount} 已准备</span>
+          </div>
+          <div className="seat-grid">
+            {room.seats.map((seat: any) => {
+              const member = room.members.find((item: any) => item.accountId === seat.ownerAccountId);
+              const bot = seat.occupantKind === 'bot';
+              const own = seat.ownerAccountId === me.account.id;
+              return <article className={`seat-card${own ? ' seat-card--mine' : ''}${!member && !bot ? ' seat-card--empty' : ''}`} key={seat.seatId}>
+                <p className="eyebrow">座位 {seat.seatIndex + 1}{own ? ' · 你' : ''}</p>
+                <h3>{bot ? (seat.botName ?? '脚本 AI') : (member?.displayName ?? '等待入座')}</h3>
+                <p className="muted">{bot ? (seat.botPolicyId === 'model' ? '模型 AI · 已就绪' : '脚本 AI · 已就绪') : member ? <>
+                  {seat.ownerAccountId === room.hostAccountId ? '房主 · ' : ''}
+                  {seat.ready ? '已准备' : '未准备'} · {online.includes(member.accountId) ? '在线' : '离线'}
+                </> : '邀请朋友，或由房主添加 AI'}</p>
+                <div className="seat-controls">
+                  {!seat.ownerAccountId && !bot && waiting && <>
+                    <button className="secondary" onClick={() => void run('my-seat', 'PUT', { seatIndex: seat.seatIndex })}>坐这里</button>
+                    {room.permissions.isHost && <button className="secondary" onClick={() => void run(`seats/${seat.seatId}/bot`, 'PUT', { policyId: 'basic-v1' })}>添加脚本 AI</button>}
+                  </>}
+                  {room.permissions.isHost && waiting && (bot || !seat.ownerAccountId) && <BotSeatSettings
+                    key={`${seat.botPolicyId}:${seat.botModelProfileId}`} editing={bot} policyId={seat.botPolicyId} profileId={seat.botModelProfileId ?? null}
+                    profiles={modelProfiles} loading={modelsLoading} error={modelsError} refresh={() => setModelsRefresh(value => value + 1)}
+                    save={settings => void run(`seats/${seat.seatId}/bot`, bot ? 'PATCH' : 'PUT', settings)}
+                    {...(bot ? { remove: () => void run(`seats/${seat.seatId}/bot`, 'DELETE') } : {})}
+                  />}
+
+                </div>
+              </article>;
+            })}
+          </div>
+          {waiting && room.members.some((member: any) => !room.seats.some((seat: any) => seat.ownerAccountId === member.accountId)) && <div className="waiting-members">
+            <h3>候场成员</h3>
+            {room.members.filter((member: any) => !room.seats.some((seat: any) => seat.ownerAccountId === member.accountId)).map((member: any) => <p key={member.accountId}>{member.displayName} · 请先选择空座位</p>)}
+          </div>}
+        </section>
+
+      </fieldset>
+      <div className="room-support">
+        {waiting && <details className="room-disclosure" open={inviteOpen} onToggle={event => setInviteOpen(event.currentTarget.open)}>
+          <summary>邀请朋友</summary>
+          <div className="room-support-body">
+            {invite ? <div className="invite-box">
+              <span>点击邀请码即可复制</span>
+              <button type="button" className="secondary" aria-label="复制邀请码" onClick={() => void copyInvite()}><strong>{invite.match(/.{1,4}/g)?.join('-') ?? invite}</strong></button>
+            </div> : <p className="muted">邀请码仅在创建或刷新时显示；也可直接邀请好友。</p>}
+            {copyNotice && <p role="status">{copyNotice}</p>}
+            {copyNotice.startsWith('复制失败') && <label className="form-stack invite-manual">手动复制邀请码<input readOnly value={invite} onFocus={event => event.currentTarget.select()} /></label>}
+            {room.permissions.isHost && <button className="secondary" disabled={disabled} onClick={() => void run('invite', 'POST')}>刷新邀请码</button>}
+            {inviteOpen && <InviteFriends roomId={id} revision={room.roomRevision} memberIds={room.members.map((member: { accountId: string }) => member.accountId)} />}
+          </div>
+        </details>}
+        <details className="room-disclosure">
+          <summary>{room.permissions.isHost ? '房间设置' : '房间信息'}</summary>
+          <div className="room-support-body">
+            <p className="muted">游戏版本：{room.gameVersion}</p>
+            {assetVersions.length > 0 && <section className="room-assets">
+              <h3>图片与音效</h3>
+              <p>当前：{assetVersions.find(version => version.id === room.assetVersionId)?.name ?? (room.assetVersionId ? '已锁定版本（可能已归档）' : '历史 CSS 默认包')}</p>
+              {waiting && room.permissions.isHost && <label className="form-stack">资源包<select aria-label="资源包" value={room.assetVersionId ?? ''} disabled={disabled} onChange={event => void run('assets', 'PUT', { versionId: event.target.value })}>
+                {!assetVersions.some(version => version.id === room.assetVersionId) && <option value={room.assetVersionId ?? ''}>保持当前绑定</option>}
+                {assetVersions.map(version => <option value={version.id} key={version.id}>{version.name} · {version.version}</option>)}
+              </select></label>}
+              <p className="muted">更换会取消真人准备；开局后锁定本版本。</p>
+            </section>}
+            {room.permissions.isHost && waiting && <form className="form-stack" onSubmit={configure}>
+              <fieldset className="room-fieldset form-stack" disabled={disabled}>
+                <label>房间名<input name="name" defaultValue={room.name} maxLength={40} required /></label>
+                <label>座位数<input name="seatCount" type="number" min={players.min} max={players.max} defaultValue={room.seatCount} required /></label>
+                <button className="secondary">保存配置（规则变更会清除准备）</button>
+              </fieldset>
+            </form>}
+          </div>
+        </details>
+        <GameRules gameId={room.gameId} version={room.gameVersion} />
+        <details className="room-disclosure">
+          <summary>更多操作</summary>
+          <fieldset className="room-fieldset room-support-body form-stack" disabled={disabled}>
+            {waiting && mine && <button className="secondary" onClick={() => void run('my-seat', 'DELETE')}>离座</button>}
+            {!playing && <button className="secondary" onClick={() => void run('leave', 'POST')}>退出房间</button>}
+            {room.permissions.isHost && waiting && room.members.length > 1 && <details className="room-disclosure">
+              <summary>转让房主</summary>
+              <p className="muted">将房间管理交给另一位成员。</p>
+              {room.members.filter((member: any) => member.accountId !== me.account.id).map((member: any) => <button className="secondary" key={member.accountId} onClick={() => {
+                if (confirm(`确定将房主转让给 ${member.displayName} 吗？`)) void run('host', 'POST', { targetAccountId: member.accountId });
+              }}>转让给 {member.displayName}</button>)}
+            </details>}
+            {room.permissions.isHost && <div className="room-danger-zone">
+              <p className="muted">{playing ? '关闭将终止当前对局，让所有玩家返回大厅。' : '关闭将让所有成员返回大厅，并释放建房名额。'}</p>
+              <button className="danger" onClick={() => {
+                if (confirm(playing ? '强制关闭将终止当前对局，并让所有玩家返回首页。确定关闭吗？' : '确定关闭房间并返回首页吗？')) void run('close', 'POST');
+              }}>{playing ? '强制关闭房间' : '关闭房间'}</button>
+            </div>}
+          </fieldset>
+        </details>
+      </div>
+    </div>
+  );
 }
-
-

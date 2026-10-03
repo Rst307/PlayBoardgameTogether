@@ -14,7 +14,7 @@ test('璀璨宝石：真人与脚本AI完成整局、私密预留刷新保留、
   await page.getByLabel('游戏与版本').selectOption('splendor.base@1.0.0');
   await page.getByLabel('房间名').fill('宝石商会 ' + testInfo.project.name);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
-  await expect(page.getByText(/splendor.base@1.0.0/)).toBeVisible();
+  await expect(page.locator('.room-heading').getByText(/璀璨宝石/)).toBeVisible();
   await page.getByRole('button', { name: '添加脚本 AI' }).click();
   await page.getByRole('button', { name: '准备', exact: true }).click();
   await page.getByRole('button', { name: '开始游戏' }).click();

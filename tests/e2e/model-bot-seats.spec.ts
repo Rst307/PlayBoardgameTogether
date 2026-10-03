@@ -35,7 +35,7 @@ test('room host adds and edits model AI, restores settings and plays to completi
   await expect(emptySeat.getByLabel('AI 类型')).toHaveValue('model');
   await emptySeat.getByLabel('AI 类型').selectOption('script');
   await emptySeat.getByRole('button', { name: '保存 AI 设置' }).click();
-  await expect(emptySeat.getByText('脚本 AI · basic-v1 · 已就绪', { exact: true })).toBeVisible();
+  await expect(emptySeat.getByText('脚本 AI · 已就绪', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '准备', exact: true })).toBeVisible();
   await emptySeat.getByText('AI 设置', { exact: true }).click();
   await emptySeat.getByLabel('AI 类型').selectOption('model');

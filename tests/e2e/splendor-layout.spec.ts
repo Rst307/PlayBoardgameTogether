@@ -13,8 +13,9 @@ test('四人璀璨宝石：五位贵族、完整市场和玩家侧栏适配小�
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: '添加脚本 AI' }).first().click();
-    await expect(page.getByRole('button', { name: '移除 AI', exact: true })).toHaveCount(i + 1);
+    await expect(page.getByRole('button', { name: '移除 AI', exact: true, includeHidden: true })).toHaveCount(i + 1);
   }
+  await page.getByText('房间设置', { exact: true }).click();
   await page.getByLabel('资源包').selectOption({ label: 'TTS 经典卡面 · 1.0.0' });
   await page.getByRole('button', { name: '准备', exact: true }).click();
   await page.getByRole('button', { name: '开始游戏' }).click();

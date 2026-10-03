@@ -15,7 +15,7 @@ test('host plays a human seat alongside script AI without human script delegatio
   await page.getByLabel('房间名').fill(`AI 验收 ${test.info().project.name}`);
   await page.getByRole('button',{name:'创建并生成邀请码'}).click();
   await page.getByRole('button',{name:'添加脚本 AI'}).click();
-  await expect(page.getByText('脚本 AI · basic-v1 · 已就绪')).toBeVisible();
+  await expect(page.getByText('脚本 AI · 已就绪')).toBeVisible();
   await page.getByRole('button',{name:'准备',exact:true}).click();
   await expect(page.getByRole('button',{name:'开始游戏'})).toBeEnabled();
   await page.getByRole('button',{name:'开始游戏'}).click();
@@ -28,6 +28,7 @@ test('host plays a human seat alongside script AI without human script delegatio
   await expect(page.getByText('实时同步',{exact:true})).toBeVisible();
   await expect(page).toHaveURL(/\/rooms\//);
   await expect(page.getByRole('button',{name:'退出房间'})).toHaveCount(0);
+  await page.getByText('更多操作', { exact: true }).click();
   await expect(page.getByRole('button',{name:'强制关闭房间',exact:true})).toBeEnabled();
   await page.getByRole('button',{name:'进入对局'}).click();
   await expect(page.getByRole('heading',{name:'Color Match',exact:true})).toBeVisible();

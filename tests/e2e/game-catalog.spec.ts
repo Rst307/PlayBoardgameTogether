@@ -8,7 +8,7 @@ test('catalog opens details, preserves selected game and supports history and re
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: '创建房间', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('12 位邀请码')).toHaveCount(0);
-  await expect(page.locator('a.game-card')).toHaveCount(4);
+  await expect(page.locator('a.game-card')).toHaveCount(5);
   await page.evaluate(() => { document.body.dataset.catalogMarker = 'same-document'; });
   await page.screenshot({ path: info.outputPath('catalog.png'), fullPage: true });
   const splendor = page.locator('a.game-card[href="/games/splendor.base/1.0.0"]');
@@ -55,5 +55,5 @@ test('guest can browse games and catalog failures offer retry', async ({ page })
   await expect(page.getByRole('heading', { name: '游戏加载失败' })).toBeVisible();
   await page.unroute('**/api/v1/games');
   await page.getByRole('button', { name: '重新加载', exact: true }).click();
-  await expect(page.locator('a.game-card')).toHaveCount(4);
+  await expect(page.locator('a.game-card')).toHaveCount(5);
 });

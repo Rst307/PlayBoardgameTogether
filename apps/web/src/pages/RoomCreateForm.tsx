@@ -77,75 +77,83 @@ export function RoomCreateForm({
       });
       if (active.current) navigate(`/rooms/${result.roomId}`, { inviteCode: result.inviteCode });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '创建失败，请检查设置。');
+      if (active.current) {
+        setError(cause instanceof SyntaxError
+          ? '游戏选项格式不正确，请在高级设置中填写有效的 JSON。'
+          : cause instanceof Error ? cause.message : '创建失败，请检查设置。');
+      }
     } finally {
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
 
   return (
     <>
       <form className="form-stack room-create-form" onSubmit={submit}>
-        <label>
-          房间名
-          <input name="name" defaultValue={defaultName} maxLength={40} required placeholder="例如：周末欢乐桌" />
-        </label>
+        <fieldset className="room-create-fields form-stack" disabled={busy || loading}>
+          <label>
+            房间名
+            <input name="name" defaultValue={defaultName} maxLength={40} required placeholder="例如：周末欢乐桌" />
+          </label>
 
-        <label>
-          游戏与版本
-          <select value={choice} onChange={event => setChoice(event.target.value)}>
-            {games.map(item => (
-              <option key={`${item.id}@${item.version}`} value={`${item.id}@${item.version}`}>
-                {item.name} · {item.version}
-              </option>
-            ))}
-          </select>
-        </label>
-        {game && <p className="muted game-form-desc">{game.description}</p>}
+          <label>
+            游戏与版本
+            <select value={choice} onChange={event => setChoice(event.target.value)}>
+              {games.map(item => (
+                <option key={`${item.id}@${item.version}`} value={`${item.id}@${item.version}`}>
+                  {item.name} · {item.version}
+                </option>
+              ))}
+            </select>
+          </label>
+          {game && <p className="muted game-form-desc">{game.description}</p>}
 
-        <label>
-          人数
-          <input
-            name="seatCount"
-            type="number"
-            min={game?.players.min ?? 2}
-            max={game?.players.max ?? 2}
-            defaultValue={game?.players.min ?? 2}
-            key={choice}
-            required
-          />
-        </label>
+          <label>
+            人数
+            <input
+              name="seatCount"
+              type="number"
+              min={game?.players.min ?? 2}
+              max={game?.players.max ?? 2}
+              defaultValue={game?.players.min ?? 2}
+              key={choice}
+              required
+            />
+          </label>
 
-        <label>
-          房间类型
-          <select name="visibility" defaultValue="public">
-            <option value="public">公开房间（展示在大厅）</option>
-            <option value="private">私人邀请房间（不展示在大厅）</option>
-          </select>
-        </label>
+          <label>
+            房间类型
+            <select name="visibility" defaultValue="public">
+              <option value="public">公开房间（展示在大厅）</option>
+              <option value="private">私人邀请房间（不展示在大厅）</option>
+            </select>
+          </label>
 
-        <label>
-          房间密码（选填）
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            maxLength={128}
-          />
-        </label>
-        <p className="muted">设置密码后，大厅和邀请码加入都需要密码。每人最多创建一个未关闭房间。</p>
+          <label>
+            房间密码（选填）
+            <input
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              maxLength={128}
+            />
+          </label>
+          <p className="muted">设置密码后，大厅和邀请码加入都需要密码。每人最多创建一个未关闭房间。</p>
 
-        <label>
-          游戏选项（JSON）
-          <textarea
-            name="options"
-            rows={2}
-            key={`${choice}-options`}
-            defaultValue={JSON.stringify((game && clientGame(game.id, game.version)?.defaultOptions) ?? {})}
-            required
-          />
-        </label>
-
+          <details className="room-disclosure room-advanced">
+            <summary>高级设置</summary>
+            <p className="muted">默认规则即可开局；仅在需要自定义规则时修改。</p>
+            <label>
+              游戏选项（JSON）
+              <textarea
+                name="options"
+                rows={2}
+                key={`${choice}-options`}
+                defaultValue={JSON.stringify((game && clientGame(game.id, game.version)?.defaultOptions) ?? {})}
+              />
+            </label>
+          </details>
+        </fieldset>
 
         {error && <p className="error-notice" role="alert">{error}</p>}
         {loading && <p role="status">正在加载可用游戏…</p>}

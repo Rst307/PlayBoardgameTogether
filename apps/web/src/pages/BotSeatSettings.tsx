@@ -3,7 +3,7 @@ import type { ModelProfile } from '@boardgame/protocol';
 
 export type BotSettings = { controllerType: 'model'; profileId: string } | { controllerType: 'script'; policyId: 'basic-v1' };
 
-export function BotSeatSettings({ editing, policyId, profileId, profiles, loading, error, save, refresh }: {
+export function BotSeatSettings({ editing, policyId, profileId, profiles, loading, error, save, refresh, remove }: {
   editing: boolean;
   policyId: string | null;
   profileId: string | null;
@@ -12,6 +12,7 @@ export function BotSeatSettings({ editing, policyId, profileId, profiles, loadin
   error: string;
   save: (settings: BotSettings) => void;
   refresh: () => void;
+  remove?: () => void;
 }) {
   const [type, setType] = useState(editing && policyId !== 'model' ? 'script' : 'model');
   const [selectedProfile, setSelectedProfile] = useState(profileId ?? '');
@@ -46,6 +47,7 @@ export function BotSeatSettings({ editing, policyId, profileId, profiles, loadin
       <button className="secondary" disabled={type === 'model' && (loading || !usable)}>
         {editing ? '保存 AI 设置' : type === 'model' ? '添加模型 AI' : '添加脚本 AI'}
       </button>
+      {remove && <button type="button" className="secondary" onClick={remove}>移除 AI</button>}
     </form>
   </details>;
 }

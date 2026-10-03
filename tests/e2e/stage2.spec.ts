@@ -34,6 +34,7 @@ test('dedicated room creation supports installed game options',async({page},test
   await expect(page.getByRole('heading',{name:'创建房间'})).toBeVisible();
   await page.getByLabel('游戏与版本').selectOption('demo.counter-room@1.0.0');
   await page.getByLabel('房间名').fill(`自定义房间 ${testInfo.project.name}`);
+  await page.getByText('高级设置', { exact: true }).click();
   await page.getByLabel('游戏选项（JSON）').fill('{"targetScore":5}');
   await page.getByRole('button',{name:'创建并生成邀请码'}).click();
   await expect(page.getByRole('heading',{name:`自定义房间 ${testInfo.project.name}`})).toBeVisible();
