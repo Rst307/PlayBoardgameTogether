@@ -1,5 +1,18 @@
 # 开发进度
 
+## 花砖最后选砖的地板结算显示修复（2026-10-03）
+
+复现最后一次选择「全部放地板」后直接进入轮末结算：真实桌面组件应显示三块花砖与先手标记，实际显示零块。服务端已正确扣分并清空地板；客户端直接绘制结算后的 View，漏掉待扣分地板的表现。客户端有界保留最近两轮公开 View，结合已投影的最后选砖事件还原待结算地板，随原计分队列保留砖块至该玩家地板扣分节拍结束，然后显示最新权威地板。包含整组放地板、图案行溢出、先手标记和七格上限；已包含选砖的快照不重复追加。未改变服务端规则、计分、版本、存档、协议或数据库。
+
+实际验证：
+
+- `node .data/check-azul-floor.mjs` 修改前失败：`Last draft scoring floor: expected 3 tiles, received 0`。修复后在真实 React StrictMode/花砖组件、正式教程场景与项目样式下，1440px/390px、同时投递/快照先到而 live 事件后到四种情况全部通过；确认原分数、扣分归零、扣分期间保留三砖/标记、结束后清空和无水平溢出。查看两种布局截图，临时验证文件和截图留在忽略的 `.data`。
+- `pnpm test tests/unit/azul-scoring-presentation.test.ts tests/unit/azul.test.ts tests/unit/azul-tutorial.test.ts`：3 文件、22 项通过，无 skip；新增最后中央选砖、公开快照不重复追加、溢出与七格地板回归，保留真实规则/教程一致性与完整对局守恒检查。
+- `pnpm typecheck`、`pnpm lint`、`pnpm build` 全部通过，包含 20 源目录边界和生产 bundle/API runtime 检查。
+- 为原 `azul-tutorial.spec.ts` 增加相同地板时序断言。隔离包装入口 `.data/azul-floor-validation.mjs` 指向独立 `boardgame_azul_floor_test` 并复用原 prepare/migrate/sync/E2E；准备阶段 `ECONNREFUSED 127.0.0.1:5434`，`pnpm db:up` 因 Docker Desktop Linux engine 管道不存在失败。未执行数据库清理、未修改 `.env`，数据库 E2E 未通过；独立组件浏览器验证不能替代认证 HTTP/WS 整局验收。本轮仅客户端表现修改，未运行数据库集成或全量历史 E2E。
+
+下一步在 PostgreSQL/Docker 恢复后执行新增教程 E2E，并实玩确认轮末地板表现。本轮保留原有 AGENTS.md、README.md、architecture.md 用户修改，提交仅包含本轮修复、测试和说明。
+
 ## UNO 上传包 AI 与原创展示图（2026-10-03）
 
 用户上传 1.0.0 后遇到 AI_NOT_SUPPORTED 和空白封面。先建立失败回归：QuickJS 适配器未保留可选 getDecisionContext、包描述不接受展示图、UNO 未提供决策。新增可选严格有界决策上下文；基础 worker 按需加载内置策略，在线包 basic-v1 使用包内有序合法候选，不加载规则源码或秘密 State。UNO 1.1.0 用本人 View 排序出牌/选色，脚本和模型复用原 AiScheduler、控制权、revision、事务和动作校验；原真人玩法不变。

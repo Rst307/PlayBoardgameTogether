@@ -5,13 +5,18 @@ import {
   type AzulAction, type AzulView, type Color, type ScoreStep,
 } from '../shared/index.js';
 import './style.css';
-import { impactScore, scoreImpacts, scoreTiming } from './scoring.js';
+import { impactScore, scoreImpacts, scoreTiming, settlementFloors } from './scoring.js';
 import { TileFlight } from './TileFlight.js';
 
 function Tile({ color, ghost = false }: { color: Color; ghost?: boolean }) {
   return <span className={`az-tile az-${color}${ghost ? ' az-ghost' : ''}`} aria-hidden="true"><span>{symbols[color]}</span></span>;
 }
-type Beat = ScoreStep & { key: string; eventId: string; round: number };
+type Beat = ScoreStep & {
+  key: string;
+  eventId: string;
+  round: number;
+  floor?: AzulView['players'][string]['floor'] | undefined;
+};
 export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   view: AzulView; busy: boolean; events?: unknown[]; onAction: (action: AzulAction) => void;
   audio?: PresentationAudioPort | undefined;
@@ -25,6 +30,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   const audioRef = useRef(audio);
   useLayoutEffect(() => { audioRef.current = audio; }, [audio]);
   const seen = useRef(new Set<string>());
+  const roundViews = useRef(new Map<number, AzulView>());
   const mine = view.players[view.viewingSeatId]!;
   const myTurn = view.currentSeatId === view.viewingSeatId && view.phase === 'drafting';
   const canAct = myTurn && !busy;
@@ -37,22 +43,39 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   useEffect(() => { setSelection(null); setRow(null); }, [view.round, view.currentSeatId, busy]);
   useLayoutEffect(() => {
     const fresh: Beat[] = [];
+    let lastDraft: unknown;
     for (const raw of events) {
       if (raw && typeof raw === 'object' && 'eventId' in raw && typeof raw.eventId === 'string'
         && 'type' in raw && !seen.current.has(raw.eventId) && (raw.type === 'tiles.drafted' || raw.type === 'match.finished')) {
         seen.current.add(raw.eventId);
         if (raw.type === 'match.finished') setFinishEvent(raw.eventId);
-        else audioRef.current?.(raw.eventId, 'tiles.drafted', 'draft');
+        else {
+          lastDraft = raw;
+          audioRef.current?.(raw.eventId, 'tiles.drafted', 'draft');
+        }
         continue;
       }
       const parsed = scoreEventSchema.safeParse(raw);
       if (!parsed.success || seen.current.has(parsed.data.eventId)) continue;
       seen.current.add(parsed.data.eventId);
-      parsed.data.steps.forEach((step, index) => fresh.push({ ...step, key: `${parsed.data.eventId}:${index}`, eventId: parsed.data.eventId, round: parsed.data.round }));
+      const before = roundViews.current.get(parsed.data.round);
+      const floors = before ? settlementFloors(before, lastDraft) : {};
+      parsed.data.steps.forEach((step, index) => fresh.push({
+        ...step,
+        key: `${parsed.data.eventId}:${index}`,
+        eventId: parsed.data.eventId,
+        round: parsed.data.round,
+        floor: step.kind === 'floor' ? floors[step.seatId] : undefined,
+      }));
     }
     if (seen.current.size > 100) seen.current = new Set([...seen.current].slice(-50));
     if (fresh.length) setPending(old => [...old, ...fresh].slice(-88));
   }, [events]);
+  useLayoutEffect(() => {
+    // HTTP may deliver the settled View before its live events. Preserve the old round.
+    if (view.phase === 'drafting') roundViews.current.set(view.round, view);
+    if (roundViews.current.size > 2) roundViews.current.delete(roundViews.current.keys().next().value!);
+  }, [view]);
   useLayoutEffect(() => {
     if (beat || !pending.length) return;
     setBeat(pending[0]!);
@@ -121,6 +144,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
       const active = beat?.seatId === id ? beat : null;
       const flying = active?.kind === 'tile' && (impactProgress.key !== active.key || revealed === 0);
       const hidden = allBeats.filter(step => step.seatId === id && step.kind === 'tile' && step.key !== active?.key);
+      const floor = allBeats.find(step => step.seatId === id && step.kind === 'floor')?.floor ?? player.floor;
       return <section key={id} className={`az-player${own ? ' az-own' : ''}${active ? ' az-scoring' : ''}`} aria-label={`${seatName(id)}的花砖板`}>
         <header><div><strong>{own ? '你的工坊' : seatName(id)}</strong>{view.currentSeatId === id && view.phase !== 'finished' && <small>正在选砖</small>}</div>
           <div className="az-score" aria-label={`${seatName(id)}得分`}><b key={active ? `${active.key}:${revealed}` : 'steady'} className={active && revealed > 0 ? 'az-score-pop' : ''}>{displayScore(id)}</b><span>分</span></div></header>
@@ -166,7 +190,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
         </div></div>
         {flying && active.color && <TileFlight key={active.key} row={active.row} col={active.col} color={active.color} />}
         <div className="az-floor"><span>地板</span>{floorPenalties.map((penalty, index) => <span className="az-floor-slot" key={index}>
-          {player.floor[index] === 'first' ? <span className="az-first">1</span> : player.floor[index] ? <Tile color={player.floor[index] as Color} /> : null}<small>−{penalty}</small>
+          {floor[index] === 'first' ? <span className="az-first">1</span> : floor[index] ? <Tile color={floor[index] as Color} /> : null}<small>−{penalty}</small>
         </span>)}{own && <button type="button" disabled={!canAct || !legalRow(-1)} aria-pressed={row === -1} onClick={() => setRow(-1)}>全部放地板</button>}</div>
         <span className="az-score-announcement" aria-live="polite">{active && revealed > 0
           ? `${hit?.label} ${floatingScore}，当前 ${displayScore(id)} 分${active.kind === 'floor' ? `，实际扣除 ${active.from - active.total} 分` : ''}` : ''}</span>
