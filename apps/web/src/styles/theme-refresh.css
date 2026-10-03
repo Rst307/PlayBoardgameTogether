@@ -611,87 +611,6 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   color: var(--text-secondary) !important;
 }
 
-.game-catalog-grid {
-  gap: 24px !important;
-}
-
-.game-card {
-  background: rgba(20, 26, 42, 0.8) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 18px !important;
-  overflow: hidden !important;
-  box-shadow: var(--shadow-card) !important;
-  transition: all 260ms cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-.game-card:hover {
-  transform: translateY(-6px) !important;
-  border-color: rgba(59, 130, 246, 0.4) !important;
-  box-shadow: var(--shadow-card-hover) !important;
-  background: rgba(26, 34, 54, 0.9) !important;
-}
-
-.game-cover {
-  background: #111624 !important;
-  position: relative !important;
-}
-.game-cover::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(13, 17, 26, 0.8) 100%);
-  pointer-events: none;
-}
-.game-cover img {
-  transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-.game-card:hover .game-cover img {
-  transform: scale(1.06);
-}
-
-.game-card-info {
-  padding: 14px 18px 18px !important;
-  gap: 14px !important;
-}
-.game-card-icon {
-  width: 48px !important;
-  height: 48px !important;
-  margin-top: -28px !important;
-  border: 2px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
-  background: #141c2e !important;
-  z-index: 2;
-}
-.game-card-info h3 {
-  font-size: 16.5px !important;
-  font-weight: 700 !important;
-  margin: 0 0 4px !important;
-  color: #ffffff !important;
-}
-.game-card-info span {
-  font-size: 12.5px !important;
-  color: var(--muted) !important;
-}
-.game-card-arrow {
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 50% !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid var(--line) !important;
-  display: grid !important;
-  place-items: center !important;
-  font-size: 14px !important;
-  color: var(--muted) !important;
-  transition: all 180ms ease !important;
-}
-.game-card:hover .game-card-arrow {
-  background: var(--accent) !important;
-  color: #ffffff !important;
-  border-color: var(--accent) !important;
-  transform: translate(2px, -2px);
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
-}
-
 /* ==========================================================================
    Game Detail Page & Immersive Banner
    ========================================================================== */
@@ -1203,10 +1122,6 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
     width: min(calc(100% - 24px), 1200px) !important;
     padding: 18px 0 36px !important;
   }
-  .game-catalog-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
   .seat-grid {
     grid-template-columns: 1fr !important;
   }
@@ -1671,4 +1586,3 @@ button, .button-link {
     transition-duration: 0s !important;
   }
 }
-

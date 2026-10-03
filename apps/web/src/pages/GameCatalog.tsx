@@ -18,13 +18,15 @@ export function GameCatalog() {
       <a className="game-card" href={gamePath(game)} key={`${game.id}@${game.version}`} aria-label={`查看 ${game.name}`}>
         <GameCover game={game} />
         <div className="game-card-info">
-          <GameArtwork src={gameArt(game).iconUrl} className="game-card-icon" name={game.name} />
-          <div>
+          <div className="game-card-heading">
+            <GameArtwork src={gameArt(game).iconUrl} className="game-card-icon" name={game.name} />
             <h3>{game.name}</h3>
-            <span>{game.players.min}–{game.players.max} 人</span>
-            <p className="game-card-desc">{game.description}</p>
           </div>
-          <span className="game-card-arrow" aria-hidden="true">↗</span>
+          <p className="game-card-desc">{game.description}</p>
+          <div className="game-card-footer">
+            <span className="game-card-players">{game.players.min}–{game.players.max} 人</span>
+            <span className="game-card-action">查看房间 <span className="game-card-arrow" aria-hidden="true">→</span></span>
+          </div>
         </div>
       </a>)}
 
