@@ -80,6 +80,7 @@ describe.skipIf(!url)('stage 2 account to initial match flow',()=>{let db:Databa
     const listed = await app.inject({url:'/api/v1/rooms/lobby?gameId=demo.counter-room&roomType=password&status=waiting',headers:{cookie:guest.cookie}});
     expect(listed.statusCode).toBe(200);
     expect(listed.json().data.items).toHaveLength(1);
+    expect(listed.json().data.items[0]).toMatchObject({hostDisplayName:'Alice',hostFriendId:'alice'});
     expect(listed.body).not.toContain('table-secret');
     expect(listed.body).not.toContain(inviteCode);
     expect(listed.body).not.toContain('password_hash');
@@ -99,6 +100,31 @@ describe.skipIf(!url)('stage 2 account to initial match flow',()=>{let db:Databa
     const finished=await app.inject({url:'/api/v1/rooms/lobby?status=finished',headers:{cookie:guest.cookie}});
     expect(finished.json().data.items).toHaveLength(0);
     expect((await app.inject({url:'/api/v1/rooms/lobby'})).statusCode).toBe(401);
+  });
+  it('lists the current host identity and reflects profile edits and host transfers', async () => {
+    const a = await login('alice'), b = await login('bob'), c = await login('carol');
+    const created = await write('POST', '/api/v1/rooms', a, {
+      requestId: 'host-identity-create', name: 'Host identity', gameId: 'demo.counter-room',
+      version: '1.0.0', options: { targetScore: 3 }, seatCount: 2, visibility: 'public',
+    });
+    const roomId = created.json().data.roomId;
+    const list = () => app.inject({url:'/api/v1/rooms/lobby',headers:{cookie:c.cookie}});
+    expect((await list()).json().data.items[0]).toMatchObject({hostDisplayName:'Alice',hostFriendId:'alice'});
+    expect((await write('PUT', '/api/v1/profile', a, {displayName:'新房主昵称',avatar:'cat',bio:''})).statusCode).toBe(200);
+    const identity = (await app.inject({url:'/api/v1/social',headers:{cookie:a.cookie}})).json().data.identity;
+    expect((await write('PUT', '/api/v1/social/id', a, {
+      requestId: crypto.randomUUID(), expectedRevision: identity.revision, friendId: '@new_alice',
+    })).statusCode).toBe(200);
+    expect((await list()).json().data.items[0]).toMatchObject({hostDisplayName:'新房主昵称',hostFriendId:'new_alice'});
+    expect((await write('POST', `/api/v1/rooms/${roomId}/join`, b, {requestId:'host-identity-join'})).statusCode).toBe(200);
+    const bob = (await db.query<{id:string}>("SELECT id FROM accounts WHERE username_canonical='bob'")).rows[0]!.id;
+    expect((await write('POST', `/api/v1/rooms/${roomId}/host`, a, {
+      requestId:'host-identity-transfer',expectedRoomRevision:1,targetAccountId:bob,
+    })).statusCode).toBe(200);
+    const listed = await list();
+    expect(listed.json().data.items[0]).toMatchObject({hostDisplayName:'Bob',hostFriendId:'bob'});
+    expect(listed.body).not.toMatch(/username|hostAccountId|password_hash|token_hash|csrf|members/);
+    expect(listed.body).not.toContain(bob);
   });
   it('keeps private rooms out of the lobby and preserves creator quota after host transfer',async()=>{
     const a=await login('alice'),b=await login('bob'),c=await login('carol');

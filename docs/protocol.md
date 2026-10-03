@@ -112,7 +112,7 @@ HTTP envelope 为 `{ok:true,data,traceId}` 或 `{ok:false,error:{code,message,re
 ## 房间大厅与规则（2026-09-25）
 
 - POST /rooms：共享 createRoomInputSchema；可选 visibility=public/private、password（1–128 字符）。缺省 private 保持旧客户端隐私。重复 requestId 不重复建房；新请求超过一个未关闭创建房间返回 ROOM_CONFIG_CHANGED/409。
-- GET /rooms/lobby：需要会话；limit 默认 20、最大 50，cursor、gameId、roomType=open/password、status=waiting/in_game/finished/closed 可选。返回 lobbyPageSchema 的公开概要与 nextCursor，不返回成员、私密 State、邀请码或密码摘要。
+- GET /rooms/lobby：需要会话；limit 默认 20、最大 50，cursor、gameId、roomType=open/password、status=waiting/in_game/finished/closed 可选。返回 lobbyPageSchema 的公开概要与 nextCursor，不返回成员、私密 State、邀请码或密码摘要。2026-10-04 每项新增 hostDisplayName、hostFriendId（无 @ 的公开用户 ID），单条查询关联当前房主账户；Web 使用 formatFriendId 展示 @ID，不提供登录名或内部账户 UUID。旧客户端可忽略新增字段，新客户端需要更新后的 API。
 - POST /rooms/:id/join：公开房通过 requestId 和可选 password 加入。私人房返回 ROOM_NOT_FOUND。邀请码路径 POST /rooms/join 同样接受 password；密码错误 FORBIDDEN/403；共享加入频控。
 - GET /games/:id/versions/:version/rules：精确版本的公开规则文本，返回 gameId/version/rules；未知版本明确 404。
 - room.snapshot 增加 visibility、hasPassword、matchStatus；进行中退出返回 ROOM_ALREADY_STARTED/409；关闭仅限房主，允许终止 active 对局，非房主返回 FORBIDDEN/403。关闭与终止同事务提交，成功后广播关闭快照/通知。导航不改变成员资格。

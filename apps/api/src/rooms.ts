@@ -133,13 +133,16 @@ export class RoomService {
     const result = await this.db.query<{
       id:string;name:string;game_id:string;game_version:string;display_status:string;seat_count:number;
       occupied_count:number;has_password:boolean;is_member:boolean;created_at:string;
+      host_display_name: string; host_friend_id: string;
     }>(`SELECT r.id,r.name,r.game_id,r.game_version,r.seat_count,
+      host.display_name AS host_display_name,host.friend_id AS host_friend_id,
       CASE WHEN r.status='in_game' AND m.status='finished' THEN 'finished' ELSE r.status END AS display_status,
       (r.password_hash IS NOT NULL) AS has_password,
       EXISTS(SELECT 1 FROM room_members WHERE room_id=r.id AND account_id=$1) AS is_member,
       ((SELECT count(*) FROM room_members WHERE room_id=r.id)+(SELECT count(*) FROM seats WHERE room_id=r.id AND occupant_kind='bot'))::int AS occupied_count,
       to_char(r.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
       FROM rooms r LEFT JOIN matches m ON m.id=r.active_match_id
+      JOIN accounts host ON host.id=r.host_account_id
       WHERE r.visibility='public'
         AND ($2::text IS NULL OR r.game_id=$2)
         AND ($3::text IS NULL OR ($3='password')=(r.password_hash IS NOT NULL))
@@ -150,7 +153,8 @@ export class RoomService {
     const page=result.rows.slice(0,query.limit), last=page.at(-1);
     return lobbyPageSchema.parse({items:page.map(row=>({id:row.id,name:row.name,gameId:row.game_id,
       gameVersion:row.game_version,status:row.display_status,seatCount:row.seat_count,
-      occupiedCount:row.occupied_count,hasPassword:row.has_password,isMember:row.is_member})),
+      occupiedCount:row.occupied_count,hasPassword:row.has_password,isMember:row.is_member,
+      hostDisplayName: row.host_display_name, hostFriendId: row.host_friend_id})),
       nextCursor:result.rows.length>query.limit&&last?Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString('base64url'):null});
   }
 

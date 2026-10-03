@@ -1,5 +1,18 @@
 # 开发进度
 
+## 大厅房间显示当前房主昵称与公开 ID（2026-10-04）
+
+用户确认展示当前房主。在既有公开房间列表的房间名下增加「房主：昵称 · @ID」次要文本，保留筛选、人数/状态和单一加入按钮，无新增页面或常驻设置。lobby 查询在同一条 SQL 中通过 rooms.host_account_id 关联 accounts，DTO 增加 hostDisplayName/hostFriendId（原始公开 ID 无 @），Web 复用 formatFriendId。昵称、公开 ID 修改及转让房主后，下次刷新反映最新身份；不暴露登录名、内部账户 UUID、成员名单或秘密。无数据库迁移，client-sdk 原 lobbyPageSchema 解析链路直接消费新字段；需同步更新 Web/API。房间与协议及公开开发者 API 文档同步。
+
+实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；`pnpm build` 通过，包含生产 bundle/API runtime 和在线包规则/AI 检查。
+- `pnpm test tests/unit`：31 文件、141 项，139 项通过，stage7-assets 的 2 项真实媒体解码失败（隔离 Docker 媒体运行环境不可用），无 skip。未改变媒体代码或断言，不记为全量通过。
+- `node .data/check-lobby-host.mjs` 在真实前端/模拟 HTTP 下验证 1440/390/320px 房主昵称与 @ID、加入按钮可用、刷新切换身份、长中文昵称与 36 位 ID 换行且无横向溢出；实际查看桌面/手机截图。临时脚本与截图仅留忽略目录 .data，此验证不能替代数据库集成。
+- 新增真实集成用例覆盖公开房主身份、昵称/公开 ID 修改后更新、房主转让及不返回登录名/内部账户 UUID/成员/秘密；既有大厅 E2E 增加当前房主展示断言。通过 `.data/lobby-host-validation.mjs` 与 `.data/lobby-host-e2e.mjs` 分别复用原 `pnpm test:integration` 和 prepare/migrate/sync/seed/E2E runner，均派生独立 `boardgame_lobby_host_test`；测试库准备阶段 `ECONNREFUSED 127.0.0.1:5434`，集成与 E2E 未执行。未改 .env 或清理开发库。
+
+下一步在 PostgreSQL/Docker 恢复后运行真实集成及 `tests/e2e/lobby.spec.ts` 的桌面/手机项目；当前限制已记录，不将模拟响应或历史结果计为本轮数据库通过。
+
 ## 房间顶部退出入口（2026-10-03）
 
 「退出房间」从折叠的「更多操作」移到房间标题区，作为次要按钮，桌面/手机无需展开即可找到。复用原 leave 命令、requestId、expectedRoomRevision、服务端身份/事务及成功后返回大厅逻辑；断线和保存期间禁用。进行中仍禁止退出，房主强制关闭继续位于更多操作，没有改变业务规则、协议或数据库。页面主任务仍为入座、准备和开局，移除原位置的重复入口。
