@@ -41,3 +41,9 @@ rooms.asset_version_id 与 matches.asset_version_id 外键绑定精确版本；m
 迁移 009_room_lobby.sql：rooms 新增 creator_account_id、visibility、password_hash 与创建者/大厅索引。历史创建者以当前房主回填；历史房为 private，既有重复房间保留，配额由创建事务串行强制检查。密码原文不写入响应或 receipt result_ref。历史 human/script controller 被归还 human、推进 epoch/controllerVersion 并取消旧 epoch 任务；专用 bot 与模型控制器保留。
 
 迁移 010_room_match_rounds.sql：移除 matches.room_id 的全局唯一约束，改为 status=active 的部分唯一索引并增加房间历史索引。match_participants.seat_id 是开局固定的身份，移除其对可重配 seats 的外键，使下一轮缩减座位不破坏历史；动作与 AI 任务仍通过 match_id/seat_id 复合外键引用参与者，开局仍从锁定的房间座位创建参与者。迁移仅将引用 finished 对局的 in_game 房间恢复 waiting、清空 active_match_id、递增 room_revision、取消真人准备。后续结算在原动作事务中执行同样复位，失败完整回滚，旧请求回执不再次复位房间。
+
+## 模型 bot 016/017（2026-10-03）
+
+016 为 seats 增加 bot_model_profile_id，并为 match_participants 增加 model_owner_account_id。模型 bot 保持 account_id=NULL，controller_type=model，保存 model_profile_id 与独立授权 owner；二者的复合外键引用 model_profiles(id,owner_account_id)。真人沿用既有账户/profile 外键且 model_owner_account_id=NULL。017 进一步约束：model 座位必须有模型引用，脚本和真人座位不得有该引用。测试库已应用的 016 初版保持原校验和，约束增强使用后续迁移，不修改其历史含义。
+
+等待房间只保存 profile 引用，开局重新校验所有者、active、enabled、未删除和凭证，并在同一开局事务中固定授权。使用既有活跃绑定保护冻结本局配置；未新增 profile 版本快照机制。模型调用失败继续使用已有合法 fallback。

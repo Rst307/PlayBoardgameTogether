@@ -442,3 +442,24 @@ Git：开始与结束均确认本目录不存在 .git，git status/branch/remote
 实际验证：pnpm typecheck、pnpm lint、pnpm test tests/unit（13 文件 / 58 项）、pnpm build（生产 bundle/API runtime）通过。测试库隔离检查、迁移与游戏同步通过；pnpm test:e2e 启动前被现有 Splendor 资源种子脚本的已发布草稿 STATE_CONFLICT 阻塞，没有改写该用户工作中的脚本。初次改用现有 run-e2e.ts 时与另一个清理同一测试库的集成进程重叠，登录失败，已停止本轮运行并等待对方结束。随后 pnpm exec tsx --env-file=.env scripts/run-e2e.ts tests/e2e/color-match.spec.ts tests/e2e/grid-garden.spec.ts tests/e2e/room-close.spec.ts tests/e2e/stage9-ui.spec.ts tests/e2e/stage6-model.spec.ts tests/e2e/splendor.spec.ts：桌面与 Pixel 5 共 26 项全部通过；实际检查两款游戏的桌面/手机截图，验证辅助区位置、无横向溢出、正常回房、历史结果刷新、下一局、关闭、冲突、断线和四人结算。
 
 pnpm exec vitest run tests/integration：13 文件 / 84 项，83 项通过，既有管理员 CLI 幂等初始化用例超过 5 秒失败；单独以原断言和时限重跑该用例通过（其余 23 项因名称过滤未运行，不计为通过）。没有更改测试时限或清理开发库。完整集成首轮不记为全绿。未验证实机手机和物理听音；现有资源种子冲突仍需其所属资源工作处理。下一步恢复种子幂等性后按现有包装脚本复核；本轮只提交自己的页面、样式、结算测试与说明，不包含已有图包改动及生成截图。详见 [游戏优先体验](game-first-experience.md)。
+
+## 房间可配置模型 AI（2026-10-03）
+
+房主现在可在空座位「选择模型 AI」，添加本人模型配置；已有 AI 的「AI 设置」可修改 profile 或切回基础脚本。无可用配置时禁用模型添加并提供管理/刷新入口，mock 明确显示模拟。修改 AI 设置取消真人准备；刷新恢复已保存选择；进行中不能修改 bot，结束后保留选择供下一局使用。
+
+bot 保持无账户登录身份，通过独立 model_owner_account_id 在开局固定凭证授权人，模型只能收到 bot 自己的 View 与合法候选。房主不能查询 bot 私密信息。开局共享锁定 profile，和既有 match/participants/State/RNG/房间状态一起提交；删除、禁用、凭证不可用、加密主密钥缺失或新房主无权使用旧配置时阻止开局。活跃绑定阻止 profile 编辑/删除；转让房主后下一局需重新选择新房主自己的配置或切回脚本。原真人模型托管和脚本 AI 入口保留。
+
+新增 botSeatCommandSchema、roomSnapshotSchema 和 client-sdk saveRoomBot，网络响应先按共享 schema 解析。PUT 添加、PATCH 修改、DELETE 移除均复用房间写入/receipt/revision 边界，目标 seatId 纳入新回执去重内容，兼容旧版脚本添加/移除回执的原始请求哈希，保留成功请求重试结果。016/017 迁移已应用开发库与独立 boardgame_test；测试库已应用的 016 初版恢复原校验和，进一步约束另用 017，无库重置或历史迁移改写。协议、房间、AI、架构、数据模型、公开开发指南与 ADR-004 已同步。
+
+新增整局测试复现 Color Match 固定 phase/seat 决策键被当作整局额度、两次模型请求后一直兜底的问题。单行动者决策组改为 sourceRevision + decisionKey，同时行动扩展保持原跨 revision 键；每组最多两次外部尝试。新增专项确认额度耗尽后此决定兜底且下一回合恢复模型调用，未削弱调用上限。
+
+实际执行与结果：
+
+- `pnpm typecheck`、`pnpm lint` 最终通过，17 个源目录边界通过；新增限额测试另执行 `pnpm exec eslint tests/integration/model-bot-seats.test.ts` 通过。
+- `pnpm test tests/unit`：17 文件 / 73 项通过，无 skip。之后修改调度器决策组及旧回执兼容逻辑，由以下真实数据库回归覆盖，未重复无关单元检查。
+- `pnpm test:integration` 在决策组修复后 15 文件 / 93 项通过，无 skip；初轮发现测试账户字段笔误及跨回合兜底断言失败，修正测试字段并修复调度行为后通过。追加限额回归和旧回执兼容后 `pnpm test tests/integration/model-bot-seats.test.ts`：6 项通过。全量 93 项与后续专项分别运行，不称一次全量 95 项通过。
+- `pnpm test:e2e tests/e2e/model-bot-seats.spec.ts tests/e2e/stage6-model.spec.ts tests/e2e/stage5-ai.spec.ts --output=.data/e2e-model-bot-seats`：桌面/Pixel 5 共 8 项通过（1.4 分钟）。覆盖无配置禁用、进入模型管理、添加/修改 AI、切回脚本、取消准备、刷新恢复、模型 AI 完整结算和既有模型配置编辑/凭证流程；实际检查两种布局的 model-bot-settings.png，无横向溢出。截图/trace 保留本地 .data，不提交生成产物。
+- `pnpm build` 最终通过，包含更新后的公开 AI/API 文档、SDK 下载源码以及 production bundle/API runtime 检查。最后旧回执兼容仅修改 API，另执行 API 包 typecheck/build、全库 lint 与 production API runtime 检查通过；初轮 lint 的未使用解构变量已修正。
+- `pnpm db:migrate` 开发库新增 016/017 成功；本地 API 3001 health/live 与 Web 5173 均返回 200。
+
+限制：整局使用明确标记的 mock 模型适配器验证真实调度与动作事务，未使用用户密钥向真实供应商发送对局数据；真实连接、额度与响应时延仍需实际配置验证。保留既有供应商失败兜底、预算/profile 版本快照和长请求租约边界。本轮只验证受影响的三份 E2E，不宣称所有浏览器用例或生产多实例均验收。下一步刷新房间页，配置自己的真实模型并添加模型 AI 实际游玩。

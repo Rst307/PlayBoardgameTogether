@@ -2,6 +2,7 @@ import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, model
 import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
+import { botSeatCommandSchema, roomSnapshotSchema, type BotSeatCommand } from '@boardgame/protocol';
 import { gamePresentationSchema, gamePresentationInputSchema, type GamePresentationInput } from '@boardgame/protocol';
 import { profileSchema, profileInputSchema, matchHistorySchema, type ProfileInput } from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
@@ -47,6 +48,11 @@ export class ApiClient {
   }
   async gameRules(id:string,version:string) {
     return gameRulesSchema.parse(await this.request<unknown>(`/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/rules`));
+  }
+  async saveRoomBot(id: string, seatId: string, method: 'PUT' | 'PATCH', body: BotSeatCommand) {
+    return roomSnapshotSchema.parse(await this.request<unknown>(`/rooms/${encodeURIComponent(id)}/seats/${encodeURIComponent(seatId)}/bot`, {
+      method, body: JSON.stringify(botSeatCommandSchema.parse(body)),
+    }));
   }
   room<T>(id:string){return this.request<T>(`/rooms/${encodeURIComponent(id)}`);}
   createRoom<T>(body:unknown){return this.request<T>('/rooms',{method:'POST',body:JSON.stringify(body)});}

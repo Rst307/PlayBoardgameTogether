@@ -8,11 +8,11 @@ import type { GameRegistry } from './registry/index.js';
 import { AppError } from './errors.js';
 import { hash, verify } from 'argon2';
 import { defaultAssetBinding, lockAssetBinding } from './assets/bindings.js';
-import { createRoomInputSchema, lobbyPageSchema, lobbyQuerySchema, roomPasswordSchema } from '@boardgame/protocol';
+import { botSeatCommandSchema, createRoomInputSchema, lobbyPageSchema, lobbyQuerySchema, roomPasswordSchema } from '@boardgame/protocol';
 
 type Client = pg.PoolClient;
 type RoomRow = { asset_version_id:string|null; id: string; host_account_id: string; name: string; status: 'waiting'|'in_game'|'closed'; game_id: string; game_version: string; options: unknown; seat_count: number; room_revision: number; active_match_id: string|null; visibility:'public'|'private'; password_hash:string|null; created_at: Date; closed_at: Date|null };
-export type RoomSnapshot = { assetVersionId:string|null; id:string; name:string; status:string; hostAccountId:string; gameId:string; gameVersion:string; options:unknown; seatCount:number; roomRevision:number; activeMatchId:string|null; visibility:string; hasPassword:boolean; matchStatus:string|null; members:Array<{accountId:string;displayName:string;joinedAt:string}>; seats:Array<{seatId:string;seatIndex:number;ownerAccountId:string|null;occupantKind:'human'|'bot';botName:string|null;botPolicyId:string|null;ready:boolean}>; permissions:{isHost:boolean;canConfigure:boolean;canStart:boolean}; startBlockers:string[] };
+export type RoomSnapshot = { assetVersionId:string|null; id:string; name:string; status:string; hostAccountId:string; gameId:string; gameVersion:string; options:unknown; seatCount:number; roomRevision:number; activeMatchId:string|null; visibility:string; hasPassword:boolean; matchStatus:string|null; members:Array<{accountId:string;displayName:string;joinedAt:string}>; seats:Array<{seatId:string;seatIndex:number;ownerAccountId:string|null;occupantKind:'human'|'bot';botName:string|null;botPolicyId:string|null;botModelProfileId:string|null;ready:boolean}>; permissions:{isHost:boolean;canConfigure:boolean;canStart:boolean}; startBlockers:string[] };
 const requestId = z.string().min(1).max(128);
 export const createRoomSchema = createRoomInputSchema;
 export const joinRoomSchema = z.object({ requestId, inviteCode:z.string().min(1).max(32), password:roomPasswordSchema.optional() }).strict();
@@ -21,7 +21,7 @@ export const seatSchema = revisionSchema.extend({ seatIndex:z.number().int().non
 export const readySchema = revisionSchema.extend({ ready:z.boolean() }).strict();
 export const hostSchema = revisionSchema.extend({ targetAccountId:z.string().uuid() }).strict();
 export const configRoomSchema = revisionSchema.extend({ name:z.string().min(1).max(40), gameId:z.string(), version:z.string(), options:z.unknown(), seatCount:z.number().int().positive().max(20) }).strict();
-export const botSeatSchema = revisionSchema.extend({ policyId:z.literal('basic-v1') }).strict();
+export const botSeatSchema = botSeatCommandSchema;
 export const listRoomsSchema = z.object({limit:z.coerce.number().int().min(1).max(50).default(20),cursor:z.string().max(512).optional()}).strict();
 const sha = (value:string) => createHash('sha256').update(value).digest('hex');
 function canonical(value:unknown):string { if(Array.isArray(value)) return `[${value.map(canonical).join(',')}]`; if(value&&typeof value==='object') return `{${Object.entries(value as Record<string,unknown>).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`; return JSON.stringify(value); }
@@ -37,7 +37,18 @@ export class RoomService {
   private changed(roomId:string){ for(const listener of this.listeners) listener(roomId); }
   private async transaction<T>(fn:(client:Client)=>Promise<T>){ const client=await this.db.connect(); try{await client.query('BEGIN');const value=await fn(client);await client.query('COMMIT');return value;}catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();} }
   private async lockRequest(client:Client,accountId:string,operation:string,id:string){ await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',[`request:${accountId}:${operation}:${id}`]); }
-  private async receipt(client:Client, accountId:string, operation:string, requestIdValue:string, body:unknown){ await client.query('DELETE FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at<=now()',[accountId,operation,requestIdValue]); const hash=fingerprint(body); const found=await client.query<{request_hash:string;result_ref:any;room_id:string|null}>('SELECT request_hash,result_ref,room_id FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at>now()', [accountId,operation,requestIdValue]); if(!found.rowCount)return null; if(found.rows[0]!.request_hash!==hash)throw new AppError('REQUEST_ID_CONFLICT','requestId was already used with different content',409); return found.rows[0]!; }
+  private async receipt(client:Client, accountId:string, operation:string, requestIdValue:string, body:unknown){ await client.query('DELETE FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at<=now()',[accountId,operation,requestIdValue]); const hash=fingerprint(body); const found=await client.query<{request_hash:string;result_ref:any;room_id:string|null}>('SELECT request_hash,result_ref,room_id FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at>now()', [accountId,operation,requestIdValue]); if(!found.rowCount)return null; if (found.rows[0]!.request_hash !== hash) {
+      // Before model bots, add/remove receipts did not include the seat in the
+      // hash. Keep exact legacy retries working; all new writes bind the seat.
+      let legacyHash: string | undefined;
+      if ((operation === 'room.bot.add' || operation === 'room.bot.remove') && body && typeof body === 'object' && 'seatId' in body) {
+        const legacy = Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'seatId'));
+        if (operation === 'room.bot.remove' || ('policyId' in legacy && legacy.policyId === 'basic-v1' && !('controllerType' in legacy))) {
+          legacyHash = fingerprint(legacy);
+        }
+      }
+      if (found.rows[0]!.request_hash !== legacyHash) throw new AppError('REQUEST_ID_CONFLICT','requestId was already used with different content',409);
+    } return found.rows[0]!; }
   private saveReceipt(client:Client,accountId:string,operation:string,requestIdValue:string,body:unknown,roomId:string|null,resultRef:unknown){ return client.query(`INSERT INTO command_receipts(account_id,principal_key,operation,request_id,request_hash,room_id,result_ref,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()+interval '7 days')`,[accountId,`human:${accountId}`,operation,requestIdValue,fingerprint(body),roomId,resultRef]); }
   private async locked(client:Client,roomId:string){ const r=await client.query<RoomRow>('SELECT * FROM rooms WHERE id=$1 FOR UPDATE',[roomId]); if(!r.rowCount)throw new AppError('ROOM_NOT_FOUND','Room not found',404); return r.rows[0]!; }
   private assertRevision(room:RoomRow,revision:number){ if(room.room_revision!==revision)throw new AppError('ROOM_CONFIG_CHANGED','Room changed; reload and retry',409,true); }
@@ -62,10 +73,14 @@ export class RoomService {
 
   private async snapshotWithClient(roomId:string,accountId:string,client:Client):Promise<RoomSnapshot>{
     const rr=await client.query<RoomRow>('SELECT * FROM rooms WHERE id=$1',[roomId]); if(!rr.rowCount)throw new AppError('ROOM_NOT_FOUND','Room not found',404); await this.assertMember(client,roomId,accountId);
-    const room=rr.rows[0]!; const members=await client.query<{account_id:string;display_name:string;joined_at:Date;status:string}>('SELECT m.account_id,a.display_name,m.joined_at,a.status FROM room_members m JOIN accounts a ON a.id=m.account_id WHERE m.room_id=$1 ORDER BY m.joined_at,m.account_id',[roomId]); const seats=await client.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_name:string|null;bot_policy_id:string|null;ready:boolean}>('SELECT id,seat_index,owner_account_id,occupant_kind,bot_name,bot_policy_id,ready FROM seats WHERE room_id=$1 ORDER BY seat_index',[roomId]);
-    const blockers:string[]=[]; if(seats.rows.some(s=>!s.owner_account_id&&s.occupant_kind!=='bot'))blockers.push('尚有空座位'); if(seats.rows.some(s=>s.occupant_kind==='human'&&s.owner_account_id&&!s.ready))blockers.push('有玩家未准备'); if(seats.rows.some(s=>s.occupant_kind==='bot'&&(s.bot_policy_id!=='basic-v1')))blockers.push('脚本 AI 策略不可用'); if(members.rowCount!==seats.rows.filter(s=>s.owner_account_id).length)blockers.push('有候场成员');if(members.rows.some(m=>m.status!=='active'))blockers.push('有账户不可用'); const installed=await client.query<{manifest:unknown}>('SELECT manifest FROM game_installations WHERE game_id=$1 AND game_version=$2 AND enabled=true',[room.game_id,room.game_version]);const extension=this.registry.get(room.game_id,room.game_version);if(!extension||!this.registry.hasResourcePack(room.game_id,room.game_version)||!installed.rowCount||canonical(installed.rows[0]!.manifest)!==canonical(extension.manifest))blockers.push('扩展不可用');if(seats.rows.some(s=>s.occupant_kind==='bot')&&!extension?.getDecisionContext)blockers.push('游戏不支持脚本 AI');
+    const room=rr.rows[0]!; const members=await client.query<{account_id:string;display_name:string;joined_at:Date;status:string}>('SELECT m.account_id,a.display_name,m.joined_at,a.status FROM room_members m JOIN accounts a ON a.id=m.account_id WHERE m.room_id=$1 ORDER BY m.joined_at,m.account_id',[roomId]); const seats=await client.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_name:string|null;bot_policy_id:string|null;bot_model_profile_id:string|null;ready:boolean}>('SELECT id,seat_index,owner_account_id,occupant_kind,bot_name,bot_policy_id,bot_model_profile_id,ready FROM seats WHERE room_id=$1 ORDER BY seat_index',[roomId]);
+    const blockers:string[]=[]; if(seats.rows.some(s=>!s.owner_account_id&&s.occupant_kind!=='bot'))blockers.push('尚有空座位'); if(seats.rows.some(s=>s.occupant_kind==='human'&&s.owner_account_id&&!s.ready))blockers.push('有玩家未准备'); if(seats.rows.some(s=>s.occupant_kind==='bot'&&(!['basic-v1','model'].includes(s.bot_policy_id??''))))blockers.push('脚本 AI 策略不可用'); if(members.rowCount!==seats.rows.filter(s=>s.owner_account_id).length)blockers.push('有候场成员');if(members.rows.some(m=>m.status!=='active'))blockers.push('有账户不可用'); const installed=await client.query<{manifest:unknown}>('SELECT manifest FROM game_installations WHERE game_id=$1 AND game_version=$2 AND enabled=true',[room.game_id,room.game_version]);const extension=this.registry.get(room.game_id,room.game_version);if(!extension||!this.registry.hasResourcePack(room.game_id,room.game_version)||!installed.rowCount||canonical(installed.rows[0]!.manifest)!==canonical(extension.manifest))blockers.push('扩展不可用');if(seats.rows.some(s=>s.occupant_kind==='bot')&&!extension?.getDecisionContext)blockers.push('游戏不支持脚本 AI');
+    for (const seat of seats.rows.filter(seat => seat.bot_policy_id === 'model')) {
+      try { await this.requireBotProfile(client, room.host_account_id, seat.bot_model_profile_id, false); }
+      catch { blockers.push('模型 AI 配置不可用，请房主重新选择模型或切换为脚本 AI'); break; }
+    }
     const match = room.active_match_id ? await client.query<{status:string}>('SELECT status FROM matches WHERE id=$1',[room.active_match_id]) : null;
-    return {assetVersionId:room.asset_version_id,visibility:room.visibility,hasPassword:!!room.password_hash,matchStatus:match?.rows[0]?.status??null,id:room.id,name:room.name,status:room.status,hostAccountId:room.host_account_id,gameId:room.game_id,gameVersion:room.game_version,options:room.options,seatCount:room.seat_count,roomRevision:room.room_revision,activeMatchId:room.active_match_id,members:members.rows.map(m=>({accountId:m.account_id,displayName:m.display_name,joinedAt:m.joined_at.toISOString()})),seats:seats.rows.map(s=>({seatId:s.id,seatIndex:s.seat_index,ownerAccountId:s.owner_account_id,occupantKind:s.occupant_kind,botName:s.bot_name,botPolicyId:s.bot_policy_id,ready:s.occupant_kind==='bot'||s.ready})),permissions:{isHost:room.host_account_id===accountId,canConfigure:room.host_account_id===accountId&&room.status==='waiting',canStart:room.host_account_id===accountId&&room.status==='waiting'&&blockers.length===0},startBlockers:blockers};
+    return {assetVersionId:room.asset_version_id,visibility:room.visibility,hasPassword:!!room.password_hash,matchStatus:match?.rows[0]?.status??null,id:room.id,name:room.name,status:room.status,hostAccountId:room.host_account_id,gameId:room.game_id,gameVersion:room.game_version,options:room.options,seatCount:room.seat_count,roomRevision:room.room_revision,activeMatchId:room.active_match_id,members:members.rows.map(m=>({accountId:m.account_id,displayName:m.display_name,joinedAt:m.joined_at.toISOString()})),seats:seats.rows.map(s=>({seatId:s.id,seatIndex:s.seat_index,ownerAccountId:s.owner_account_id,occupantKind:s.occupant_kind,botName:s.bot_name,botPolicyId:s.bot_policy_id,botModelProfileId:accountId===room.host_account_id?s.bot_model_profile_id:null,ready:s.occupant_kind==='bot'||s.ready})),permissions:{isHost:room.host_account_id===accountId,canConfigure:room.host_account_id===accountId&&room.status==='waiting',canStart:room.host_account_id===accountId&&room.status==='waiting'&&blockers.length===0},startBlockers:blockers};
   }
   async list(accountId:string,raw:unknown){
     const query=listRoomsSchema.parse(raw);
@@ -183,10 +198,67 @@ export class RoomService {
     if (match.rows[0]?.status==='active') throw new AppError('ROOM_ALREADY_STARTED','对局进行中，不能退出或关闭房间。请完成本局。',409);
   }
 
-  private async mutate(accountId:string,roomId:string,operation:string,body:{requestId:string;expectedRoomRevision:number},fn:(client:Client,room:RoomRow)=>Promise<boolean|void>){ const receiptBody={roomId,...body}; const repeated=await this.transaction(async client=>{ await this.lockRequest(client,accountId,operation,body.requestId); const old=await this.receipt(client,accountId,operation,body.requestId,receiptBody); if(old)return true; const room=await this.locked(client,roomId); await this.assertMember(client,roomId,accountId); if(!(operation==='room.close'&&room.status==='closed'))this.assertRevision(room,body.expectedRoomRevision); const changed=(await fn(client,room))!==false; if(changed)await client.query('UPDATE rooms SET room_revision=room_revision+1 WHERE id=$1',[roomId]); await this.saveReceipt(client,accountId,operation,body.requestId,receiptBody,roomId,{roomId}); return false; }); if(!repeated)this.changed(roomId); return this.snapshot(roomId,accountId); }
+  private async mutate(accountId:string,roomId:string,operation:string,body:{requestId:string;expectedRoomRevision:number;seatId?:string},fn:(client:Client,room:RoomRow)=>Promise<boolean|void>){ const receiptBody={roomId,...body}; const repeated=await this.transaction(async client=>{ await this.lockRequest(client,accountId,operation,body.requestId); const old=await this.receipt(client,accountId,operation,body.requestId,receiptBody); if(old)return true; const room=await this.locked(client,roomId); await this.assertMember(client,roomId,accountId); if(!(operation==='room.close'&&room.status==='closed'))this.assertRevision(room,body.expectedRoomRevision); const changed=(await fn(client,room))!==false; if(changed)await client.query('UPDATE rooms SET room_revision=room_revision+1 WHERE id=$1',[roomId]); await this.saveReceipt(client,accountId,operation,body.requestId,receiptBody,roomId,{roomId}); return false; }); if(!repeated)this.changed(roomId); return this.snapshot(roomId,accountId); }
   seat(accountId:string,roomId:string,raw:unknown){ const body=seatSchema.parse(raw); return this.mutate(accountId,roomId,'room.seat',body,async(c,r)=>{this.assertWaiting(r);const target=await c.query<{owner_account_id:string|null;occupant_kind:string}>('SELECT owner_account_id,occupant_kind FROM seats WHERE room_id=$1 AND seat_index=$2',[roomId,body.seatIndex]);if(!target.rowCount)throw new AppError('VALIDATION_ERROR','Seat does not exist',400);if(target.rows[0]!.owner_account_id===accountId)return false;if(target.rows[0]!.owner_account_id||target.rows[0]!.occupant_kind==='bot')throw new AppError('SEAT_OCCUPIED','Seat is occupied',409);await c.query('UPDATE seats SET owner_account_id=NULL,ready=false WHERE room_id=$1 AND owner_account_id=$2',[roomId,accountId]);await c.query("UPDATE seats SET owner_account_id=$1,occupant_kind='human',ready=false WHERE room_id=$2 AND seat_index=$3",[accountId,roomId,body.seatIndex]);await c.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'",[roomId]);}); }
-  addBot(accountId:string,roomId:string,seatId:string,raw:unknown){const body=botSeatSchema.parse(raw);return this.mutate(accountId,roomId,'room.bot.add',body,async(c,r)=>{this.assertHost(r,accountId);this.assertWaiting(r);const extension=this.registry.get(r.game_id,r.game_version);if(!extension?.getDecisionContext)throw new AppError('AI_NOT_SUPPORTED','Game does not support script AI',422);const seat=await c.query<{seat_index:number;owner_account_id:string|null;occupant_kind:string}>('SELECT seat_index,owner_account_id,occupant_kind FROM seats WHERE id=$1 AND room_id=$2 FOR UPDATE',[seatId,roomId]);if(!seat.rowCount)throw new AppError('VALIDATION_ERROR','Seat does not exist',400);if(seat.rows[0]!.owner_account_id||seat.rows[0]!.occupant_kind==='bot')throw new AppError('SEAT_OCCUPIED','Seat is occupied',409);const capacity=await c.query<{count:string}>("SELECT (SELECT count(*) FROM room_members WHERE room_id=$1)+(SELECT count(*) FROM seats WHERE room_id=$1 AND occupant_kind='bot') AS count",[roomId]);if(Number(capacity.rows[0]!.count)>=r.seat_count)throw new AppError('ROOM_FULL','Room is full',409);await c.query("UPDATE seats SET occupant_kind='bot',bot_name=$1,bot_policy_id=$2,bot_policy_version='1.0.0',ready=false WHERE id=$3",[`电脑 ${seat.rows[0]!.seat_index+1}`,body.policyId,seatId]);await c.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'",[roomId]);});}
-  removeBot(accountId:string,roomId:string,seatId:string,raw:unknown){const body=revisionSchema.parse(raw);return this.mutate(accountId,roomId,'room.bot.remove',body,async(c,r)=>{this.assertHost(r,accountId);this.assertWaiting(r);const result=await c.query("UPDATE seats SET occupant_kind='human',bot_name=NULL,bot_policy_id=NULL,bot_policy_version=NULL,ready=false WHERE id=$1 AND room_id=$2 AND occupant_kind='bot'",[seatId,roomId]);if(!result.rowCount)return false;await c.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'",[roomId]);});}
+  private async requireBotProfile(client: Client, owner: string, profileId: string | null, lock = true) {
+    if (!profileId) throw new AppError('FORBIDDEN', '请选择房主自己的模型配置', 403);
+    const result = await client.query<{protocol: string; has_credential: boolean}>(
+      `SELECT e.protocol, (c.id IS NOT NULL AND c.revoked_at IS NULL) AS has_credential
+       FROM model_profiles p JOIN provider_endpoints e ON e.id=p.endpoint_id
+       JOIN accounts a ON a.id=p.owner_account_id
+       LEFT JOIN model_credentials c ON c.id=p.credential_id
+       WHERE p.id=$1 AND p.owner_account_id=$2 AND p.enabled=true AND p.deleted_at IS NULL
+         AND e.enabled=true AND a.status='active' ${lock ? 'FOR SHARE OF p' : ''}`, [profileId, owner]);
+    const profile = result.rows[0];
+    if (!profile || profile.protocol !== 'mock' && !profile.has_credential) {
+      throw new AppError('FORBIDDEN', '模型配置或凭证不可用，请重新选择', 403);
+    }
+    if (profile.protocol !== 'mock' && Buffer.from(this.config.MODEL_CREDENTIALS_KEY ?? '', 'base64').length !== 32) {
+      throw new AppError('SERVICE_UNAVAILABLE', '模型凭证加密尚未配置，请联系管理员', 503);
+    }
+  }
+
+  addBot(accountId: string, roomId: string, seatId: string, raw: unknown) {
+    return this.writeBot(accountId, roomId, seatId, raw, false);
+  }
+
+  configureBot(accountId: string, roomId: string, seatId: string, raw: unknown) {
+    return this.writeBot(accountId, roomId, seatId, raw, true);
+  }
+
+  private writeBot(accountId: string, roomId: string, seatId: string, raw: unknown, editing: boolean) {
+    const body = botSeatSchema.parse(raw);
+    // Bind receipts to the target seat as well as the chosen configuration.
+    return this.mutate(accountId, roomId, editing ? 'room.bot.configure' : 'room.bot.add', { ...body, seatId }, async (client, room) => {
+      this.assertHost(room, accountId);
+      this.assertWaiting(room);
+      if (!this.registry.get(room.game_id, room.game_version)?.getDecisionContext) {
+        throw new AppError('AI_NOT_SUPPORTED', 'Game does not support AI', 422);
+      }
+      const result = await client.query<{seat_index: number; owner_account_id: string | null; occupant_kind: string; bot_policy_id: string | null; bot_model_profile_id: string | null}>(
+        'SELECT seat_index,owner_account_id,occupant_kind,bot_policy_id,bot_model_profile_id FROM seats WHERE id=$1 AND room_id=$2 FOR UPDATE', [seatId, roomId]);
+      const seat = result.rows[0];
+      if (!seat) throw new AppError('VALIDATION_ERROR', 'Seat does not exist', 400);
+      if (seat.owner_account_id || (editing ? seat.occupant_kind !== 'bot' : seat.occupant_kind === 'bot')) {
+        throw new AppError('SEAT_OCCUPIED', 'Seat is unavailable for this AI operation', 409);
+      }
+      if (!editing) {
+        const capacity = await client.query<{count: string}>(`SELECT (SELECT count(*) FROM room_members WHERE room_id=$1)
+          +(SELECT count(*) FROM seats WHERE room_id=$1 AND occupant_kind='bot') AS count`, [roomId]);
+        if (Number(capacity.rows[0]!.count) >= room.seat_count) throw new AppError('ROOM_FULL', 'Room is full', 409);
+      }
+      const model = body.controllerType === 'model';
+      const profileId = model ? body.profileId : null;
+      if (model) await this.requireBotProfile(client, accountId, profileId);
+      const policyId = model ? 'model' : 'basic-v1';
+      if (editing && seat.bot_policy_id === policyId && seat.bot_model_profile_id === profileId) return false;
+      await client.query(`UPDATE seats SET occupant_kind='bot',bot_name=$1,bot_policy_id=$2,
+        bot_policy_version='1.0.0',bot_model_profile_id=$3,ready=false WHERE id=$4`,
+        [`电脑 ${seat.seat_index + 1}`, policyId, profileId, seatId]);
+      await client.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'", [roomId]);
+    });
+  }
+  removeBot(accountId:string,roomId:string,seatId:string,raw:unknown){const body=revisionSchema.parse(raw);return this.mutate(accountId,roomId,'room.bot.remove',{...body,seatId},async(c,r)=>{this.assertHost(r,accountId);this.assertWaiting(r);const result=await c.query("UPDATE seats SET occupant_kind='human',bot_name=NULL,bot_policy_id=NULL,bot_policy_version=NULL,bot_model_profile_id=NULL,ready=false WHERE id=$1 AND room_id=$2 AND occupant_kind='bot'",[seatId,roomId]);if(!result.rowCount)return false;await c.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'",[roomId]);});}
   ready(accountId:string,roomId:string,raw:unknown){ const body=readySchema.parse(raw); return this.mutate(accountId,roomId,'room.ready',body,async(c,r)=>{this.assertWaiting(r);const seat=await c.query<{ready:boolean}>('SELECT ready FROM seats WHERE room_id=$1 AND owner_account_id=$2',[roomId,accountId]);if(!seat.rowCount)throw new AppError('NOT_SEATED','Take a seat first',409);if(seat.rows[0]!.ready===body.ready)return false;await c.query('UPDATE seats SET ready=$1 WHERE room_id=$2 AND owner_account_id=$3',[body.ready,roomId,accountId]);}); }
   unseat(accountId:string,roomId:string,raw:unknown){ const body=revisionSchema.parse(raw); return this.mutate(accountId,roomId,'room.unseat',body,async(c,r)=>{this.assertWaiting(r);const result=await c.query('UPDATE seats SET owner_account_id=NULL,ready=false WHERE room_id=$1 AND owner_account_id=$2',[roomId,accountId]);if(!result.rowCount)return false;await c.query('UPDATE seats SET ready=false WHERE room_id=$1',[roomId]);}); }
   transfer(accountId:string,roomId:string,raw:unknown){ const body=hostSchema.parse(raw); return this.mutate(accountId,roomId,'room.host',body,async(c,r)=>{this.assertHost(r,accountId);const member=await c.query('SELECT 1 FROM room_members WHERE room_id=$1 AND account_id=$2',[roomId,body.targetAccountId]);if(!member.rowCount)throw new AppError('VALIDATION_ERROR','Target is not a member',400);if(body.targetAccountId===accountId)return false;await c.query('UPDATE rooms SET host_account_id=$1 WHERE id=$2',[body.targetAccountId,roomId]);}); }
@@ -240,9 +312,16 @@ export class RoomService {
       const ext=this.registry.get(room.game_id,room.game_version);
       if(!ext||ext.manifest.developmentOnly)throw new AppError('GAME_VERSION_UNAVAILABLE','Game version unavailable',422);
       await this.assertInstalled(c,room.game_id,room.game_version);
-      const seats=await c.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_policy_id:string|null;bot_policy_version:string|null;ready:boolean;status:string|null}>('SELECT s.id,s.seat_index,s.owner_account_id,s.occupant_kind,s.bot_policy_id,s.bot_policy_version,s.ready,a.status FROM seats s LEFT JOIN accounts a ON a.id=s.owner_account_id WHERE s.room_id=$1 ORDER BY s.seat_index FOR UPDATE OF s',[roomId]);
+      const seats=await c.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_policy_id:string|null;bot_policy_version:string|null;bot_model_profile_id:string|null;ready:boolean;status:string|null}>('SELECT s.id,s.seat_index,s.owner_account_id,s.occupant_kind,s.bot_policy_id,s.bot_policy_version,s.bot_model_profile_id,s.ready,a.status FROM seats s LEFT JOIN accounts a ON a.id=s.owner_account_id WHERE s.room_id=$1 ORDER BY s.seat_index FOR UPDATE OF s',[roomId]);
       const members=await c.query<{count:string}>('SELECT count(*) FROM room_members WHERE room_id=$1',[roomId]);
-      if(seats.rows.length!==room.seat_count||seats.rows.some(s=>s.occupant_kind==='human'?(!s.owner_account_id||!s.ready||s.status!=='active'):s.bot_policy_id!=='basic-v1')||Number(members.rows[0]!.count)!==seats.rows.filter(s=>s.occupant_kind==='human').length)throw new AppError('NOT_ALL_READY','Every human must be seated and ready and every bot must have an available policy',409);
+      if(seats.rows.length!==room.seat_count||seats.rows.some(s=>s.occupant_kind==='human'?(!s.owner_account_id||!s.ready||s.status!=='active'):!['basic-v1','model'].includes(s.bot_policy_id??''))||Number(members.rows[0]!.count)!==seats.rows.filter(s=>s.occupant_kind==='human').length)throw new AppError('NOT_ALL_READY','Every human must be seated and ready and every bot must have an available policy',409);
+      if (seats.rows.some(seat => seat.occupant_kind === 'bot') && !ext.getDecisionContext) {
+        throw new AppError('AI_NOT_SUPPORTED', 'Game does not support AI', 422);
+      }
+      // Lock profiles before creating any match data so deletion/editing cannot race activation.
+      for (const seat of seats.rows.filter(seat => seat.bot_policy_id === 'model').sort((a, b) => (a.bot_model_profile_id ?? '').localeCompare(b.bot_model_profile_id ?? ''))) {
+        await this.requireBotProfile(c, room.host_account_id, seat.bot_model_profile_id);
+      }
       const assets=room.asset_version_id?await lockAssetBinding(c,this.registry,room.game_id,room.asset_version_id,true):null;
       const matchId=randomUUID();const rng=new DeterministicRng(randomBytes(4).readUInt32LE());
       let serialized:unknown;
@@ -252,7 +331,13 @@ export class RoomService {
       await c.query('INSERT INTO matches(id,room_id,game_id,game_version,content_version,resource_pack_id,resource_pack_version,state,rng_state,state_schema_version,rule_digest,resource_digest) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[matchId,roomId,room.game_id,room.game_version,ext.manifest.contentVersion,ext.manifest.defaultAssetPack.id,ext.manifest.defaultAssetPack.version,serialized,rng.snapshot(),'1',digest.rule,digest.resource]);
       if(assets)await c.query('UPDATE matches SET asset_version_id=$2,asset_manifest_hash=$3,asset_contract_version=$4,resource_pack_id=$5,resource_pack_version=$6 WHERE id=$1',[matchId,assets.versionId,assets.manifestHash,assets.contractVersion,assets.packId,assets.version]);
       for(const seat of seats.rows){
-        if(seat.occupant_kind==='bot')await c.query("INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type,policy_id,policy_version,policy_hash) VALUES($1,$2,NULL,$3,'bot','script',$4,$5,$6)",[matchId,seat.id,seat.seat_index,seat.bot_policy_id,seat.bot_policy_version,sha(`${room.game_id}:${seat.bot_policy_id}:${seat.bot_policy_version}`)]);
+        if (seat.occupant_kind === 'bot' && seat.bot_policy_id === 'model') {
+          await c.query(`INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type,
+            policy_id,policy_version,policy_hash,model_profile_id,model_owner_account_id)
+            VALUES($1,$2,NULL,$3,'bot','model','model','1.0.0',$4,$5,$6)`,
+            [matchId,seat.id,seat.seat_index,sha(`${room.game_id}:model:1.0.0:${seat.bot_model_profile_id}`),seat.bot_model_profile_id,room.host_account_id]);
+        }
+        else if(seat.occupant_kind==='bot')await c.query("INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type,policy_id,policy_version,policy_hash) VALUES($1,$2,NULL,$3,'bot','script',$4,$5,$6)",[matchId,seat.id,seat.seat_index,seat.bot_policy_id,seat.bot_policy_version,sha(`${room.game_id}:${seat.bot_policy_id}:${seat.bot_policy_version}`)]);
         else await c.query("INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type) VALUES($1,$2,$3,$4,'human','human')",[matchId,seat.id,seat.owner_account_id,seat.seat_index]);
       }
       await c.query("UPDATE rooms SET status='in_game',active_match_id=$1,room_revision=room_revision+1 WHERE id=$2",[matchId,roomId]);

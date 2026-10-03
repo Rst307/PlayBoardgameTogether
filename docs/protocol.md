@@ -30,7 +30,7 @@ HTTP envelope 为 `{ok:true,data,traceId}` 或 `{ok:false,error:{code,message,re
 - `PATCH /rooms/:id/config`
 - `POST /rooms/:id/invite|leave|host|start|close`
 - `PUT|DELETE /rooms/:id/my-seat`、`PUT /rooms/:id/my-ready`
-- `PUT|DELETE /rooms/:id/seats/:seatId/bot`：waiting 房间内仅房主可添加/移除白名单脚本 AI。
+- `PUT|PATCH|DELETE /rooms/:id/seats/:seatId/bot`：waiting 房主添加/修改/移除 AI。script 输入 policyId=basic-v1（兼容省略 controllerType）；model 输入 controllerType=model 与本人的 profileId。请求严格校验并携带 requestId/expectedRoomRevision；回执绑定目标 seatId。模型变更取消真人准备，开局重新校验并固定授权。快照仅房主可见 botModelProfileId，其他成员该字段为 null；没有 profile 地址、密钥或 bot 私密 View。
 - `GET /games/:id/ai-policies`：公开兼容策略描述，不返回模块路径。
 - `GET /api/v1/matches/:id/view`
 - `POST /api/v1/matches/:id/actions`：`{requestId,expectedRevision,expectedControllerEpoch,action}`；不接受客户端 seatId/automation 标记。epoch 0 的旧阶段 4 请求保留兼容，发生控制切换后必须携带当前 epoch。

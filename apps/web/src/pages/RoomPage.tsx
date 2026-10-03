@@ -1,6 +1,8 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {api,command,navigate} from '../platform.js';
 import type {AssetVersionInfo} from '@boardgame/protocol/assets';
+import { botSeatCommandSchema, type ModelProfile } from '@boardgame/protocol';
+import { BotSeatSettings } from './BotSeatSettings.js';
 import {GameRules} from './GameRules.js';
 import {mergeRoomSnapshot} from './roomSnapshot.js';
 import { PageFeedback } from '@boardgame/ui';
@@ -15,6 +17,20 @@ export function RoomPage({id}:{id:string}){
   const[connected,setConnected]=useState(false);
   const[busy,setBusy]=useState(false);
   const[players,setPlayers]=useState<{min:number;max:number}>({min:2,max:2});
+  const [modelProfiles, setModelProfiles] = useState<ModelProfile[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+  const [modelsRefresh, setModelsRefresh] = useState(0);
+  useEffect(() => {
+    if (!room?.permissions.isHost || room.status !== 'waiting') return;
+    let disposed = false;
+    setModelsLoading(true);
+    setModelsError('');
+    void api.modelProfiles().then(profiles => { if (!disposed) setModelProfiles(profiles); })
+      .catch(cause => { if (!disposed) { setModelProfiles([]); setModelsError(cause instanceof Error ? cause.message : '模型配置读取失败，请重试'); } })
+      .finally(() => { if (!disposed) setModelsLoading(false); });
+    return () => { disposed = true; };
+  }, [room?.permissions.isHost, room?.status, modelsRefresh]);
   const[assetVersions,setAssetVersions]=useState<AssetVersionInfo[]>([]);
   useEffect(()=>{if(room?.gameId)void api.assets.versions(room.gameId).then(setAssetVersions).catch(()=>undefined);},[room?.gameId]);
   const [completedMatchId] = useState<string | undefined>(() => {
@@ -55,7 +71,12 @@ export function RoomPage({id}:{id:string}){
   async function run(path:string,method:string,extra={}){
     if(!connected||busy)return;
     setBusy(true);setError('');
-    try{const next=await api.roomCommand<any>(id,path,method,{requestId:command(),expectedRoomRevision:room.roomRevision,...extra});
+    try{
+      const body={requestId:command(),expectedRoomRevision:room.roomRevision,...extra};
+      const botPath=/^seats\/([^/]+)\/bot$/.exec(path);
+      const next=botPath&&(method==='PUT'||method==='PATCH')
+        ?await api.saveRoomBot(id,botPath[1]!,method,botSeatCommandSchema.parse(body))
+        :await api.roomCommand<any>(id,path,method,body);
       if(!active.current)return;
       if(path==='invite'){setInvite(next.inviteCode??'');setCopyNotice(next.inviteCode?'':'本次响应无法重取原码，请重新刷新邀请码。');history.replaceState(null,'',location.href);}
       if(path==='start'){enterMatch(next.matchId);return;}
@@ -83,7 +104,11 @@ export function RoomPage({id}:{id:string}){
         {!assetVersions.some(version=>version.id===room.assetVersionId)&&<option value={room.assetVersionId??''}>保持当前绑定</option>}
         {assetVersions.map(version=><option value={version.id} key={version.id}>{version.name} · {version.version}</option>)}
       </select></label>}<p className="muted">更换会取消真人准备；开局后锁定本版本。</p></section>}
-    <fieldset className="room-fieldset" disabled={!connected||busy}><div className="seat-grid">{room.seats.map((seat:any)=>{const member=room.members.find((item:any)=>item.accountId===seat.ownerAccountId);const bot=seat.occupantKind==='bot';return <article className="panel seat-card" key={seat.seatId}><p className="eyebrow">座位 {seat.seatIndex+1}</p><h2>{bot?(seat.botName??'脚本 AI'):(member?.displayName??'空座位')}</h2><p>{bot?'脚本 AI · basic-v1 · 已就绪':<>{seat.ownerAccountId===me.account.id?'这是你 · ':''}{seat.ownerAccountId===room.hostAccountId?'房主 · ':''}{seat.ready?'已准备':'未准备'}{member?` · ${online.includes(member.accountId)?'在线':'离线'}`:''}</>}</p>{!seat.ownerAccountId&&!bot&&waiting&&<><button onClick={()=>run('my-seat','PUT',{seatIndex:seat.seatIndex})}>坐这里</button>{room.permissions.isHost&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'PUT',{policyId:'basic-v1'})}>添加脚本 AI</button>}</>}{bot&&room.permissions.isHost&&waiting&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'DELETE')}>移除 AI</button>}</article>})}</div>
+    <fieldset className="room-fieldset" disabled={!connected||busy}><div className="seat-grid">{room.seats.map((seat:any)=>{const member=room.members.find((item:any)=>item.accountId===seat.ownerAccountId);const bot=seat.occupantKind==='bot';return <article className="panel seat-card" key={seat.seatId}><p className="eyebrow">座位 {seat.seatIndex+1}</p><h2>{bot?(seat.botName??'脚本 AI'):(member?.displayName??'空座位')}</h2><p>{bot?(seat.botPolicyId==='model'?'模型 AI · 已就绪':'脚本 AI · basic-v1 · 已就绪'):<>{seat.ownerAccountId===me.account.id?'这是你 · ':''}{seat.ownerAccountId===room.hostAccountId?'房主 · ':''}{seat.ready?'已准备':'未准备'}{member?` · ${online.includes(member.accountId)?'在线':'离线'}`:''}</>}</p>{!seat.ownerAccountId&&!bot&&waiting&&<><button onClick={()=>run('my-seat','PUT',{seatIndex:seat.seatIndex})}>坐这里</button>{room.permissions.isHost&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'PUT',{policyId:'basic-v1'})}>添加脚本 AI</button>}</>}{room.permissions.isHost&&waiting&&(bot||!seat.ownerAccountId)&&<BotSeatSettings
+      key={`${seat.botPolicyId}:${seat.botModelProfileId}`} editing={bot} policyId={seat.botPolicyId} profileId={seat.botModelProfileId??null}
+      profiles={modelProfiles} loading={modelsLoading} error={modelsError} refresh={()=>setModelsRefresh(value=>value+1)}
+      save={settings=>void run(`seats/${seat.seatId}/bot`,bot?'PATCH':'PUT',settings)}
+    />}{bot&&room.permissions.isHost&&waiting&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'DELETE')}>移除 AI</button>}</article>})}</div>
     {waiting&&<div className="panel room-actions"><h2>房间操作</h2><p className="muted">席位变更会取消真人准备，请全员入座后再准备。</p>{mine?<><button onClick={()=>run('my-ready','PUT',{ready:!mine.ready})}>{mine.ready?'取消准备':'准备'}</button><button className="secondary" onClick={()=>run('my-seat','DELETE')}>离座</button></>:<p className="muted">选择一个空座位后才能准备。</p>}{room.permissions.isHost&&<><button className="secondary" onClick={()=>run('invite','POST')}>刷新邀请码</button><button disabled={!room.permissions.canStart} onClick={()=>run('start','POST')}>开始游戏</button></>}<button className="secondary" onClick={()=>run('leave','POST')}>退出房间</button>{room.startBlockers.length>0&&<ul>{room.startBlockers.map((blocker:string)=><li key={blocker}>{blocker}</li>)}</ul>}</div>}
     {waiting&&room.members.some((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId))&&<section className="panel waiting-members"><h2>候场成员</h2>{room.members.filter((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId)).map((member:any)=><p key={member.accountId}>{member.displayName} · 请先选择空座位</p>)}</section>}
     {room.permissions.isHost&&waiting&&<section className="panel host-tools"><h2>房主设置</h2><form className="form-stack" onSubmit={configure}><label>房间名<input name="name" defaultValue={room.name} maxLength={40}/></label><label>座位数<input name="seatCount" type="number" min={players.min} max={players.max} defaultValue={room.seatCount}/></label><button className="secondary">保存配置（规则变更会清除准备）</button></form><h3>转让房主</h3>{room.members.filter((member:any)=>member.accountId!==me.account.id).map((member:any)=><button className="secondary" key={member.accountId} onClick={()=>run('host','POST',{targetAccountId:member.accountId})}>转让给 {member.displayName}</button>)}</section>}

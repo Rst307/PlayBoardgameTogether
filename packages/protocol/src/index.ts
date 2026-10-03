@@ -4,6 +4,31 @@ export * from './profile.js';
 import { assetBindingSchema, presentationCueSchema } from './assets.js';
 
 export const PROTOCOL_VERSION = 1 as const;
+const botSeatRevision = {
+  requestId: z.string().min(1).max(128),
+  expectedRoomRevision: z.number().int().nonnegative(),
+};
+export const botSeatCommandSchema = z.union([
+  z.object({ ...botSeatRevision, controllerType: z.literal('script').optional(), policyId: z.literal('basic-v1') }).strict(),
+  z.object({ ...botSeatRevision, controllerType: z.literal('model'), profileId: z.string().uuid() }).strict(),
+]);
+export type BotSeatCommand = z.input<typeof botSeatCommandSchema>;
+export const roomSnapshotSchema = z.object({
+  assetVersionId: z.string().uuid().nullable(),
+  id: z.string().uuid(), name: z.string(), status: z.enum(['waiting', 'in_game', 'closed']),
+  hostAccountId: z.string().uuid(), gameId: z.string(), gameVersion: z.string(), options: z.unknown(),
+  seatCount: z.number().int(), roomRevision: z.number().int().nonnegative(), activeMatchId: z.string().uuid().nullable(),
+  visibility: z.enum(['public', 'private']), hasPassword: z.boolean(), matchStatus: z.string().nullable(),
+  members: z.array(z.object({ accountId: z.string().uuid(), displayName: z.string(), joinedAt: z.string() })),
+  seats: z.array(z.object({
+    seatId: z.string().uuid(), seatIndex: z.number().int(), ownerAccountId: z.string().uuid().nullable(),
+    occupantKind: z.enum(['human', 'bot']), botName: z.string().nullable(), botPolicyId: z.string().nullable(),
+    botModelProfileId: z.string().uuid().nullable().default(null), ready: z.boolean(),
+  })),
+  permissions: z.object({ isHost: z.boolean(), canConfigure: z.boolean(), canStart: z.boolean() }),
+  startBlockers: z.array(z.string()),
+});
+export type RoomSnapshot = z.infer<typeof roomSnapshotSchema>;
 export const modelParametersSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxOutputTokens: z.number().int().min(16).max(512).optional(),

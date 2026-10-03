@@ -114,3 +114,11 @@ web -> client-sdk -> HTTP / authenticated WS
 
 
 2026-10-02 璀璨宝石可玩性优化：Web registry 将现有 MatchPage 去重后的 live 公开事件传给 SplendorBoard；客户端 Activity 在边界解析事件、按 eventId 保留短记录并展示临时行动／购买卡面。visuals 共享精确资源与失败回退，interaction 用本人 View 的合法候选校验本地宝石草稿，正式提交仍由原 matches 链路处理。没有改变 shared/server/catalog、规则摘要、事件投影、HTTP/WS 或数据库；既有存档和图包锁继续兼容。
+
+## 模型 bot 授权（2026-10-03）
+
+RoomService 复用原房间写事务添加和修改 bot 的脚本/模型配置；协议共用 botSeatCommandSchema 与 roomSnapshotSchema，client-sdk saveRoomBot 解析请求和完整房间响应。房间公开模型类型，仅房主快照包含 botModelProfileId，成员不读取私人模型配置、端点或密钥。Web BotSeatSettings 只管理候选和表单，RoomPage 保持命令、revision 与页面世代处理。
+
+开局时 bot 的 account_id 仍为 NULL；model_owner_account_id 单独固定授权房主，复合外键保证 profile 归属。调度器以该授权账户取得凭证，按 bot 自己的 View 决策，自动动作仍走原 matches 事务；提交时也检查授权账户 active。profile 行共享锁与编辑/删除串行化，活跃模型 bot 与真人模型绑定共同阻止配置编辑/删除。见 [ADR-004](adr/004-model-bot-authorization.md)。
+
+模型决策组：单行动者扩展按 sourceRevision + decisionKey 区分已提交动作后的下一次决定，避免固定 phase/seat 键令整局两次调用后永久兜底；有 getDecisionRequests 的同时行动扩展保留原跨 revision 决策组。每组最多两次外部尝试，旧 epoch/proposal/lease fencing 保持。

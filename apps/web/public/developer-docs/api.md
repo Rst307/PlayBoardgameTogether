@@ -62,7 +62,8 @@
 | POST | /rooms/:id/start | R，房主开局；返回 matchId 等结果 |
 | POST | /rooms/:id/close | R，房主关闭；进行中对局中止 |
 | PUT | /rooms/:id/assets | R + versionId，waiting 房主选择图包 |
-| PUT | /rooms/:id/seats/:seatId/bot | R + policyId:'basic-v1'，waiting 房主添加 AI |
+| PUT | /rooms/:id/seats/:seatId/bot | R + policyId:'basic-v1'，或 controllerType:'model'/profileId（房主本人），waiting 房主添加 AI |
+| PATCH | /rooms/:id/seats/:seatId/bot | 同 PUT 设置，修改已有 AI；取消真人准备 |
 | DELETE | /rooms/:id/seats/:seatId/bot | R，waiting 房主移除 AI |
 
 ```json
