@@ -1,45 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '@boardgame/client-sdk';
-import type { SocialOverview } from '@boardgame/protocol';
-import { api, navigate } from '../platform.js';
+import { navigate } from '../platform.js';
+import { useSocialContext } from './SocialProvider.js';
 
 export function useSocial() {
-  const [data, setData] = useState<SocialOverview>();
-  const [error, setError] = useState('');
-  const mounted = useRef(false);
-  const sequence = useRef(0);
-  const request = useRef<AbortController | undefined>(undefined);
-  const refresh = useCallback(async () => {
-    const version = ++sequence.current;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    try {
-      const next = await api.social(controller.signal);
-      if (mounted.current && version === sequence.current) { setData(next); setError(''); }
-    } catch (cause) {
-      if (!mounted.current || version !== sequence.current || controller.signal.aborted) return;
-      if (cause instanceof ApiError && cause.code === 'UNAUTHENTICATED') { setData(undefined); navigate('/login'); }
-      else setError('好友信息同步失败，请检查网络或重试。');
-    } finally { if (version === sequence.current) request.current = undefined; }
-  }, []);
+  const { data, error, refresh, guest } = useSocialContext();
   useEffect(() => {
-    mounted.current = true;
-    let disposed = false;
-    void api.me().then(() => { if (!disposed) void refresh(); }).catch(cause => {
-      if (disposed) return;
-      if (cause instanceof ApiError && cause.code === 'UNAUTHENTICATED') navigate('/login');
-      else setError('无法读取会话，请重试。');
-    });
-    const sync = () => { if (document.visibilityState === 'visible' && !request.current) void refresh(); };
-    const timer = window.setInterval(sync, 5000);
-    window.addEventListener('online', sync);
-    document.addEventListener('visibilitychange', sync);
-    return () => {
-      disposed = true; mounted.current = false; sequence.current++; request.current?.abort();
-      clearInterval(timer); window.removeEventListener('online', sync); document.removeEventListener('visibilitychange', sync);
-    };
-  }, [refresh]);
+    if (guest) navigate('/login');
+  }, [guest]);
   return { data, error, refresh };
 }
 

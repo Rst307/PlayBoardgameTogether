@@ -1,5 +1,22 @@
 # 开发进度
 
+## 简化个人资料、全局通知与桌面聊天浮窗（2026-10-04）
+
+先梳理资料页目标、常驻功能、次级入口、层级与用户流程，默认 `/profile` 只展示名片及一个编辑主入口；表单、ID 管理、完整对局记录分别进入 `/profile/edit`、`/profile/identity`、`/profile/history`，内部账户资料和退出登录收进账户操作。默认不请求对局历史，原保存/分页接口保持。手机标题和操作同行，320/390/768/1440px 无整页横向溢出。
+
+修复通知只在好友子页可见的问题：SocialProvider 在全局外壳统一每 5 秒认证 HTTP 同步，好友、ID、房间邀请和通知共享概要。右上角通知显示未读私聊、有效收到的房间邀请及好友申请，新到数据产生短暂站内提示，首载不弹历史提示。电脑从列表/通知打开右下角私聊，可最小化/关闭，站内切页和最小化保留草稿；最小化停止消息读取与已读，恢复后增量补取。DirectChat 继续复用同一发送去重/分页/水位，加入输入焦点与最新消息滚动。手机和原深链接保留独立聊天页。退出或失效清除社交数据/浮窗，没有新 API、数据库迁移、WS 或系统通知权限；资料和社交说明及架构同步。
+
+实际验证：
+
+- 最小复现 `pnpm exec playwright test --config playwright.social-ui.config.ts --project desktop --grep 'messages and invitations' --output .data/social-ui-red` 在修改前失败：资料页找不到通知入口。测试注入合法本人投影，验证真实 React 页面，不替代数据库集成。
+- 本轮最终逻辑 `pnpm typecheck`、`pnpm lint` 通过，20 个源目录 AST 边界通过；`pnpm test tests/unit/friend-handles.test.ts` 3 项通过，无 skip。
+- `pnpm build` 通过，含生产 bundle/API runtime、隔离 ZIP 规则及 AI worker 检查。最终未读角标样式调整后 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm exec playwright test --config playwright.social-ui.config.ts --output .data/social-ui-production` 在生产预览上资料/通知/浮窗共 4 项通过；随后补充邀请点击与密码门槛检查，桌面用例因测试选择器误匹配通知提示按钮失败，修正为明确通知入口。最终 `pnpm exec playwright test --config playwright.social-ui.config.ts --grep 'messages and invitations' --output .data/social-ui-production` 2 项通过，专项 ESLint 通过。覆盖全局接收、提示/未读、桌面浮窗与手机独立页、最小化新消息保持未读、展开增量恢复、跨页面草稿、关闭、资料子路由/保存/刷新、退出清理和布局。实际查看桌面/手机资料、通知菜单及桌面浮窗截图，生成产物只留忽略目录 `.data`。
+- `pnpm test:ui --output .data/public-ui-social` 10 项通过（桌面/手机公开文档、导航、登录及失败恢复），无 skip。
+- 确认 TEST_DATABASE_URL 对应独立 `boardgame_test`，与开发数据库不同。`pnpm test:e2e tests/e2e/profile.spec.ts tests/e2e/social.spec.ts` 在准备阶段被 `ECONNREFUSED 127.0.0.1:5434` 阻断，未进入清理测试数据/实际双账户流程；`pnpm db:up` 因 Docker Desktop Linux 引擎管道不存在失败。未重置开发库，未覆盖 `.env`，未把模拟 HTTP 测试当作真实双账户验收。
+
+下一步：启动本机 Docker/PostgreSQL 后重跑上述真实资料/好友 E2E，验证真实双账户发消息、确认邀请及刷新恢复。本轮无服务端事务/协议变更，未运行全量单测、集成或全量业务 E2E。通知使用站内轮询，浏览器后台/关闭后不承诺系统推送；浮窗草稿在关闭、切换对象或整页刷新时丢弃。
+
 ## 大厅房间显示当前房主昵称与公开 ID（2026-10-04）
 
 用户确认展示当前房主。在既有公开房间列表的房间名下增加「房主：昵称 · @ID」次要文本，保留筛选、人数/状态和单一加入按钮，无新增页面或常驻设置。lobby 查询在同一条 SQL 中通过 rooms.host_account_id 关联 accounts，DTO 增加 hostDisplayName/hostFriendId（原始公开 ID 无 @），Web 复用 formatFriendId。昵称、公开 ID 修改及转让房主后，下次刷新反映最新身份；不暴露登录名、内部账户 UUID、成员名单或秘密。无数据库迁移，client-sdk 原 lobbyPageSchema 解析链路直接消费新字段；需同步更新 Web/API。房间与协议及公开开发者 API 文档同步。

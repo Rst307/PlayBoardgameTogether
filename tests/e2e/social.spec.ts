@@ -53,6 +53,9 @@ test('two friends change IDs, confirm friendship, chat privately and join a priv
     await b.getByLabel('私聊消息', { exact: true }).fill('可以，邀请我吧。');
     await b.getByRole('button', { name: '发送消息', exact: true }).click();
     await expect(page.getByText('可以，邀请我吧。', { exact: true })).toBeVisible({ timeout: 15000 });
+    // Direct conversation URLs still support refresh; desktop list clicks open the dock.
+    const bAccount = (await (await b.request.get('/api/v1/auth/me')).json()).data.account.id;
+    await page.goto(`/friends/chat/${bAccount}`);
     await page.reload();
     await expect(page.getByText('可以，邀请我吧。', { exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -63,6 +66,7 @@ test('two friends change IDs, confirm friendship, chat privately and join a priv
     await page.getByLabel('房间类型').selectOption('private');
     await page.getByRole('button', { name: '创建并生成邀请码', exact: true }).click();
     await expect(page.getByRole('heading', { name: '好友邀请桌', exact: true })).toBeVisible();
+    // Creation already expands the invitation section.
     await page.getByRole('button', { name: '邀请 玩家 E', exact: true }).click();
     await expect(page.getByText('已邀请 玩家 E', { exact: true })).toBeVisible();
     await b.locator('.social-navigation').getByRole('link', { name: '房间邀请' }).click();
