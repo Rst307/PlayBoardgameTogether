@@ -1,0 +1,993 @@
+/* ==========================================================================
+   PlayBoardgameTogether - Modern Visual Refresh & Elevation System
+   Designed for exceptional usability, modern elegance, and atmospheric depth.
+   ========================================================================== */
+
+:root {
+  /* Rich obsidian & deep slate palette */
+  --bg-darkest: #090c13;
+  --bg: #0d111a;
+  --bg-elevated: #131926;
+  --panel: rgba(19, 25, 38, 0.75);
+  --panel-solid: #151c2b;
+  --panel-raised: rgba(28, 37, 56, 0.8);
+  --panel-hover: rgba(38, 49, 74, 0.85);
+  
+  /* Text & typography hierarchy */
+  --text: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --muted: #94a3b8;
+  --muted-dark: #64748b;
+  
+  /* Modern translucent borders */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --control-line: rgba(255, 255, 255, 0.14);
+  --control-line-focus: #3b82f6;
+  
+  /* Primary sapphire brand & accents */
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --accent-glow: 0 0 20px -2px rgba(59, 130, 246, 0.45);
+  
+  /* Semantic state colors */
+  --success: #10b981;
+  --success-soft: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.15);
+  --danger: #f43f5e;
+  --danger-soft: rgba(244, 63, 94, 0.15);
+  
+  /* Radii & Shadows */
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 2px 8px -1px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-card-hover: 0 12px 32px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(59, 130, 246, 0.35), 0 0 24px -4px rgba(59, 130, 246, 0.25);
+  
+  /* Modern font stack */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   Skip Link - Accessible & Visually Clean
+   ========================================================================== */
+.skip-link:not(:focus) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.skip-link:focus {
+  position: fixed !important;
+  top: 16px !important;
+  left: 16px !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 12px 20px !important;
+  clip: auto !important;
+  white-space: normal !important;
+  z-index: 9999 !important;
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  outline: 2px solid #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* ==========================================================================
+   Smooth Custom Scrollbars & Base
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+body {
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(circle at 10% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Typography Enhancement - Goodbye Jagged Serif!
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.025em !important;
+}
+
+.page-heading h1, .hero h1, .empty h1 {
+  font-size: clamp(28px, 3.2vw, 42px) !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  margin-block: 8px 12px !important;
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-heading p, .hero p:not(.eyebrow) {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--accent-hover) !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 4px;
+}
+
+/* ==========================================================================
+   Desktop Shell & Elegant Sidebar
+   ========================================================================== */
+.desktop-shell {
+  min-height: 100dvh;
+}
+
+.site-header {
+  background: rgba(12, 16, 25, 0.88) !important;
+  backdrop-filter: blur(28px) !important;
+  -webkit-backdrop-filter: blur(28px) !important;
+  border-right: 1px solid var(--line) !important;
+  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Authentic, colorful macOS window indicators */
+.window-marks {
+  display: flex !important;
+  gap: 8px !important;
+  margin: 0 4px 28px !important;
+}
+.window-marks i {
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  transition: transform 160ms ease, opacity 160ms ease;
+  cursor: default;
+}
+.window-marks i:nth-child(1) {
+  background: #ff5f56 !important;
+  box-shadow: 0 0 6px rgba(255, 95, 86, 0.4);
+}
+.window-marks i:nth-child(2) {
+  background: #ffbd2e !important;
+  box-shadow: 0 0 6px rgba(255, 189, 46, 0.4);
+}
+.window-marks i:nth-child(3) {
+  background: #27c93f !important;
+  box-shadow: 0 0 6px rgba(39, 201, 63, 0.4);
+}
+.window-marks:hover i {
+  transform: scale(1.08);
+}
+
+/* Brand styling */
+.brand {
+  text-decoration: none !important;
+  padding: 4px 6px !important;
+  gap: 12px !important;
+}
+.brand-symbol {
+  width: 38px !important;
+  height: 38px !important;
+  filter: drop-shadow(0 4px 10px rgba(59, 130, 246, 0.4));
+}
+.brand-symbol rect {
+  fill: #1e293b !important;
+  stroke: #3b82f6 !important;
+  stroke-width: 1.5 !important;
+}
+.brand-symbol path {
+  fill: #60a5fa !important;
+}
+.brand .brand-name {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+.brand-name > span {
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: var(--muted) !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Sidebar navigation links */
+.site-header nav {
+  gap: 4px !important;
+  margin-top: 32px !important;
+}
+.nav-caption {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--muted-dark) !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 0 12px 10px !important;
+}
+.site-header nav > a {
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  text-decoration: none !important;
+  border: 1px solid transparent !important;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.site-header nav > a svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 1.7 !important;
+  opacity: 0.85;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.site-header nav > a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+  transform: translateX(2px);
+}
+.site-header nav > a:hover svg {
+  opacity: 1;
+  transform: scale(1.1);
+}
+.site-header nav a[aria-current="page"] {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.06) 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 12px -2px rgba(59, 130, 246, 0.3);
+}
+.site-header nav a[aria-current="page"] svg {
+  stroke: var(--accent-hover) !important;
+  opacity: 1;
+}
+
+/* Nav "更多" tools dropdown */
+.nav-tools {
+  border-top: 1px solid var(--line) !important;
+  margin-top: 16px !important;
+  padding-top: 12px !important;
+}
+.nav-tools summary {
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  transition: background-color 160ms, color 160ms;
+}
+.nav-tools summary:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+.nav-tools > div {
+  padding: 8px !important;
+  background: rgba(18, 24, 38, 0.95) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+  margin-top: 4px;
+}
+.nav-tools a {
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  color: var(--text-secondary) !important;
+  text-decoration: none !important;
+  display: block !important;
+  transition: all 140ms ease;
+}
+.nav-tools a:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  transform: translateX(2px);
+}
+.nav-tools a[aria-current="page"] {
+  background: var(--accent-soft) !important;
+  color: var(--accent-hover) !important;
+  font-weight: 600;
+}
+
+.sidebar-note {
+  border-top: 1px solid var(--line) !important;
+  padding: 18px 8px 0 !important;
+  color: var(--text-secondary) !important;
+}
+.sidebar-note small {
+  color: var(--muted) !important;
+}
+
+/* ==========================================================================
+   Workspace & Glass Toolbar
+   ========================================================================== */
+.workspace {
+  background: transparent !important;
+  min-width: 0;
+}
+
+.workspace-toolbar {
+  min-height: 56px !important;
+  padding: 12px 32px !important;
+  background: rgba(13, 17, 26, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid var(--line) !important;
+  font-size: 13px !important;
+}
+.workspace-toolbar span[aria-hidden] {
+  color: var(--muted-dark) !important;
+  margin-inline: 8px !important;
+}
+.workspace-toolbar strong {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+.toolbar-detail {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--muted) !important;
+}
+
+footer {
+  padding: 24px 32px !important;
+  border-top: 1px solid var(--line) !important;
+  color: var(--muted-dark) !important;
+  font-size: 12px !important;
+}
+
+/* ==========================================================================
+   Panels, Cards & Modern Frosted Surfaces
+   ========================================================================== */
+.panel {
+  background: rgba(19, 25, 38, 0.72) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.dashboard-grid > .panel {
+  background: rgba(19, 25, 38, 0.75) !important;
+  border-radius: 16px !important;
+}
+
+/* ==========================================================================
+   Buttons & Interactive Elements
+   ========================================================================== */
+button, .button-link {
+  font-family: inherit !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  min-height: 44px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Primary buttons */
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button),
+.button-link:not(.secondary) {
+  background: var(--accent-gradient) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.45) !important;
+}
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):hover:not(:disabled),
+.button-link:not(.secondary):hover {
+  filter: brightness(1.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px -2px rgba(37, 99, 235, 0.6) !important;
+}
+button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):active:not(:disabled),
+.button-link:not(.secondary):active {
+  transform: translateY(1px) !important;
+  filter: brightness(0.95) !important;
+}
+
+/* Secondary buttons */
+button.secondary, .button-link.secondary {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+button.secondary:hover:not(:disabled), .button-link.secondary:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+button.secondary:active:not(:disabled), .button-link.secondary:active {
+  transform: translateY(1px) !important;
+}
+
+/* Danger buttons */
+button.danger {
+  background: rgba(244, 63, 94, 0.14) !important;
+  color: #fda4af !important;
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+  box-shadow: none !important;
+}
+button.danger:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.24) !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+button:disabled, .button-link:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   Form Controls, Inputs, Selects
+   ========================================================================== */
+input, select, textarea, .form-stack select, .form-stack textarea, .lobby-filters select {
+  background: rgba(14, 19, 30, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  color: var(--text) !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  transition: all 180ms ease !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(18, 24, 38, 0.9) !important;
+}
+
+:where(button, a, input, select, textarea, summary):focus-visible,
+.form-stack select:focus-visible, .form-stack textarea:focus-visible {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Checkbox & radio */
+input[type="checkbox"], input[type="radio"] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(14, 19, 30, 0.8) !important;
+  transition: all 160ms ease !important;
+}
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* ==========================================================================
+   Badges, Status, and Notice Alerts
+   ========================================================================== */
+.status, .tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 12px !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border: 1px solid var(--line) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.status--ok {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.status--ok::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.status--warn {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.status--warn::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.status--error {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+.status--idle {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: var(--muted) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.error-notice {
+  background: rgba(244, 63, 94, 0.1) !important;
+  color: #fda4af !important;
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+  border-left: 4px solid var(--danger) !important;
+  border-radius: 10px !important;
+  padding: 14px 18px !important;
+  font-size: 13.5px !important;
+}
+
+.action-hint {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  border-radius: 10px !important;
+  color: #93c5fd !important;
+  padding: 14px 18px !important;
+}
+
+/* Skeleton Loading Shimmer */
+.loading-placeholder {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 75%) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.6s infinite !important;
+  border-radius: 12px !important;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ==========================================================================
+   Game Catalog & Cards - Luxurious Elevating Display
+   ========================================================================== */
+.catalog-section-heading {
+  margin-bottom: 22px !important;
+}
+.catalog-section-heading h2 {
+  font-size: 21px !important;
+}
+.catalog-section-heading > span {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px !important;
+  font-weight: 500;
+  color: var(--text-secondary) !important;
+}
+
+.game-catalog-grid {
+  gap: 24px !important;
+}
+
+.game-card {
+  background: rgba(20, 26, 42, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: all 260ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.game-card:hover {
+  transform: translateY(-6px) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+  background: rgba(26, 34, 54, 0.9) !important;
+}
+
+.game-cover {
+  background: #111624 !important;
+  position: relative !important;
+}
+.game-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(13, 17, 26, 0.8) 100%);
+  pointer-events: none;
+}
+.game-cover img {
+  transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.game-card:hover .game-cover img {
+  transform: scale(1.06);
+}
+
+.game-card-info {
+  padding: 14px 18px 18px !important;
+  gap: 14px !important;
+}
+.game-card-icon {
+  width: 48px !important;
+  height: 48px !important;
+  margin-top: -28px !important;
+  border: 2px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  background: #141c2e !important;
+  z-index: 2;
+}
+.game-card-info h3 {
+  font-size: 16.5px !important;
+  font-weight: 700 !important;
+  margin: 0 0 4px !important;
+  color: #ffffff !important;
+}
+.game-card-info span {
+  font-size: 12.5px !important;
+  color: var(--muted) !important;
+}
+.game-card-arrow {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid var(--line) !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 14px !important;
+  color: var(--muted) !important;
+  transition: all 180ms ease !important;
+}
+.game-card:hover .game-card-arrow {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  border-color: var(--accent) !important;
+  transform: translate(2px, -2px);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5);
+}
+
+/* ==========================================================================
+   Game Detail Page & Immersive Banner
+   ========================================================================== */
+.game-detail-banner {
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6) !important;
+  background: #111728 !important;
+}
+.game-detail-banner::after {
+  background: linear-gradient(90deg, rgba(11, 15, 24, 0.95) 0%, rgba(11, 15, 24, 0.82) 50%, rgba(11, 15, 24, 0.4) 100%) !important;
+}
+.game-banner-content {
+  padding: 32px 36px !important;
+  min-height: 220px !important;
+  gap: 28px !important;
+}
+.game-detail-icon {
+  width: 96px !important;
+  height: 96px !important;
+  border-radius: 22px !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55) !important;
+}
+.game-banner-content h1 {
+  font-size: clamp(26px, 3.2vw, 38px) !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+}
+.game-banner-content p {
+  color: #cbd5e1 !important;
+  font-size: 14.5px !important;
+  line-height: 1.65 !important;
+}
+
+/* ==========================================================================
+   Room Lists & Lobby Rows
+   ========================================================================== */
+.room-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 20px !important;
+  background: rgba(20, 26, 42, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  margin: 10px 0 !important;
+  transition: all 180ms ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  text-decoration: none;
+}
+.room-row:hover:not(:disabled) {
+  background: rgba(28, 38, 62, 0.85) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  transform: translateX(3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.room-row strong {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+.room-row small {
+  color: var(--muted) !important;
+  font-size: 12.5px !important;
+}
+
+.game-room-page .lobby-filters {
+  background: rgba(19, 25, 38, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  padding: 18px 20px !important;
+}
+
+/* ==========================================================================
+   Waiting Room (RoomPage) - Premium Lounge Feel
+   ========================================================================== */
+.invite-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.08) 100%) !important;
+  border: 1px dashed rgba(59, 130, 246, 0.45) !important;
+  border-radius: 16px !important;
+  padding: 20px 24px !important;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1) !important;
+  align-items: center !important;
+}
+.invite-box span {
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+}
+.invite-box button.secondary {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  border-radius: 10px !important;
+  padding: 8px 16px !important;
+}
+.invite-box strong {
+  font-family: "SF Mono", Menlo, Consolas, monospace !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.14em !important;
+  color: #60a5fa !important;
+  text-shadow: 0 0 12px rgba(96, 165, 250, 0.35);
+}
+
+/* Seat Cards */
+.seat-grid {
+  gap: 18px !important;
+  margin: 24px 0 !important;
+}
+.seat-card {
+  background: rgba(20, 26, 42, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 16px !important;
+  padding: 22px !important;
+  min-height: 190px !important;
+  box-shadow: var(--shadow-card) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  transition: all 200ms ease !important;
+}
+.seat-card:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  transform: translateY(-2px);
+}
+.seat-card h2 {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  margin-block: 4px 10px !important;
+  color: #ffffff !important;
+}
+.seat-card p {
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+}
+
+.room-actions {
+  background: rgba(20, 26, 42, 0.8) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+}
+
+/* ==========================================================================
+   Auth / Login Experience
+   ========================================================================== */
+.auth-shell {
+  min-height: calc(100dvh - 220px) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.auth-card {
+  width: min(440px, 100%) !important;
+  background: rgba(18, 24, 38, 0.88) !important;
+  backdrop-filter: blur(28px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 20px !important;
+  padding: 36px 32px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
+}
+.auth-card h1 {
+  font-size: 32px !important;
+  margin-block: 8px 12px !important;
+}
+.auth-card button[type="submit"] {
+  width: 100% !important;
+  margin-top: 10px !important;
+}
+
+/* ==========================================================================
+   Profile Experience & Avatar Selection
+   ========================================================================== */
+.profile-avatar {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%) !important;
+  border: 2px solid rgba(59, 130, 246, 0.3) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25) !important;
+}
+
+.avatar-options {
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  background: rgba(15, 20, 32, 0.5) !important;
+  padding: 12px !important;
+  gap: 10px !important;
+}
+.avatar-options label {
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  transition: all 160ms ease !important;
+}
+.avatar-options label:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.avatar-options label:has(input:checked) {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* ==========================================================================
+   Color Match Table & Cards Elevation
+   ========================================================================== */
+.color-card {
+  border-radius: 14px !important;
+  border: 2px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  font-weight: 700 !important;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), outline 160ms !important;
+}
+.color-hand-cards .color-card--legal {
+  outline: 2px solid #60a5fa !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.5) !important;
+}
+.color-hand-cards .color-card--selected {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 4px !important;
+  transform: translateY(-10px) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.5) !important;
+}
+
+/* ==========================================================================
+   Mobile & Responsive Polish
+   ========================================================================== */
+@media (max-width: 700px) {
+  .window-marks, .sidebar-note, .nav-caption, .toolbar-detail {
+    display: none !important;
+  }
+  .desktop-shell {
+    display: block !important;
+  }
+  .site-header {
+    height: auto !important;
+    position: relative !important;
+    padding: 14px 16px 10px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--line) !important;
+    background: rgba(13, 17, 26, 0.95) !important;
+  }
+  .site-header nav {
+    width: 100% !important;
+    margin-top: 8px !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    align-items: center !important;
+  }
+  .site-header nav > a {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+  }
+  .brand-symbol {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .brand-name > span {
+    display: none !important;
+  }
+  .nav-tools {
+    border: none !important;
+    margin: 0 0 0 auto !important;
+    padding: 0 !important;
+  }
+  .nav-tools summary {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+  }
+  .workspace-toolbar {
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+  }
+  main {
+    width: min(calc(100% - 24px), 1200px) !important;
+    padding: 18px 0 36px !important;
+  }
+  .game-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+  .seat-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .auth-card {
+    padding: 24px 18px !important;
+  }
+}
+

@@ -7,3 +7,4 @@ import './styles/splendor.css';
 
 import './styles/usability.css';
 import './styles/catalog.css';
+import './styles/theme-refresh.css';
