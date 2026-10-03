@@ -481,6 +481,9 @@
 .az-table .az-scoring{
   border-color:#97cce7
 }
+.tutorial-board .az-table .az-confirm {
+  position: static;
+}
 .az-table .az-confirm{
   position:sticky;
   bottom:12px;

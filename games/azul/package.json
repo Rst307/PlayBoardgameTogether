@@ -6,6 +6,7 @@
     "./shared": { "production": "./dist/shared/index.js", "default": "./src/shared/index.ts" },
     "./server": { "production": "./dist/server/index.js", "default": "./src/server/index.ts" },
     "./client": { "production": "./dist/client/index.js", "default": "./src/client/index.tsx" },
+    "./tutorial": { "production": "./dist/client/tutorial.js", "default": "./src/client/tutorial.ts" },
     "./rules": { "production": "./dist/shared/rules.js", "default": "./src/shared/rules.ts" },
     "./assets": { "production": "./dist/shared/assets.js", "default": "./src/shared/assets.ts" }
   },

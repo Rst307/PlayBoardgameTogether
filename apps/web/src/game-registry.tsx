@@ -60,6 +60,10 @@ export function clientGame(id: string, version: string) {
 
 // Optional, exact-version authoring. Games without an entry keep their existing rules page.
 export const clientTutorials: Readonly<Record<string, () => Promise<GameTutorial>>> = {
+  'azul.base@1.0.0': async () => {
+    const { azulTutorial } = await import('@boardgame/azul/tutorial');
+    return azulTutorial;
+  },
   'splendor.base@1.0.0': async () => {
     const { splendorTutorial } = await import('@boardgame/splendor/tutorial');
     return splendorTutorial;

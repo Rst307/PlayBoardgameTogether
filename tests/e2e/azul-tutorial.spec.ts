@@ -1,0 +1,76 @@
+import { test, expect } from './fixtures.js';
+
+test('guest learns Azul on desktop and mobile without live match writes', async ({ page }, info) => {
+  const writes: string[] = [];
+  page.on('request', request => {
+    if (request.method() !== 'GET' && /\/api\//.test(request.url())) writes.push(request.url());
+  });
+  await page.goto('/games/azul.base/1.0.0');
+  await page.getByRole('link', { name: '进入教程', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '花砖物语上手教程' })).toBeVisible();
+  expect(await page.getByRole('region', { name: '确认选砖', exact: true }).evaluate(element =>
+    getComputedStyle(element).position)).toBe('static');
+  const next = page.getByRole('button', { name: '下一步', exact: true });
+  const guide = page.getByRole('region', { name: '教程指引' });
+  async function draft(offer: string, row: number) {
+    await page.getByRole('button', { name: offer, exact: true }).click();
+    if (row < 0) await page.getByRole('button', { name: '全部放地板', exact: true }).click();
+    else await page.getByRole('button', { name: new RegExp(`^你图案行 ${row} `) }).click();
+    await page.getByRole('button', { name: '确认选砖', exact: true }).click();
+  }
+  async function advance() {
+    await expect(next).toBeEnabled();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await next.click();
+    await expect(page.getByRole('button', { name: /^(下一步|完成教程)$/ })).toBeDisabled();
+  }
+  await expect(next).toBeDisabled();
+  await draft('工厂 1 钴蓝 2块', 1);
+  await expect(guide.getByRole('status')).toContainText('这一步请按提示操作');
+  await expect(next).toBeDisabled();
+  await page.getByRole('button', { name: '重试本步', exact: true }).click();
+  await expect(page.getByRole('button', { name: '确认选砖', exact: true })).toBeDisabled();
+  await draft('工厂 1 钴蓝 2块', 2);
+  await advance();
+  await page.getByRole('button', { name: '工厂 1 钴蓝 2块', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^你图案行 2 / })).toBeDisabled();
+  await page.getByRole('button', { name: /^你图案行 3 / }).click();
+  await page.getByRole('button', { name: '确认选砖', exact: true }).click();
+  await advance();
+  await draft('工厂 1 钴蓝 2块', 1);
+  await advance();
+  await draft('中央 琥珀 2块', 2);
+  await expect(page.getByText('下轮你先手', { exact: true })).toBeVisible();
+  await advance();
+  await draft('工厂 1 钴蓝 1块', 1);
+  await expect(page.getByRole('button', { name: /^你图案行 5 2\/5/ })).toBeVisible();
+  await advance();
+  await draft('工厂 1 钴蓝 1块', 3);
+  const myBoard = page.getByRole('region', { name: '你的花砖板', exact: true });
+  await expect(myBoard.locator('.az-big-reward')).toContainText('+6');
+  await page.screenshot({ path: info.outputPath('azul-tutorial-cross.png'), fullPage: true });
+  await advance();
+  await draft('中央 朱红 1块', -1);
+  await expect(guide.getByRole('status')).toContainText('实际只扣 1');
+  await advance();
+  await draft('工厂 1 钴蓝 1块', 1);
+  await expect(page.getByRole('heading', { name: '你获胜', exact: true })).toBeVisible();
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('53');
+  await page.screenshot({ path: info.outputPath('azul-tutorial-finish.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: '完成教程', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '教程完成', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '再练一次', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '从工厂选一整组', exact: true })).toBeVisible();
+  await draft('工厂 1 钴蓝 2块', 2);
+  await advance();
+  await page.getByRole('button', { name: '上一步', exact: true }).click();
+  await expect(next).toBeDisabled();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '从工厂选一整组', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '← 返回游戏详情', exact: true }).click();
+  await expect(page.getByRole('link', { name: '进入教程', exact: true })).toBeVisible();
+  await page.goto('/games/azul.base/9.9.9/tutorial');
+  await expect(page.getByRole('heading', { name: '游戏暂不可用' })).toBeVisible();
+  expect(writes).toEqual([]);
+});
