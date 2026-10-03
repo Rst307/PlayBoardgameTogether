@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.15.1",
   "scripts": {
+    "start:online": "node --env-file=.env scripts/online-update.mjs",
     "dev": "pnpm --parallel --filter @boardgame/api --filter @boardgame/web dev",
     "build": "pnpm -r --if-present build && node scripts/check-production-bundle.mjs && node --conditions=production scripts/check-api-runtime.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
