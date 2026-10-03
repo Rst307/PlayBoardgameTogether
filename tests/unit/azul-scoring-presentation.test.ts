@@ -17,7 +17,11 @@ describe('花砖分步计分表现', () => {
     expect(impacts[0]!.cells.every(cell => cell.row === cross.row)).toBe(true);
     expect(impacts[1]!.cells.every(cell => cell.col === cross.col)).toBe(true);
     expect([0, 1, 2].map(count => impactScore(cross, impacts, count))).toEqual([0, 3, 6]);
-    expect(scoreTiming.landing + impacts.length * scoreTiming.impact + scoreTiming.hold).toBeGreaterThan(3000);
+    // Give each term enough reading time, without the previous long settlement pause.
+    expect(scoreTiming.impact).toBeGreaterThanOrEqual(600);
+    const duration = scoreTiming.landing + impacts.length * scoreTiming.impact + scoreTiming.hold;
+    expect(duration).toBeGreaterThanOrEqual(2200);
+    expect(duration).toBeLessThanOrEqual(2800);
   });
   it('splits each completed-column bonus and preserves authoritative totals and zero floor', () => {
     const final = steps(7);

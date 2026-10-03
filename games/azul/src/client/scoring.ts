@@ -5,7 +5,7 @@ export interface ScoreImpact {
   points: number;
   cells: ScoreStep['cells'];
 }
-export const scoreTiming = { landing: 450, impact: 1100, hold: 1000, reduced: 180 };
+export const scoreTiming = { landing: 300, impact: 800, hold: 600, reduced: 180 };
 
 /** Presentation only. Every sequence must sum to the server's projected delta. */
 export function scoreImpacts(step: ScoreStep): ScoreImpact[] {

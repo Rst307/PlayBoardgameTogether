@@ -413,10 +413,10 @@
   white-space: nowrap;
 }
 .az-table .az-score-pop{
-  animation:az-number .62s cubic-bezier(.2,.9,.3,1) both
+  animation:az-number .45s cubic-bezier(.2,.9,.3,1) both
 }
 .az-table .az-landing>.az-tile{
-  animation:az-land .42s cubic-bezier(.12,.8,.25,1) both;
+  animation:az-land .3s cubic-bezier(.12,.8,.25,1) both;
   z-index:2
 }
 .az-table .az-link-flash{
@@ -425,7 +425,7 @@
   border-radius:4px;
   pointer-events:none;
   z-index:3;
-  animation:az-link 1.05s both;
+  animation:az-link .8s both;
   animation-delay:var(--link-delay)
 }
 .az-table .az-score-burst{
@@ -441,7 +441,7 @@
   font-size:11px;
   color:#ffe19a;
   font-style:normal;
-  animation:az-spark .95s both;
+  animation:az-spark .7s both;
   --x:-24px;
   --y:-27px
 }
