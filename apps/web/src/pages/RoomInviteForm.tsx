@@ -4,7 +4,7 @@ import { api, command, navigate } from '../platform.js';
 
 const joinedRoomSchema = z.object({ id: z.string() });
 
-export function RoomInviteForm() {
+export function RoomInviteForm({ embedded = false }: { embedded?: boolean } = {}) {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
   const locked = useRef(false);
@@ -31,13 +31,23 @@ export function RoomInviteForm() {
       if (active.current) setJoining(false);
     }
   }
-  return <section className="panel"><h3>邀请码加入</h3>
-    <p className="muted">朋友发来了邀请？输入邀请码进入对应房间。</p>
-    <form className="form-stack" onSubmit={join}>
-      <label>12 位邀请码<input name="invite" placeholder="ABCD-EFGH-JK23" required /></label>
-      <label>邀请码房间密码（如有）<input name="password" type="password" maxLength={128} autoComplete="off" /></label>
-      {error && <p className="error-notice" role="alert">{error}</p>}
-      <button disabled={joining}>{joining ? '加入中…' : '加入私人房间'}</button>
-    </form>
-  </section>;
+
+  const formBody = (
+    <>
+      {!embedded && <h3>邀请码加入</h3>}
+      <p className="muted invite-form-lead">朋友发来了邀请？输入邀请码进入对应房间。</p>
+      <form className="form-stack" onSubmit={join}>
+        <label>12 位邀请码<input name="invite" placeholder="ABCD-EFGH-JK23" required /></label>
+        <label>邀请码房间密码（如有）<input name="password" type="password" maxLength={128} autoComplete="off" /></label>
+        {error && <p className="error-notice" role="alert">{error}</p>}
+        <button disabled={joining}>{joining ? '加入中…' : '加入私人房间'}</button>
+      </form>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="room-invite-embedded">{formBody}</div>;
+  }
+
+  return <section className="panel">{formBody}</section>;
 }

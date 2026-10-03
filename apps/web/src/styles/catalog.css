@@ -35,10 +35,26 @@
 .game-room-page .room-row { padding: 18px 16px; margin: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 .game-room-page .room-row strong { font-size: 16px; font-weight: 600; }
 .game-room-page .room-row small { margin-top: 6px; line-height: 1.5; }
-.game-detail-support { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 32px; border-top: 1px solid var(--line); padding-top: 20px; }
-.game-invite-disclosure, .game-detail-support .game-rules { border: 0; background: none; margin: 0; padding: 0; }
-.game-invite-disclosure > summary, .game-detail-support .game-rules > summary { padding: 12px 0; min-height: 44px; font-size: 14px; }
-.game-invite-disclosure .panel { margin-top: 12px; }
+.game-detail-support { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 32px; border-top: 1px solid var(--line); padding-top: 24px; }
+.detail-support-card { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; margin: 0; }
+.detail-support-card > summary { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; min-height: 56px; cursor: pointer; list-style: none; user-select: none; }
+.detail-support-card > summary::-webkit-details-marker { display: none; }
+.detail-support-trigger { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.detail-support-icon { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; }
+.detail-support-icon--invite { background: #3b82f61a; color: #3b82f6; border: 1px solid #3b82f633; }
+.detail-support-icon--rules { background: #10b9811a; color: #10b981; border: 1px solid #10b98133; }
+.detail-support-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.detail-support-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.detail-support-desc { font-size: 12.5px; color: var(--muted); }
+.detail-support-chevron { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: var(--muted); transition: transform 200ms ease; }
+.detail-support-card[open] .detail-support-chevron { transform: rotate(180deg); color: var(--accent); }
+.detail-support-body { padding: 16px 18px 20px; border-top: 1px solid var(--line); }
+.room-invite-embedded .invite-form-lead { margin: 0 0 14px; font-size: 13.5px; }
+.rules-content-box { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; max-height: 280px; overflow-y: auto; }
+.rules-content-box .rules-text { margin: 0; font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.rules-actions { display: flex; align-items: center; gap: 10px; }
+.rules-copy-btn { display: inline-flex; align-items: center; gap: 6px; }
+.rules-notice { margin-top: 10px; margin-bottom: 0; font-size: 13px; color: var(--accent); }
 .presentation-editor { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; align-items: start; }
 .presentation-editor label small { display: block; font-weight: 400; line-height: 1.6; }
 .presentation-editor-actions { display: flex; flex-wrap: wrap; gap: 12px; }

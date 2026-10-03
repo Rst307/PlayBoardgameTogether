@@ -770,6 +770,207 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 /* ==========================================================================
+   Game Detail Support Cards (Invite & Rules Disclosures)
+   ========================================================================== */
+.game-detail-support {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 20px !important;
+  align-items: start !important;
+  margin-top: 36px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 26px !important;
+}
+
+.detail-support-card {
+  background: rgba(19, 25, 38, 0.72) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease !important;
+}
+
+.detail-support-card:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+.detail-support-card[open] {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  background: rgba(20, 27, 42, 0.88) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45) !important;
+}
+
+.detail-support-card > summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 20px !important;
+  min-height: 68px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  list-style: none !important;
+  outline: none !important;
+  transition: background-color 160ms ease !important;
+}
+
+.detail-support-card > summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.detail-support-card > summary:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.detail-support-card > summary:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -2px !important;
+}
+
+.detail-support-trigger {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+.detail-support-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 11px !important;
+  flex-shrink: 0 !important;
+  transition: transform 200ms ease !important;
+}
+
+.detail-support-card:hover .detail-support-icon {
+  transform: scale(1.05);
+}
+
+.detail-support-icon--invite {
+  background: rgba(59, 130, 246, 0.14) !important;
+  border: 1px solid rgba(59, 130, 246, 0.28) !important;
+  color: #60a5fa !important;
+}
+
+.detail-support-icon--rules {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+  color: #34d399 !important;
+}
+
+.detail-support-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.detail-support-title {
+  font-size: 15px !important;
+  font-weight: 650 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.detail-support-desc {
+  font-size: 12.5px !important;
+  color: var(--muted) !important;
+  line-height: 1.4 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.detail-support-chevron {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  color: var(--muted) !important;
+  flex-shrink: 0 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms, color 160ms !important;
+}
+
+.detail-support-card:hover .detail-support-chevron {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.detail-support-card[open] .detail-support-chevron {
+  transform: rotate(180deg) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+.detail-support-body {
+  padding: 20px 22px 24px 22px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  animation: content-reveal 240ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.invite-form-lead {
+  margin: 0 0 16px 0 !important;
+  font-size: 13.5px !important;
+  color: #94a3b8 !important;
+  line-height: 1.55 !important;
+}
+
+.rules-content-box {
+  background: rgba(11, 15, 24, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 16px 18px !important;
+  margin-bottom: 16px !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+}
+
+.rules-content-box .rules-text {
+  margin: 0 !important;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+  color: #cbd5e1 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.rules-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.rules-copy-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.rules-notice {
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+  font-size: 13px !important;
+  color: #34d399 !important;
+}
+
+/* ==========================================================================
    Waiting Room (RoomPage) - Premium Lounge Feel
    ========================================================================== */
 .invite-box {
@@ -988,6 +1189,24 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   }
   .auth-card {
     padding: 24px 18px !important;
+  }
+  .game-detail-support {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+  .detail-support-card > summary {
+    padding: 14px 16px !important;
+    min-height: 62px !important;
+  }
+  .detail-support-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .detail-support-title {
+    font-size: 14.5px !important;
+  }
+  .detail-support-desc {
+    font-size: 12px !important;
   }
 }
 
