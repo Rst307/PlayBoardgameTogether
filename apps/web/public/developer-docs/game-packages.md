@@ -8,7 +8,7 @@ ZIP 根目录必须恰好包含以下三个文件，无父目录、附加文件�
 
 | 文件 | 内容 |
 | --- | --- |
-| game.json | 严格 JSON：`{"format":"boardgame-package-v1","rules":"公开规则说明"}`。rules 必填，最多 16000 字符 |
+| game.json | 严格 JSON：`{"format":"boardgame-package-v1","rules":"公开规则说明"}`，可选 presentation。rules 必填，最多 16000 字符 |
 | server.js | 无 imports/require 的独立 JavaScript，声明 `const game = {...}`，实现现有 GameExtension 方法 |
 | client.html | 自包含桌面 HTML，内联 JavaScript/CSS，图片可用 data URL |
 
@@ -24,7 +24,19 @@ setup 接收 `{seats,options,rng}`，applyAction 接收 `(state,actor,action,rng
 
 安装会验证所需方法及最小/最大人数下的 setup、序列化恢复、本人 View、动作说明、初始事件投影和结局格式。该检查不证明所有规则或私密投影正确；管理员仍应选择可信来源并审查玩法与投影。完整 State 只传给服务端规则；桌面仅收到当前身份的 View 和已投影事件。
 
-v1 使用游戏自身内联桌面与空默认图包，不接入图包切换、平台音效、教程或脚本/模型 AI。真人对局、私密 View、同时行动可以通过 SDK 方法实现。原静态游戏保留已有全部能力。
+v1 使用游戏自身内联桌面与空默认图包，不接入图包切换、平台音效或教程。可以通过可选 getDecisionContext 接入现有脚本/模型 AI，未声明的旧包继续只支持真人。原静态游戏保留已有全部能力。
+
+## 可选 AI（2026-10-03）
+
+server.js 可实现 `getDecisionContext(state,viewer)`：无需行动返回 null，否则返回严格 `{decisionKey,legalActions}`，key 为 1–256 字符，候选 1–1000 个 JSON 动作。它在同一个有界 QuickJS 中执行；合法候选只包含该身份能够提交的动作，不携带其他玩家秘密。key 区分摸牌前后等持久阶段，不能依赖时间或可变全局。
+
+基础脚本在没有专用内置策略时选择第一个候选，开发者可按自己的 View 排序，getFallbackAction 必须返回同组合法候选。安装最小/最大人数自检调用各身份 context、校验首个候选和兜底；所有实际动作仍经 matches 原事务再次校验。模型沿用已有个人配置/凭证、choiceId、revision/epoch/租约检查，只接收 bot 自己的 View、公开规则和候选。不是在宿主 worker 执行上传的 JS 策略；包源码仍只在 QuickJS 中运行。
+
+## 可选展示图（2026-10-03）
+
+`game.json.presentation` 为可选严格对象，支持 icon、cover、background；每个值是 `data:image/png;base64,...`。仅 PNG、单图字节最多 320 KiB、宽高 1–2048；校验 canonical base64、PNG 头/块边界及结束块。SVG/JPEG/外链不作为此字段接收。三图与规则/HTML 总共仍受 ZIP 解压后 2 MiB 限制。建议用方形图标、横向封面和背景；PNG 可由原创 SVG 在打包时渲染。不要在图像或元数据中嵌入秘密。
+
+025 迁移为 game_packages 增加 presentation；图像与同版本源码/安装回执原子保存，包 SHA-256 含图像。图库返回 `/api/v1/game-packages/:id/versions/:version/art/{icon|cover|background}.png`，响应 image/png、nosniff、sandbox CSP、不可变缓存。大厅和详情自动使用这些默认图，管理员原展示配置优先，清空后恢复包默认。旧包默认空对象，旧版本和对局不覆盖。仅声明图像即可自动展示，无需编辑平台 gameId 分支。
 
 ## 桌面桥接
 
@@ -49,6 +61,6 @@ parent.postMessage({type:'boardgame:action', action:{type:'your-action'}}, '*');
 
 上传前检查身份及 CSRF，事务内再次检查活跃管理员和未撤销 session。安装元数据、源码、桌面及回执一起原子提交；只有提交后注册并返回成功。同一账户/requestId/ZIP 重试返回原结果，不重复安装；不同字节复用 ID 为 REQUEST_ID_CONFLICT。同版本不同包为 STATE_CONFLICT，必须提升版本，不能覆盖内置或旧版本。相同包重传不会重新上架已下架版本。
 
-最多保存 100 个在线版本、10000 个安装回执；管理员每进程每分钟最多 20 次上传。ZIP 字节不解压到磁盘，不执行安装脚本，不记录源代码或原始错误到日志。规则和桌面持久在 PostgreSQL，数据库备份包括全部包，上传者账户生命周期不删除已安装包。新增 023/024 迁移需运行 `pnpm db:migrate`。
+最多保存 100 个在线版本、10000 个安装回执；管理员每进程每分钟最多 20 次上传。ZIP 字节不解压到磁盘，不执行安装脚本，不记录源代码或原始错误到日志。规则和桌面持久在 PostgreSQL，数据库备份包括全部包，上传者账户生命周期不删除已安装包。新增 023/024/025 迁移需运行 `pnpm db:migrate`。
 
 规则摘要锁定包 SHA-256、实际规则源码/公开规则、格式/引擎版本与 manifest；源码损坏后的旧局拒绝恢复，保留原状态。旧局锁定精确版本，不自动替换最新版。当前仍为单 API 进程实时部署；其他 API 进程在涉及游戏的请求前同步已安装版本。更换引擎语义需要版本兼容方案，不应直接改变已有规则摘要。没有任意 npm 项目的自动构建和发布能力。

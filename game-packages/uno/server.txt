@@ -59,10 +59,10 @@ function actions(state, index) {
 }
 const game = {
   manifest: {
-    id: 'online.uno', version: '1.0.0', contentVersion: '1.0.0', sdkRange: '^0.1.0',
+    id: 'online.uno', version: '1.1.0', contentVersion: '1.1.0', sdkRange: '^0.1.0',
     name: 'UNO · 休闲版', description: '2–4 人 UNO：数字牌、跳过、反转、+2、万能与 +4。原创桌面，管理员上传测试包。',
     players: { min: 2, max: 4 }, mode: 'rules-driven', capabilities: ['turn-based', 'private-view'],
-    defaultAssetPack: { id: 'online.uno.default', version: '1.0.0' }, developmentOnly: false
+    defaultAssetPack: { id: 'online.uno.default', version: '1.1.0' }, developmentOnly: false
   },
   validateOptions(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length) throw new Error('No options');
@@ -207,5 +207,22 @@ const game = {
       && (state.winners.length !== 1 || state.hands[state.seats.indexOf(state.winners[0])].length !== 0)))) throw new Error('Invalid winners');
     return state;
   },
-  getFallbackAction(view) { return view.actions[0] || null; }
+  getDecisionContext(state, viewer) {
+    const view = this.getView(state, viewer);
+    if (!view.actions.length) return null;
+    const preferred = this.getFallbackAction(view);
+    return { decisionKey: `turn:${state.turns}:${state.drawn === null ? 'play' : 'drawn'}`,
+      legalActions: [preferred, ...view.actions.filter(action => JSON.stringify(action) !== JSON.stringify(preferred))] };
+  },
+  getFallbackAction(view) {
+    if (!view.actions.length) return null;
+    const colored = Object.fromEntries(COLORS.map(color => [color, view.hand.filter(card => card.color === color).length]));
+    const score = action => {
+      if (action.type !== 'play') return -1000;
+      const card = view.hand.find(item => item.id === action.cardId);
+      return (card.color === 'wild' ? -10 : 20) + (['draw2', 'skip', 'reverse', 'wild4'].includes(card.value) ? 8 : 0)
+        + (action.color ? colored[action.color] * 3 : colored[card.color]) + (view.hand.length === 1 ? 100 : 0);
+    };
+    return view.actions.reduce((best, action) => score(action) > score(best) ? action : best, view.actions[0]);
+  }
 };

@@ -1,5 +1,22 @@
 # 开发进度
 
+## UNO 上传包 AI 与原创展示图（2026-10-03）
+
+用户上传 1.0.0 后遇到 AI_NOT_SUPPORTED 和空白封面。先建立失败回归：QuickJS 适配器未保留可选 getDecisionContext、包描述不接受展示图、UNO 未提供决策。新增可选严格有界决策上下文；基础 worker 按需加载内置策略，在线包 basic-v1 使用包内有序合法候选，不加载规则源码或秘密 State。UNO 1.1.0 用本人 View 排序出牌/选色，脚本和模型复用原 AiScheduler、控制权、revision、事务和动作校验；原真人玩法不变。
+
+025 新增不可变包 presentation；仅接受有尺寸/字节/PNG 框架限制的内嵌 PNG，公开图片端点返回 image/png、nosniff 和 immutable。大厅/详情继续使用已有 GameArtwork，管理员覆盖优先、清空恢复包默认。新增原创 SVG 图标/封面，打包时 Chromium 渲染 icon/cover/background 并内嵌 game.json；ZIP 根目录仍只有三个文件。输出 dist/game-packages/uno-1.1.0.zip，284606 字节；未安装到开发库，保留管理员人工上传。开发库仅执行原 db:migrate 应用新增 025，不重置数据；旧 1.0.0/旧对局精确版本保留。
+
+实际验证：
+
+- pnpm typecheck、pnpm lint 最终全仓通过，20 源目录依赖边界通过。中途并行更新器测试出现 no-unsafe-finally，原任务修复后全仓复验通过；未修改该文件。
+- pnpm test tests/unit：29 文件 / 123 项通过；随后补齐拒绝非法 PNG/路径、无 AI 旧包和损坏上下文用例，package-enhancements 6/6 通过。首次三项失败回归确认根因；未弱化断言。
+- 仅进程环境派生独立 boardgame_uno_upgrade_test，复用既有 prepare/migrate/sync/seed：pnpm test:integration 全量 22 文件 / 145 项通过，无 skip，含新包持久/覆盖/恢复、真人+脚本、真人+模拟模型整局。任务成功且没有 AI_FALLBACK_USED；未修改 .env 或清理开发库。
+- pnpm build 完整通过（生产 bundle/API runtime）；最后 API 路径解析变化后 API build、Web build、生产 runtime 再通过。生产普通 Node worker 同时验收在线候选和已有 Color Match 策略；先修复静态导入 .ts 导致 worker 启动失败的复现。
+- node scripts/check-uno-package.mjs 桌面/手机通过；node scripts/package-uno.mjs 生成新版三文件包。
+- 使用原 E2E runner 的隔离副本、6571/4571 端口和独立测试库：实际 ZIP 上传/真人夺分旧包回归桌面手机 2/2 通过；UNO 最终桌面手机 2/2 通过（1.7 分钟），检查封面/图标/详情背景图片真实解码、AI 建房、iframe 实际按钮动作、私密 View、刷新、完整获胜和手动返回房间、无整页横向溢出。初次用例按自动返回结算误判，以及重复同色同点数牌定位歧义，改为当前交互和实际手牌位置后通过。实际查看桌面/手机截图，产物保留忽略目录 .data/uno-validation；未把固定父 View 冒烟计为真实对局。
+
+限制：未执行全库历史 E2E、物理手机或真实外部模型凭证调用（模型链路使用平台 mock endpoint）；平台音效/教程未包含。用户先更新并重启 API、应用 025，再上传 1.1.0 并创建该版本房间；旧 1.0.0 不获得新能力。源码、SDK/协议/AI/管理员/数据模型文档同步，生成 ZIP 不提交 Git。
+
 ## 生产服务 GitHub 自动更新（2026-10-03）
 
 新增 `pnpm start:online`：监督进程托管生产 Web/HTTP/WS 与唯一 API 子进程，每五分钟检测 GitHub origin 指定/当前分支，在私有独立 SHA 目录冻结安装、完整构建。API 请求静默且无 active matches、WS 和处理中请求时，经父 IPC 先封闭请求再检查，优雅退出旧 API，沿用迁移/游戏同步，新进程本人启动与健康就绪后才原子保存版本并切静态根。失败尝试恢复旧进程，不改开发工作区、会话、房间或动作事务，不刷新玩家页面；共享绝对资源目录、保留旧哈希 chunk。迁移变化默认待维护，自动迁移需显式开启且不承诺数据库回退。更新器自身需重启监督进程才能换版，长期连接/未完成对局可延后升级。

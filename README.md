@@ -14,7 +14,7 @@
 
 ## 管理员在线安装游戏 ZIP（2026-10-03）
 
-「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」支持上传后立即安装上架、创建房间和真人完整对局，无需重启。窗口提供可玩示例。包采用固定 `game.json/server.js/client.html` 格式，规则在有界 QuickJS WASM 运行、桌面在隔离 iframe 运行；普通源码仓库 ZIP 需先打包。执行 `pnpm db:migrate` 应用 023/024，包持久在数据库，同版本不可覆盖，旧局使用原精确版本。格式与限制见 [在线游戏 ZIP](apps/web/public/developer-docs/game-packages.md)。
+「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」支持上传后立即安装上架、创建房间和完整对局，无需重启。声明决策接口的包支持脚本/模型 AI，内嵌 PNG 图标/封面/背景自动显示；UNO 新版打包见 [UNO 上传包](game-packages/uno/README.md)。窗口提供可玩示例。包采用固定 `game.json/server.js/client.html` 格式，规则在有界 QuickJS WASM 运行、桌面在隔离 iframe 运行；普通源码仓库 ZIP 需先打包。执行 `pnpm db:migrate` 应用 023/024/025，包持久在数据库，同版本不可覆盖，旧局使用原精确版本。格式与限制见 [在线游戏 ZIP](apps/web/public/developer-docs/game-packages.md)。
 
 ## 好友、私聊与好友 ID（2026-10-03）
 

@@ -4,6 +4,10 @@ import { z } from 'zod';
 import { AppError } from '../errors.js';
 
 const transition = z.object({ state: z.json(), events: z.array(z.json()).max(1000) }).strict();
+const decisionContextSchema = z.object({
+  decisionKey: z.string().min(1).max(256),
+  legalActions: z.array(z.json()).min(1).max(1000),
+}).strict().nullable();
 const methods = ['validateOptions', 'parseAction', 'setup', 'getView', 'getActionSpec',
   'validateAction', 'applyAction', 'projectEvents', 'getOutcome', 'serialize', 'deserialize', 'getFallbackAction'];
 
@@ -86,6 +90,10 @@ export class PackageRuntime {
       deserialize: state => call('deserialize', [state]),
       getFallbackAction: (view, spec) => call('getFallbackAction', [view, spec]),
     };
+    if (this.evaluate(source, "typeof game.getDecisionContext === 'function'") === true) {
+      extension.getDecisionContext = (state, viewer) =>
+        decisionContextSchema.parse(call('getDecisionContext', [state, viewer]));
+    }
     return extension;
   }
 }

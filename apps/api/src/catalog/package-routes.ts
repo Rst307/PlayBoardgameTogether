@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import { readFile } from 'node:fs/promises';
 import { zipSync } from 'fflate';
@@ -37,6 +38,17 @@ export function registerGamePackageRoutes(app: FastifyInstance, auth: AuthServic
     ]);
     return reply.type('application/zip').header('content-disposition', 'attachment; filename="score-race.zip"')
       .header('x-content-type-options', 'nosniff').send(Buffer.from(zipSync({ 'game.json': descriptor, 'server.js': server, 'client.html': client }, { mtime: new Date(2026, 0, 1) })));
+  });
+  app.get('/api/v1/game-packages/:id/versions/:version/art/:kind', async (request, reply) => {
+    const params = packageVersionParams.extend({
+      kind: z.enum(['icon.png', 'cover.png', 'background.png']),
+    }).parse(request.params);
+    const { id, version } = params;
+    const kind = params.kind.slice(0, -4);
+    const bytes = await packages.artwork(id, version, kind);
+    return reply.type('image/png').header('x-content-type-options', 'nosniff')
+      .header('cache-control', 'public, max-age=31536000, immutable')
+      .header('content-security-policy', "sandbox; default-src 'none'").send(bytes);
   });
   app.get('/api/v1/game-packages/:id/versions/:version/desktop', async (request, reply) => {
     const { id, version } = packageVersionParams.parse(request.params);

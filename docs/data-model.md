@@ -1,5 +1,10 @@
 # 数据模型
 
+## 在线包默认展示图（2026-10-03）
+
+025_game_package_presentation.sql 给 game_packages 追加 presentation jsonb NOT NULL DEFAULT '{}'，对象/长度受约束；可选 icon/cover/background 保存 PNG data URL，随包安装同事务提交，不另存磁盘。旧包默认空对象，包 hash 包含 descriptor/图片字节，同版本不可覆盖。game_presentations 保留管理员独立配置与 revision，读取以非空配置覆盖包默认；清空配置恢复默认，不改变旧规则或 State。
+
+
 ## 公开注册（2026-10-03）
 
 无新增迁移。注册复用 accounts 与现有唯一约束，在共享 social-write advisory lock 的事务中同时写入规范 username_canonical、显示昵称、Argon2id password_hash、固定 user/active 和相同的显式 friend_id。登录 ID 或好友 ID 冲突整笔回滚，不由默认 ID trigger 添加后缀；不创建 session 或保存明文密码。social_revision、好友 ID 修改时间等继续使用原默认值，注册 ID 是初始值，首次后续自定义遵循现有政策。

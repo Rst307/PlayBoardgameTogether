@@ -170,3 +170,7 @@ RoomService 复用原房间写事务添加和修改 bot 的脚本/模型配置�
 开局时 bot 的 account_id 仍为 NULL；model_owner_account_id 单独固定授权房主，复合外键保证 profile 归属。调度器以该授权账户取得凭证，按 bot 自己的 View 决策，自动动作仍走原 matches 事务；提交时也检查授权账户 active。profile 行共享锁与编辑/删除串行化，活跃模型 bot 与真人模型绑定共同阻止配置编辑/删除。见 [ADR-004](adr/004-model-bot-authorization.md)。
 
 模型决策组：单行动者扩展按 sourceRevision + decisionKey 区分已提交动作后的下一次决定，避免固定 phase/seat 键令整局两次调用后永久兜底；有 getDecisionRequests 的同时行动扩展保留原跨 revision 决策组。每组最多两次外部尝试，旧 epoch/proposal/lease fencing 保持。
+
+## 在线包 AI 与默认展示图（2026-10-03）
+
+registry/PackageRuntime 对可选 getDecisionContext 做严格有界 JSON 适配，基础 worker 按需加载内置策略、其他 basic-v1 使用包的有序合法候选；不在宿主加载包 JS，不新增 gameId 规则分支。脚本/模型仍使用 AiScheduler、matches 权限/事务。catalog/package-art 校验 PNG 数据，025 在包表保存不可变默认图，package-routes 提供公开 PNG，presentations.list 以管理员 URL 优先、包默认次之。浏览器复用既有 GameArtwork，不接触 State、图片 base64 或数据库。UNO 1.1.0 在 ZIP 中携带原创图标/封面/背景和自己的私密 View 候选排序。

@@ -8,10 +8,13 @@ export class GamePresentationService {
   async list(production: boolean) {
     const result = await this.db.query(`
       SELECT g.game_id AS "gameId", g.game_version AS version,
-             coalesce(p.revision, 0) AS revision, p.icon_url AS "iconUrl",
-             p.cover_url AS "coverUrl", p.background_url AS "backgroundUrl"
+             coalesce(p.revision, 0) AS revision,
+             coalesce(p.icon_url, CASE WHEN gp.presentation ? 'icon' THEN '/api/v1/game-packages/' || g.game_id || '/versions/' || g.game_version || '/art/icon.png' END) AS "iconUrl",
+             coalesce(p.cover_url, CASE WHEN gp.presentation ? 'cover' THEN '/api/v1/game-packages/' || g.game_id || '/versions/' || g.game_version || '/art/cover.png' END) AS "coverUrl",
+             coalesce(p.background_url, CASE WHEN gp.presentation ? 'background' THEN '/api/v1/game-packages/' || g.game_id || '/versions/' || g.game_version || '/art/background.png' END) AS "backgroundUrl"
       FROM game_installations g LEFT JOIN game_presentations p
         ON p.game_id = g.game_id AND p.game_version = g.game_version
+      LEFT JOIN game_packages gp ON gp.game_id = g.game_id AND gp.game_version = g.game_version
       WHERE g.enabled AND (NOT $1 OR NOT (g.manifest->>'developmentOnly')::boolean)
       ORDER BY g.game_id, g.game_version`, [production]);
     return gamePresentationSchema.array().parse(result.rows);

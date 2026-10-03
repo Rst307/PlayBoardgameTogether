@@ -4,6 +4,10 @@
 
 POST `/api/v1/auth/register`：严格 JSON `{displayName,userId,password}`，由 `protocol/auth.ts` 共享 schema 校验。displayName trim 后 1–32 字，userId 可带单个 @、名字部分 3–32 位 ASCII 字母/数字/下划线，trim/lowercase；password 6–128 位，含 ASCII 字母和数字，不 trim。成功 201 返回 `{username,displayName,friendId}`，username/friendId 是无 @ 的规范 ID。固定普通账户，不创建 session；Origin 必须匹配，4 KiB 上限，每 IP 每分钟 5 次。ID 已被登录名或好友 ID 使用返回 STATE_CONFLICT/409；无效输入 VALIDATION_ERROR/400，频控 RATE_LIMITED/429。响应 no-store，无密码/摘要/令牌。ApiClient.register 使用共享输入/响应 schema，返回类型由 schema 推导。登录 username 最大 33 位，以接受 32 位 ID 加 @，服务端去前缀后沿用既有身份认证。
 
+## 在线游戏 ZIP 的 AI 与展示图（2026-10-03）
+
+boardgame-package-v1 的 game.json 可选 presentation，icon/cover/background 为有界 PNG data URL；新增 025 持久字段，与安装元数据和回执原子提交。GET /api/v1/game-packages/:id/versions/:version/art/{icon|cover|background}.png 返回公开 PNG、nosniff/sandbox CSP/immutable 缓存；games/presentations 的三个 URL 允许这类精确路径，管理员配置优先于包默认。图片不包含秘密，不覆盖旧版本。server.js 可选 getDecisionContext 在 QuickJS 中返回 key 与有界合法候选，接入原脚本/模型调度，未改变正式动作协议或身份。
+
 ## 管理员在线游戏 ZIP（2026-10-03）
 
 POST `/api/v1/admin/game-packages?requestId=UUID` 使用 application/zip 字节（最大 5 MiB），管理员/Origin/CSRF 在读正文前检查，事务内重验活跃身份。共享 `gamePackageResultSchema` 返回 `{gameId,version,name,hash}`，client-sdk `installGamePackage` 解析 unknown。重复成功按账户/requestId/ZIP SHA-256 返回原结果；不同字节复用 ID 为 REQUEST_ID_CONFLICT；同版本不同包/覆盖内置版本为 STATE_CONFLICT。提交后注册并可立即建房，新动作沿用原事务。

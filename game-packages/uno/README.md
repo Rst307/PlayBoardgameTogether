@@ -1,6 +1,6 @@
 # UNO 管理员上传测试包
 
-此目录是独立 `boardgame-package-v1` 源码，不预注册进平台，方便测试管理员上传后即时上架。游戏为 `online.uno@1.0.0`，名称「UNO · 休闲版」，支持 2–4 名真人、108 张牌、私密手牌与存档恢复。
+此目录是独立 `boardgame-package-v1` 源码，不预注册进平台，方便测试管理员上传后即时上架。游戏为 `online.uno@1.1.0`，名称「UNO · 休闲版」，支持 2–4 人、基础脚本/模型 AI、108 张牌、私密手牌与存档恢复。
 
 ## 打包与上传
 
@@ -10,9 +10,11 @@
 node scripts/package-uno.mjs
 ```
 
-生成 `dist/game-packages/uno-1.0.0.zip`。ZIP 根目录恰好三个文件：`game.json`、`server.js`（由本目录 `server.txt` 原样生成）、`client.html`，无父目录和附加说明文件。生成包与截图在忽略的 dist 中，不提交二进制产物。
+生成 `dist/game-packages/uno-1.1.0.zip`。ZIP 根目录恰好三个文件：`game.json`、`server.js`（由本目录 `server.txt` 原样生成）、`client.html`，无父目录和附加说明文件。打包脚本使用已安装的 Chromium 将 art/ 下原创 SVG 渲染为 PNG，嵌入 game.json.presentation（icon/cover/background）；ZIP 仍只有三个文件，无外链。生成包与截图在忽略的 dist 中，不提交二进制产物。
 
-管理员进入「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」，选择该 ZIP 并「安装并上架」。在大厅选择「UNO · 休闲版」，创建 2–4 人房间，其他账号加入、入座和准备，房主准备后开局。在线 v1 包不支持脚本/模型 AI。这里只提供包，不自动安装到开发数据库，保留管理员实际上传作为人工验收。
+管理员进入「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」，选择该 ZIP 并「安装并上架」。在大厅选择「UNO · 休闲版」，创建 2–4 人房间，其他账号加入、入座和准备，房主准备后开局。新版支持空座位添加脚本 AI，或选择房主的模型配置添加模型 AI。模型仍需可用的真实配置与凭证；mock 只用于模拟测试。这里只提供包，不自动安装到开发数据库，保留管理员实际上传作为人工验收。
+
+先更新平台 API 并执行 pnpm db:migrate（新增 025）后，再上传 1.1.0。旧平台会拒绝新的 presentation 字段；必要时重启 API。1.0.0 的源码和旧对局保留，请创建 1.1.0 房间使用 AI。
 
 同包重复上传应复用原安装；同版本不同源码会冲突。修改玩法再上传时请同步提升 server.txt 中 version/contentVersion/defaultAssetPack.version 与输出文件名，不覆盖原对局版本。
 
@@ -30,10 +32,12 @@ node scripts/package-uno.mjs
 ## 验证
 
 ```powershell
-pnpm test tests/unit/uno-package.test.ts tests/unit/game-packages.test.ts
+pnpm test tests/unit/uno-package.test.ts tests/unit/game-packages.test.ts tests/unit/package-enhancements.test.ts
 node scripts/check-uno-package.mjs
 pnpm typecheck
 pnpm lint
 ```
 
 单元测试实际使用平台 readGamePackage 和 QuickJS PackageRuntime，并覆盖完整合法动作对局、私密投影、108 张牌守恒、非法动作/RNG不变、罚牌、UNO、摸牌、重洗、僵局与 JSONB 键重排恢复。浏览器检查使用实际 sandbox/CSP 桌面消息桥；父页面只提供固定公开测试 View 和传输反馈，不能替代真实 HTTP/数据库上传验收。截图位于 dist/uno-check。
+
+新增 tests/integration/uno-package.test.ts 验证真实上传、封面持久/覆盖/恢复、脚本与模拟模型完整对局；tests/e2e/uno-package.spec.ts 上传实际生成 ZIP，验证桌面/手机封面与背景、添加 bot、刷新及真人对 AI 完整结算。运行 E2E 前先打包，使用独立 TEST_DATABASE_URL；不可用开发库代替。

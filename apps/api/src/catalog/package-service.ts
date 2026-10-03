@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
+import { packageArtworkKindSchema, packagePresentationSchema } from './package-art.js';
 import { z } from 'zod';
 import { DeterministicRng } from '@boardgame/game-sdk';
 import { gamePackageResultSchema } from '@boardgame/protocol';
@@ -58,7 +60,17 @@ export class GamePackageService {
       const recovered = extension.deserialize(extension.serialize(initial.state));
       for (const seatId of seats) {
         const viewer = { kind: 'seat' as const, seatId };
-        extension.getView(recovered, viewer);
+        const view = extension.getView(recovered, viewer);
+        const decision = extension.getDecisionContext?.(recovered, viewer);
+        if (decision) {
+          // Keep installation smoke checks bounded; every chosen action is revalidated by matches.
+          extension.validateAction(recovered, { kind: 'seat', seatId, controllerEpoch: 0 },
+            extension.parseAction(decision.legalActions[0]));
+          const fallback = extension.getFallbackAction(view, extension.getActionSpec(recovered, viewer));
+          if (!decision.legalActions.some(action => isDeepStrictEqual(action, fallback))) {
+            throw new AppError('VALIDATION_ERROR', 'AI 兜底动作必须是合法候选之一', 400);
+          }
+        }
         extension.getActionSpec(recovered, viewer);
         extension.projectEvents(initial.events, viewer);
       }
@@ -90,7 +102,7 @@ export class GamePackageService {
         const existing = await client.query('SELECT 1 FROM game_installations WHERE game_id=$1 AND game_version=$2', [manifest.id, manifest.version]);
         if (existing.rowCount || this.registry.get(manifest.id, manifest.version)) throw new AppError('STATE_CONFLICT', '不能覆盖已安装游戏版本', 409);
         await client.query('INSERT INTO game_installations(game_id,game_version,content_version,sdk_range,manifest,enabled) VALUES($1,$2,$3,$4,$5,true)', [manifest.id, manifest.version, manifest.contentVersion, manifest.sdkRange, manifest]);
-        await client.query('INSERT INTO game_packages(game_id,game_version,package_hash,server_source,client_html,public_rules,installed_by) VALUES($1,$2,$3,$4,$5,$6,$7)', [manifest.id, manifest.version, hash, packageData.server, packageData.client, packageData.rules, current.account.id]);
+        await client.query('INSERT INTO game_packages(game_id,game_version,package_hash,server_source,client_html,public_rules,installed_by,presentation) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [manifest.id, manifest.version, hash, packageData.server, packageData.client, packageData.rules, current.account.id, packageData.presentation ?? {}]);
       }
       await client.query('INSERT INTO game_package_receipts(account_id,request_id,package_hash,result) VALUES($1,$2,$3,$4)', [current.account.id, requestId, hash, result]);
       await client.query('COMMIT');
@@ -100,6 +112,14 @@ export class GamePackageService {
     } finally { client.release(); }
     await this.refresh();
     return result;
+  }
+  async artwork(id: string, version: string, rawKind: unknown) {
+    const kind = packageArtworkKindSchema.parse(rawKind);
+    const result = await this.db.query<{ presentation: unknown }>(
+      'SELECT presentation FROM game_packages WHERE game_id=$1 AND game_version=$2', [id, version]);
+    const data = result.rows[0] && packagePresentationSchema.parse(result.rows[0].presentation)[kind];
+    if (!data) throw new AppError('GAME_NOT_FOUND', '游戏展示图片不存在', 404);
+    return Buffer.from(data.slice('data:image/png;base64,'.length), 'base64');
   }
   async desktop(id: string, version: string) {
     const row = await this.db.query<{ client_html: string }>('SELECT client_html FROM game_packages WHERE game_id=$1 AND game_version=$2', [id, version]);

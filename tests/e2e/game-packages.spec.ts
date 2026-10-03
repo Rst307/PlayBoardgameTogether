@@ -23,7 +23,7 @@ test('administrator installs ZIP and players complete a real iframe game', async
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await dialog.getByRole('button', { name: '安装并上架' }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByRole('status')).toContainText('已安装并上架');
+  await expect(page.getByRole('status').filter({ hasText: '已安装并上架' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('article', { name: '夺分赛 1.0.0', exact: true })).toContainText('已上架');
   await page.goto('/');
@@ -45,7 +45,9 @@ test('administrator installs ZIP and players complete a real iframe game', async
     expect(joined.ok()).toBe(true);
     await other.goto(roomUrl);
     await other.getByRole('button', { name: '坐这里', exact: true }).click();
+    await expect(page.getByText('2/2 已入座 · 0/2 已准备', { exact: true })).toBeVisible();
     await other.getByRole('button', { name: '准备', exact: true }).click();
+    await expect(page.getByText('2/2 已入座 · 1/2 已准备', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '准备', exact: true }).click();
     await page.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(page.locator('iframe[title="在线游戏桌面"]')).toBeVisible();

@@ -11,3 +11,7 @@
 ## 模型 AI 座位（2026-10-03）
 
 专用 bot 现可在 waiting 房间选择 script/model；真人仍只能 human/model。模型 bot 的登录身份为空，模型凭证所有者通过独立 model_owner_account_id 在开局固定；授权不会授予读取该 bot View 的权限。房间设置仅用本人 profile，开局后禁止修改，结束后可再配置。profile 编辑/删除需无活跃绑定，密钥可显式撤销。授权账户停用会阻止自动动作提交。模型仍只接收此 bot 的身份 View、公开规则和合法 choiceId，不接收完整 State。
+
+## 在线 ZIP 的 AI（2026-10-03）
+
+上传包可实现 getDecisionContext，在有界规则 VM 中按身份返回稳定 decisionKey 和完整有序合法候选；通用 basic-v1 worker 仅选择首个候选，不加载上传 JS/State。UNO 1.1.0 按自己的 View 优先出彩色牌与效果牌、用最多的手牌颜色选色，保留万能牌；兜底沿用同一排序。模型、冻结提案、epoch/revision/租约与提交校验保持原链路。未声明 context 的旧包仍返回 AI_NOT_SUPPORTED，不能仅靠 manifest 宣称支持。
