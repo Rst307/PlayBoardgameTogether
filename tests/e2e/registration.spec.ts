@@ -27,6 +27,7 @@ test('registers a real account, logs in and restores the exact friend ID', async
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await page.getByRole('link', { name: '好友', exact: true }).click();
+  await page.getByRole('link', { name: '添加好友', exact: true }).click();
   await expect(page.getByLabel('新好友 ID', { exact: true })).toHaveValue('@rst307');
   await page.reload();
   await expect(page.getByLabel('新好友 ID', { exact: true })).toHaveValue('@rst307');

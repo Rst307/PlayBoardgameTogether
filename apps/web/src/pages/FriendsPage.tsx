@@ -36,48 +36,102 @@ function Invitation({ invite, me, run, busy, refresh }: {
   </div>}</article>;
 }
 
-export function FriendsPage() {
+export type FriendsSection = 'list' | 'add' | 'requests' | 'invitations' | 'chat';
+
+const headings: Record<FriendsSection, [string, string]> = {
+  list: ['好友', '找一位朋友，聊聊下一局。'],
+  add: ['添加好友', '通过对方的好友 ID 找到朋友。'],
+  requests: ['好友申请', '处理收到的申请，或查看已发送的申请。'],
+  invitations: ['房间邀请', '查看朋友的开桌邀请和你发出的邀请。'],
+  chat: ['好友私聊', '约个时间，一起开桌。'],
+};
+
+export function FriendsPage({ section = 'list', friendId }: {
+  section?: FriendsSection;
+  friendId?: string;
+}) {
   const { data, error, refresh } = useSocial();
   const action = useSocialCommand();
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('');
   const [result, setResult] = useState<SocialPerson | null>();
-  const [selectedId, setSelectedId] = useState<string>();
-  const selected = data?.friends.find(item => item.person.id === selectedId)?.person;
+  const selected = data?.friends.find(item => item.person.id === friendId)?.person;
   function find(event: FormEvent) {
     event.preventDefault();
-    const friendId = search.trim().toLowerCase();
+    const handle = search.trim().toLowerCase();
     setResult(undefined);
-    void action.run(`search:${friendId}`, async () => { setResult(await api.searchFriend(friendId)); });
+    void action.run(`search:${handle}`, async () => { setResult(await api.searchFriend(handle)); });
   }
   if (!data) return <PageFeedback title="正在读取好友…" loading={!error} retry={() => void refresh()}>{error}</PageFeedback>;
-  return <>
-    <section className="page-heading"><div><p className="eyebrow">一起玩，也一起聊</p><h1>好友</h1><p>用好友 ID 找到朋友，私聊约时间，接受开桌邀请。</p></div></section>
+  const incoming = data.requests.filter(item => item.direction === 'incoming');
+  const outgoing = data.requests.filter(item => item.direction === 'outgoing');
+  const invitationCount = data.invitations.filter(item => item.recipient.friendId === data.identity.friendId && item.status === 'pending' && item.available).length;
+  const unread = data.friends.reduce((sum, item) => sum + item.unread, 0);
+  const query = filter.trim().toLowerCase();
+  const friends = data.friends.filter(item => `${item.person.displayName} ${formatFriendId(item.person.friendId)}`.toLowerCase().includes(query));
+  const [title, description] = headings[section];
+  return <div className={`social-page social-page--${section}`}>
+    {section !== 'chat' && <section className="page-heading">
+      <div><p className="eyebrow">一起玩，也一起聊</p><h1>{title}</h1><p>{description}</p></div>
+      {section !== 'add' && <a className="button-link" href="/friends/add">添加好友</a>}
+    </section>}
+    <nav className="social-navigation" aria-label="好友功能">
+      {([
+        ['/friends', '我的好友', section === 'list' || section === 'chat', unread],
+        ['/friends/requests', '好友申请', section === 'requests', incoming.length],
+        ['/friends/invitations', '房间邀请', section === 'invitations', invitationCount],
+      ] as const).map(([href, label, current, count]) => <a key={href} href={href} aria-current={current ? 'page' : undefined}>
+        {label}{count > 0 && <span className="unread-count" aria-label={`${count}${label === '我的好友' ? ' 条未读' : ' 条待处理'}`}>{count}</span>}
+      </a>)}
+    </nav>
     {(error || action.error) && <p className="error-notice" role="alert">{error || action.error}<button className="secondary" onClick={() => void refresh()}>刷新好友信息</button></p>}
     {action.notice && <p role="status">{action.notice}</p>}
-    <div className="social-top"><FriendIdCard /><section className="panel"><h2>添加好友</h2>
-      <form className="form-stack" onSubmit={find}><label>搜索好友 ID<input required minLength={3} maxLength={37} pattern="@?[A-Za-z0-9_]{3,36}" placeholder="@rst307" value={search} disabled={action.busy} onChange={event => { setSearch(event.target.value); setResult(undefined); }} /></label>
-        <button disabled={action.busy}>搜索用户</button></form>
-      {result === null && <p role="status">没有找到这个好友 ID。</p>}
-      {result && <article className="social-row"><div><strong>{result.displayName}</strong><p className="friend-id">{formatFriendId(result.friendId)}</p></div>
-        {result.friendId === data.identity.friendId ? <span>这是你自己</span> : data.friends.some(item => item.person.id === result.id) ? <span>已是好友</span> : <button disabled={action.busy} onClick={() => void action.run(`request:${result.friendId}`, id => api.requestFriend({ requestId: id, friendId: result.friendId }), '好友申请已提交，请等待对方确认', () => void refresh())}>发送好友申请</button>}
-      </article>}
-    </section></div>
-    <section className="panel"><h2>好友申请</h2>{data.requests.length === 0 && <p className="muted">暂无待处理申请。</p>}
-      {data.requests.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div>
-        <div className="social-actions">{(item.direction === 'incoming' ? ['accept', 'reject'] as const : ['cancel'] as const).map(operation => <button key={operation} className={operation === 'accept' ? '' : 'secondary'} disabled={action.busy} onClick={() => void action.run(`friend:${item.person.id}:${item.revision}:${operation}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: operation }), operation === 'accept' ? '已成为好友' : '申请已处理', () => void refresh())}>{operation === 'accept' ? '接受申请' : operation === 'reject' ? '拒绝申请' : '撤回申请'}</button>)}</div>
+
+    {section === 'list' && <section className="panel social-directory" aria-label="好友列表">
+      <header className="social-section-heading"><h2>我的好友 <small>({data.friends.length})</small></h2><a href="/profile">我的资料与好友 ID</a></header>
+      {data.friends.length > 0 && <label className="social-filter">查找我的好友<input type="search" placeholder="昵称或好友 ID" value={filter} onChange={event => setFilter(event.target.value)} /></label>}
+      {data.friends.length === 0 && <div className="social-empty"><h3>还没有好友</h3><p className="muted">添加一位朋友，私聊约时间，也能在房间里邀请对方。</p><a className="button-link" href="/friends/add">去添加好友</a></div>}
+      {data.friends.length > 0 && friends.length === 0 && <p className="social-empty muted">没有匹配的好友，试试其他昵称或 ID。</p>}
+      {friends.map(item => <article className="social-row" key={item.person.id}>
+        <div className="social-person"><span className="social-avatar" aria-hidden="true">{Array.from(item.person.displayName)[0]}</span><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)}</p>{item.unread > 0 && <span className="unread-count">{item.unread} 条未读</span>}</div></div>
+        <div className="social-actions">
+          <a className="button-link secondary" href={`/friends/chat/${item.person.id}`}>私聊 {item.person.displayName}</a>
+          <details className="friend-options"><summary aria-label={`${item.person.displayName} 的好友操作`}>更多</summary><button className="secondary" disabled={action.busy} onClick={() => {
+            if (confirm(`删除好友 ${item.person.displayName}？删除后将不能继续私聊或邀请。`)) void action.run(`remove:${item.person.id}:${item.revision}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: 'remove' }), '好友已删除', () => void refresh());
+          }}>删除好友</button></details>
+        </div>
       </article>)}
-    </section>
-    <div className="social-layout"><section className="panel"><h2>我的好友 <small>({data.friends.length})</small></h2>
-      {data.friends.length === 0 && <p className="muted">还没有好友，先用 ID 添加一位朋友吧。</p>}
-      {data.friends.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)}</p>
-        {item.unread > 0 && <span className="unread-count">{item.unread} 条未读</span>}</div><div className="social-actions">
-        <button className={selectedId === item.person.id ? '' : 'secondary'} onClick={() => setSelectedId(item.person.id)}>私聊 {item.person.displayName}</button>
-        <button className="secondary" disabled={action.busy} onClick={() => {
-          if (confirm(`删除好友 ${item.person.displayName}？删除后将不能继续私聊或邀请。`)) void action.run(`remove:${item.person.id}:${item.revision}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: 'remove' }), '好友已删除', () => void refresh());
-        }}>删除好友</button></div></article>)}
-    </section>{selected ? <DirectChat key={selected.id} person={selected} refresh={refresh} /> : <section className="panel"><h2>好友私聊</h2><p className="muted">选择一位好友开始聊天。邀请好友开桌请进入等待中的房间，点击「邀请好友」。</p></section>}</div>
-    <section className="panel"><h2>房间邀请</h2>{data.invitations.length === 0 && <p className="muted">暂无房间邀请。</p>}
+    </section>}
+
+    {section === 'add' && <>
+      <a className="social-back" href="/friends">← 返回好友列表</a>
+      <div className="social-add-layout"><section className="panel"><h2>搜索朋友</h2><p className="muted">输入完整的好友 ID，搜索后确认昵称再发送申请。</p>
+        <form className="form-stack" onSubmit={find}><label>搜索好友 ID<input required minLength={3} maxLength={37} pattern="@?[A-Za-z0-9_]{3,36}" placeholder="@rst307" value={search} disabled={action.busy} onChange={event => { setSearch(event.target.value); setResult(undefined); }} /></label><button disabled={action.busy}>{action.busy ? '处理中…' : '搜索用户'}</button></form>
+        {result === null && <p role="status">没有找到这个好友 ID。</p>}
+        {result && <article className="social-row"><div><strong>{result.displayName}</strong><p className="friend-id">{formatFriendId(result.friendId)}</p></div>
+          {result.friendId === data.identity.friendId ? <span>这是你自己</span> : data.friends.some(item => item.person.id === result.id) ? <span>已是好友</span> : data.requests.some(item => item.person.id === result.id) ? <a href="/friends/requests">查看待处理申请</a> : <button disabled={action.busy} onClick={() => void action.run(`request:${result.friendId}`, id => api.requestFriend({ requestId: id, friendId: result.friendId }), '好友申请已提交，请等待对方确认', () => void refresh())}>发送好友申请</button>}
+        </article>}
+        <p className="muted">申请进度可在 <a href="/friends/requests">好友申请</a> 中查看。</p>
+      </section><FriendIdCard /></div>
+    </>}
+
+    {section === 'requests' && <div className="social-request-layout">
+      {([['收到的申请', incoming], ['发出的申请', outgoing]] as const).map(([heading, items]) => <section className="panel" key={heading}><h2>{heading} <small>({items.length})</small></h2>
+        {items.length === 0 && <p className="social-empty muted">{heading === '收到的申请' ? '暂无待处理申请。朋友发来申请后会显示在这里。' : '暂无发出的申请。'} </p>}
+        {items.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div>
+          <div className="social-actions">{(item.direction === 'incoming' ? ['accept', 'reject'] as const : ['cancel'] as const).map(operation => <button key={operation} className={operation === 'accept' ? '' : 'secondary'} disabled={action.busy} onClick={() => void action.run(`friend:${item.person.id}:${item.revision}:${operation}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: operation }), operation === 'accept' ? '已成为好友，可返回好友列表开始私聊' : '申请已处理', () => void refresh())}>{operation === 'accept' ? '接受申请' : operation === 'reject' ? '拒绝申请' : '撤回申请'}</button>)}</div>
+        </article>)}
+      </section>)}
+    </div>}
+
+    {section === 'invitations' && <section className="panel"><h2>开桌邀请</h2><p className="muted">想邀请朋友？进入等待中的房间，点击「邀请好友」。接受邀请后仍需自行入座。</p>
+      {data.invitations.length === 0 && <p className="social-empty muted">暂无房间邀请。</p>}
       {data.invitations.map(invite => <Invitation key={invite.id} invite={invite} me={invite.sender.friendId === data.identity.friendId ? invite.sender.id : invite.recipient.id} run={action.run} busy={action.busy} refresh={refresh} />)}
-    </section>
-  </>;
+    </section>}
+
+    {section === 'chat' && <div className="social-conversation">
+      <a className="social-back" href="/friends">← 返回好友列表</a>
+      {selected ? <DirectChat key={selected.id} person={selected} refresh={refresh} /> : <section className="panel"><h2>无法打开这段私聊</h2><p className="muted">对方不在当前好友列表中。返回列表选择好友，或检查好友关系。</p></section>}
+    </div>}
+  </div>;
 }

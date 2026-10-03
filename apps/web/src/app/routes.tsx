@@ -60,11 +60,16 @@ export function resolvePage(path: string): PageRoute {
   if (room) return { title: '房间', page: <RoomPage key={room[1]} id={room[1]!} /> };
   const match = /^\/matches\/([0-9a-f-]+)$/i.exec(path);
   if (match) return { title: '游戏桌', game: true, page: <MatchPage key={match[1]} id={match[1]!} /> };
+  const chat = /^\/friends\/chat\/([0-9a-f-]{36})$/i.exec(path);
+  if (chat) return { title: '好友私聊', page: <FriendsPage section="chat" friendId={chat[1]!} /> };
   switch (path) {
     case '/': return { title: '游戏大厅', page: <RootPage /> };
     case '/login': return { title: '账户登录', page: <LoginPage /> };
     case '/register': return { title: '账号注册', page: <RegisterPage /> };
     case '/profile': return { title: '我的资料', page: <ProfilePage /> };
+    case '/friends/add': return { title: '添加好友', page: <FriendsPage section="add" /> };
+    case '/friends/requests': return { title: '好友申请', page: <FriendsPage section="requests" /> };
+    case '/friends/invitations': return { title: '房间邀请', page: <FriendsPage section="invitations" /> };
     case '/friends': return { title: '好友', page: <FriendsPage /> };
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };

@@ -91,7 +91,7 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
     } finally { sending.current = false; if (mounted.current) setBusy(false); }
   }
   return <section className="panel direct-chat" aria-label={`与 ${person.displayName} 的私聊`}>
-    <h2>与 {person.displayName} 私聊</h2><p className="muted">仅你们双方可见 · 每 5 秒同步</p>
+    <h1>与 {person.displayName} 私聊</h1><p className="muted">仅你们双方可见</p>
     {error && <p role="alert" className="error-notice">{error}<button className="secondary" onClick={() => void load()}>重新同步</button></p>}
     {cursor && <button className="secondary" disabled={moreBusy} onClick={() => void load(cursor)}>加载更早消息</button>}
     <ol className="chat-history" aria-label="聊天记录">{messages.map(message => <li className={message.senderId === person.id ? '' : 'chat-message--mine'} key={message.id}>

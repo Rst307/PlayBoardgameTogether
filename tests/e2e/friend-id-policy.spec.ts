@@ -39,6 +39,7 @@ test('admin configures ID cooldown while compact more navigation preserves the s
     expect(await page.evaluate(() => document.body.dataset.navigationMarker)).toBe('same-document');
     await login(user, 'stage3_a');
     await user.getByRole('link', { name: '好友', exact: true }).click();
+    await user.getByRole('link', { name: '添加好友', exact: true }).click();
     await expect(user.getByText('当前每 7 天可修改一次', { exact: false })).toBeVisible();
     await user.getByLabel('新好友 ID', { exact: true }).fill('@policy_first');
     await user.getByRole('button', { name: '保存好友 ID', exact: true }).click();
