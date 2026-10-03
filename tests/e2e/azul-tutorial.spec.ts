@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures.js';
 
 test('guest learns Azul on desktop and mobile without live match writes', async ({ page }, info) => {
+  test.setTimeout(70_000);
   const writes: string[] = [];
   page.on('request', request => {
     if (request.method() !== 'GET' && /\/api\//.test(request.url())) writes.push(request.url());
@@ -47,15 +48,28 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
   await advance();
   await draft('工厂 1 钴蓝 1块', 3);
   const myBoard = page.getByRole('region', { name: '你的花砖板', exact: true });
-  await expect(myBoard.locator('.az-big-reward')).toContainText('+6');
+  await expect(myBoard.locator('.az-score-formula')).toHaveText('+3');
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('3');
+  await expect(myBoard.locator('.az-score-formula')).toHaveText('+3+3＝+6');
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6');
+  await expect(page.locator('.az-impact-dock .az-score-formula')).toHaveText('+3+3＝+6');
   await page.screenshot({ path: info.outputPath('azul-tutorial-cross.png'), fullPage: true });
+  await page.getByRole('button', { name: '重试本步', exact: true }).click();
+  await expect(page.locator('.az-impact-dock')).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await draft('工厂 1 钴蓝 1块', 3);
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6', { timeout: 1000 });
+  expect(await page.locator('.az-impact-dock .az-impact-punch').evaluate(element =>
+    getComputedStyle(element).animationName)).toBe('none');
+  await expect(page.locator('.az-impact-dock')).toHaveCount(0, { timeout: 1000 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await advance();
   await draft('中央 朱红 1块', -1);
   await expect(guide.getByRole('status')).toContainText('实际只扣 1');
   await advance();
   await draft('工厂 1 钴蓝 1块', 1);
   await expect(page.getByRole('heading', { name: '你获胜', exact: true })).toBeVisible();
-  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('53');
+  await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('53', { timeout: 20_000 });
   await page.screenshot({ path: info.outputPath('azul-tutorial-finish.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: '完成教程', exact: true }).click();

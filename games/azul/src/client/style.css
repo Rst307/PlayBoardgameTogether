@@ -404,7 +404,7 @@
   opacity:.35
 }
 .az-table .az-reward-space{
-  height:34px;
+  min-height:106px;
   margin-top:8px;
   display:flex;
   align-items:center;
@@ -412,11 +412,13 @@
 }
 .az-table .az-reward{
   display:flex;
-  align-items:baseline;
-  gap:9px;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
   color:#a9dff4;
-  animation:az-reward .62s both;
-  white-space:nowrap
+  animation:az-reward-enter .45s both;
+  width:100%;
+  text-align:center
 }
 .az-table .az-reward>span{
   font-size:11px
@@ -445,8 +447,13 @@
   animation:az-land .42s cubic-bezier(.12,.8,.25,1) both;
   z-index:2
 }
-.az-table .az-linked{
-  animation:az-link .62s both;
+.az-table .az-link-flash{
+  position:absolute;
+  inset:0;
+  border-radius:4px;
+  pointer-events:none;
+  z-index:3;
+  animation:az-link 1.05s both;
   animation-delay:var(--link-delay)
 }
 .az-table .az-score-burst{
@@ -462,7 +469,7 @@
   font-size:11px;
   color:#ffe19a;
   font-style:normal;
-  animation:az-spark .62s both;
+  animation:az-spark .95s both;
   --x:-24px;
   --y:-27px
 }
@@ -587,6 +594,78 @@
   text-align:center;
   margin-top:18px;
   line-height:1.7
+}
+.az-table .az-score-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  font: bold 30px Georgia, serif;
+  font-variant-numeric: tabular-nums;
+}
+.az-table .az-score-formula > span {
+  display: inline-block;
+  color: #ffe19a;
+}
+.az-table .az-impact-number {
+  animation: az-impact-number .85s cubic-bezier(.16,.9,.25,1) both;
+  text-shadow: 0 0 22px #ffd97699;
+}
+.az-table .az-impact-total {
+  color: #fff3cd;
+  animation: az-number .75s both;
+}
+.az-table .az-impact-dock {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 28px));
+  padding: 15px 18px 12px;
+  border: 1px solid #f8d887;
+  border-radius: 14px;
+  background: #0b1c2bf5;
+  color: #ffe19a;
+  box-shadow: 0 12px 50px #0009, 0 0 30px #ffd16a33;
+  z-index: 80;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.az-table .az-impact-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 12px;
+  color: #b7ccd7;
+}
+.az-table .az-impact-caption > span { color: #ffe19a; }
+.az-table .az-impact-dock .az-score-formula { font-size: 42px; padding: 8px 0; }
+.az-table .az-impact-ready { display: block; text-align: center; font-size: 22px; padding: 12px; }
+.az-table .az-impact-running { text-align: center; color: #b7ccd7; font-size: 12px; }
+.az-table .az-impact-running b { color: #fff3cd; font-size: 19px; }
+.az-table .az-impact-running > span { margin: 0 12px; }
+.az-table .az-impact-punch { animation: az-impact-punch .4s both; }
+.az-table .az-penalty .az-score-formula > span,
+.az-table .az-penalty .az-impact-total { color: #f1b3a9; }
+@keyframes az-impact-number {
+  0% { opacity: 0; transform: translateY(18px) scale(1.9); filter: blur(3px); }
+  28% { opacity: 1; transform: translateY(0) scale(.88); filter: blur(0); }
+  50% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+@keyframes az-impact-punch {
+  0% { transform: translateY(0); }
+  20% { transform: translateY(4px); }
+  42% { transform: translateY(-3px); }
+  65% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+@keyframes az-reward-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @keyframes az-land{
   0%{
