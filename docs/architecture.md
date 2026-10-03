@@ -1,5 +1,11 @@
 # 架构
 
+## 社交模块（2026-10-03）
+
+API `social/service` 与独立 routes 拥有可变好友 ID、申请/关系、私聊/单调读取水位、定向房间邀请；复用既有 auth，protocol/social.ts 与 client-sdk 提供严格 schema/DTO。Web `/friends`、FriendIdCard、DirectChat、InviteFriends 各自管理表单和交互，共用可取消的每 5 秒 HTTP 同步 hook，无新运行单元或私聊 WS 广播。浏览器只收到本人有权读取的社交投影。
+
+020 持久化社交表，短写事务通过 PostgreSQL advisory lock 排序，重验活跃账户/session，内容摘要回执在 revision 前去重；只读 REPEATABLE READ 保持一致。定向邀请与 room 锁序保持 room → account/session，接受在同一事务调用 rooms 受信任 joinMemberWithClient，复用原状态/成员/密码/容量/ready/revision 规则，邀请结果与回执一起提交；commit 后经原 room realtime 广播。没有新建认证、座位权限或平行游戏动作系统。完整边界见 [社交功能](social.md)。
+
 ## 花砖物语扩展（2026-10-03）
 
 `games/azul` 的 `azul.base@1.0.0` 拥有经典彩墙规则、隐藏袋序、公开板、逐砖计分与存档守恒检查。API registry 装配摘要/说明/音频契约，Web registry 按需加载桌面，policy worker 装配只消费 View 的策略。复用 rooms/matches 的身份、回执、revision、事务、恢复与终局房间复位，不增加平台规则分支或迁移。

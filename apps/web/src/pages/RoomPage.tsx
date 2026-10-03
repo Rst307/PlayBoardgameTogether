@@ -6,6 +6,7 @@ import { BotSeatSettings } from './BotSeatSettings.js';
 import {GameRules} from './GameRules.js';
 import {mergeRoomSnapshot} from './roomSnapshot.js';
 import { PageFeedback } from '@boardgame/ui';
+import { InviteFriends } from '../social/InviteFriends.js';
 
 export function RoomPage({id}:{id:string}){
   const[room,setRoom]=useState<any>();
@@ -111,6 +112,7 @@ export function RoomPage({id}:{id:string}){
     />}{bot&&room.permissions.isHost&&waiting&&<button className="secondary" onClick={()=>run(`seats/${seat.seatId}/bot`,'DELETE')}>移除 AI</button>}</article>})}</div>
     {waiting&&<div className="panel room-actions"><h2>房间操作</h2><p className="muted">席位变更会取消真人准备，请全员入座后再准备。</p>{mine?<><button onClick={()=>run('my-ready','PUT',{ready:!mine.ready})}>{mine.ready?'取消准备':'准备'}</button><button className="secondary" onClick={()=>run('my-seat','DELETE')}>离座</button></>:<p className="muted">选择一个空座位后才能准备。</p>}{room.permissions.isHost&&<><button className="secondary" onClick={()=>run('invite','POST')}>刷新邀请码</button><button disabled={!room.permissions.canStart} onClick={()=>run('start','POST')}>开始游戏</button></>}<button className="secondary" onClick={()=>run('leave','POST')}>退出房间</button>{room.startBlockers.length>0&&<ul>{room.startBlockers.map((blocker:string)=><li key={blocker}>{blocker}</li>)}</ul>}</div>}
     {waiting&&room.members.some((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId))&&<section className="panel waiting-members"><h2>候场成员</h2>{room.members.filter((member:any)=>!room.seats.some((seat:any)=>seat.ownerAccountId===member.accountId)).map((member:any)=><p key={member.accountId}>{member.displayName} · 请先选择空座位</p>)}</section>}
+    {waiting && <InviteFriends roomId={id} revision={room.roomRevision} memberIds={room.members.map((member: { accountId: string }) => member.accountId)} />}
     {room.permissions.isHost&&waiting&&<section className="panel host-tools"><h2>房主设置</h2><form className="form-stack" onSubmit={configure}><label>房间名<input name="name" defaultValue={room.name} maxLength={40}/></label><label>座位数<input name="seatCount" type="number" min={players.min} max={players.max} defaultValue={room.seatCount}/></label><button className="secondary">保存配置（规则变更会清除准备）</button></form><h3>转让房主</h3>{room.members.filter((member:any)=>member.accountId!==me.account.id).map((member:any)=><button className="secondary" key={member.accountId} onClick={()=>run('host','POST',{targetAccountId:member.accountId})}>转让给 {member.displayName}</button>)}</section>}
     {room.permissions.isHost&&room.status!=='closed'&&<button className="danger" onClick={()=>{if(confirm(playing?'强制关闭将终止当前对局，并让所有玩家返回首页。确定关闭吗？':'确定关闭房间并返回首页吗？'))void run('close','POST');}}>{playing?'强制关闭房间':'关闭房间'}</button>}{!waiting&&!playing&&room.status!=='closed'&&<button className="secondary" onClick={()=>run('leave','POST')}>退出房间</button>}{room.activeMatchId&&room.status!=='closed'&&<button onClick={()=>navigate(`/matches/${room.activeMatchId}`)}>进入对局</button>}</fieldset>
   </>;

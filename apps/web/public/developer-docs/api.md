@@ -189,3 +189,18 @@ GET /assets/contracts、/assets/versions?gameId=...、/assets/versions/:id、/as
 | SERVICE_UNAVAILABLE | 恢复连接；先确认待提交动作结果 |
 
 不要依赖错误 message 的文本做程序分支。使用 code，记录必要 traceId，不记录密码、session、CSRF、邀请码、模型密钥或秘密视图。
+## 好友社交接口（2026-10-03）
+
+所有以下路径均以 `/api/v1` 为前缀且需 session；写请求保留 Origin 和 CSRF，UUID requestId 对内容去重，响应 no-store。好友 ID 可变，内部账户 UUID 和登录用户名不变。
+
+- GET `/social`：好友 ID/revision、申请、好友/未读和最近 50 条邀请。
+- GET `/social/search?friendId=...`：精确查找活跃用户的非秘密头像/昵称/ID 投影。
+- PUT `/social/id`：requestId、friendId、expectedRevision。
+- POST `/social/requests`：requestId、friendId。
+- POST `/social/friends/:id`：requestId、expectedRevision、accept/reject/cancel/remove action。
+- GET/POST `/social/friends/:id/messages`：before UUID 分页读取最新/更早 30 条，或 requestId/text 发送文字；双方须为好友。
+- POST `/social/friends/:id/read`：requestId/messageId，同会话单调水位。
+- POST `/rooms/:id/friend-invitations`：requestId/friendAccountId/expectedRoomRevision。
+- POST `/social/invitations/:id`：requestId、accept/reject action、可选 password；本人接收邀请，在原房间事务检查状态/密码/容量并加入。
+
+共享 `social.ts` 已进入 SDK 源码下载。私聊不是游戏事件，不通过 room/match WS 广播；前端可见时每 5 秒认证读取，网络恢复重新同步。

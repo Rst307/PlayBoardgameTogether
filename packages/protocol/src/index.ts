@@ -3,6 +3,7 @@ export * from './admin.js';
 export * from './game-submissions.js';
 export * from './game-presentation.js';
 export * from './profile.js';
+export * from './social.js';
 import { assetBindingSchema, presentationCueSchema } from './assets.js';
 
 export const PROTOCOL_VERSION = 1 as const;

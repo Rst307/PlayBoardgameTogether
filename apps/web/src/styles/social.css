@@ -1,0 +1,19 @@
+.social-top, .social-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-bottom: 20px; }
+.social-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.social-row > div { min-width: 0; }
+.social-row p { margin: 6px 0; }
+.social-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.friend-id { overflow-wrap: anywhere; font-size: 0.9rem; }
+.friend-id-card input { width: 100%; }
+.unread-count { display: inline-block; padding: 3px 8px; border-radius: 6px; color: var(--accent); background: var(--accent-soft); font-size: 0.8rem; }
+.chat-history { list-style: none; padding: 0; max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.chat-history li { max-width: 92%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; align-self: flex-start; }
+.chat-history .chat-message--mine { align-self: flex-end; }
+.chat-history p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; }
+.chat-history small { color: var(--muted); }
+.direct-chat textarea { width: 100%; }
+@media (max-width: 760px) {
+  .social-top, .social-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .social-row { flex-wrap: wrap; gap: 10px; }
+  .social-actions { width: 100%; }
+}

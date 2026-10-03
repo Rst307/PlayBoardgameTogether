@@ -1,5 +1,11 @@
 # 数据模型
 
+## 社交 020（2026-10-03）
+
+accounts 新增唯一 lowercase friend_id 和 social_revision；迁移及插入 trigger 为既有/新账户分配 `p_` + UUID hex。friendships 使用有序账户 UUID 对作为主键，保存 requested_by、pending/accepted/rejected/removed、revision 和更新时间。direct_messages 保存单调 sequence、消息 UUID、双方身份、文字和时间；direct_message_reads 为每人/peer 保存单调读取水位。friend_room_invitations 保存房间/发送人/接收人、pending/accepted/rejected 和 24 小时 expiry；social_command_receipts 保存 account/requestId 主键、输入 SHA-256 和投影结果，不保存房间密码正文。均有外键及约束，没有完整 State 或对局权限副本。
+
+社交写事务 advisory lock 排序；房间邀请相关操作 room → account/session 锁序。接受时同事务调用原 rooms 加入规则并更新邀请与回执；失败整体回滚，commit 后原 realtime 通知。社交读取使用 REPEATABLE READ。记录随账户保留，无自动清理，配额和边界见 [社交功能](social.md)。
+
 ## 管理员后台 019（2026-10-03）
 
 新增 accounts.admin_revision 与 game_installations.admin_revision，初始 1；数据库触发器仅在 status/enabled 实质改变时递增，覆盖既有账户 CLI 和管理接口，避免外部更新绕过并发检查。

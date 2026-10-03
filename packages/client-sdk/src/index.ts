@@ -14,10 +14,50 @@ import {
 import { botSeatCommandSchema, roomSnapshotSchema, type BotSeatCommand } from '@boardgame/protocol';
 import { gamePresentationSchema, gamePresentationInputSchema, type GamePresentationInput } from '@boardgame/protocol';
 import { profileSchema, profileInputSchema, matchHistorySchema, type ProfileInput } from '@boardgame/protocol';
+import {
+  socialOverviewSchema, socialPersonSchema, socialIdentitySchema, friendIdInputSchema,
+  friendRequestInputSchema, friendshipSchema, friendshipCommandSchema, socialDoneSchema,
+  messagePageSchema, messageInputSchema, socialMessageSchema, readMessagesInputSchema,
+  friendInviteInputSchema, friendInviteSchema, friendInviteCommandSchema,
+  type FriendshipCommand, type FriendInviteCommand,
+} from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async social(signal?: AbortSignal) {
+    return socialOverviewSchema.parse(await this.request<unknown>('/social', signal ? { signal } : undefined));
+  }
+  async searchFriend(friendId: string) {
+    return socialPersonSchema.nullable().parse(await this.request<unknown>(`/social/search?friendId=${encodeURIComponent(friendId)}`));
+  }
+  async changeFriendId(input: { requestId: string; friendId: string; expectedRevision: number }) {
+    return socialIdentitySchema.parse(await this.request<unknown>('/social/id', { method: 'PUT', body: JSON.stringify(friendIdInputSchema.parse(input)) }));
+  }
+  async requestFriend(input: { requestId: string; friendId: string }) {
+    return friendshipSchema.parse(await this.request<unknown>('/social/requests', { method: 'POST', body: JSON.stringify(friendRequestInputSchema.parse(input)) }));
+  }
+  async updateFriend(id: string, input: FriendshipCommand) {
+    return socialDoneSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(friendshipCommandSchema.parse(input)) }));
+  }
+  async directMessages(id: string, before?: string, signal?: AbortSignal, after?: string) {
+    const query = new URLSearchParams();
+    if (before) query.set('before', before);
+    if (after) query.set('after', after);
+    return messagePageSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/messages${query.size ? `?${query}` : ''}`, signal ? { signal } : undefined));
+  }
+  async sendDirectMessage(id: string, input: { requestId: string; text: string }) {
+    return socialMessageSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify(messageInputSchema.parse(input)), signal: AbortSignal.timeout(10000) }));
+  }
+  async readDirectMessages(id: string, input: { requestId: string; messageId: string }) {
+    return socialDoneSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/read`, { method: 'POST', body: JSON.stringify(readMessagesInputSchema.parse(input)) }));
+  }
+  async inviteFriendToRoom(id: string, input: { requestId: string; friendAccountId: string; expectedRoomRevision: number }) {
+    return friendInviteSchema.parse(await this.request<unknown>(`/rooms/${encodeURIComponent(id)}/friend-invitations`, { method: 'POST', body: JSON.stringify(friendInviteInputSchema.parse(input)) }));
+  }
+  async respondFriendInvitation(id: string, input: FriendInviteCommand) {
+    return friendInviteSchema.parse(await this.request<unknown>(`/social/invitations/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(friendInviteCommandSchema.parse(input)) }));
+  }
   async adminOverview() {
     return adminOverviewSchema.parse(await this.request<unknown>('/admin/overview'));
   }

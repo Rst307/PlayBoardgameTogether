@@ -16,6 +16,7 @@ export const publicSdkFiles = [
   'packages/protocol/src/index.ts',
   'packages/protocol/src/assets.ts',
   'packages/protocol/src/profile.ts',
+  'packages/protocol/src/social.ts',
   'packages/protocol/src/game-presentation.ts',
   'packages/protocol/src/game-submissions.ts',
   'packages/protocol/src/admin.ts',

@@ -4,6 +4,7 @@ import { guides } from './developer-guides.js';
 const RootPage = lazy(() => import('./RootPage.js'));
 const LoginPage = lazy(() => import('../pages/LoginPage.js').then(module => ({ default: module.LoginPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
+const FriendsPage = lazy(() => import('../pages/FriendsPage.js').then(module => ({ default: module.FriendsPage })));
 const NewRoomPage = lazy(() => import('../pages/NewRoomPage.js').then(module => ({ default: module.NewRoomPage })));
 const GameDetailPage = lazy(() => import('../pages/GameDetailPage.js').then(module => ({ default: module.GameDetailPage })));
 const TutorialPage = lazy(() => import('../pages/TutorialPage.js').then(module => ({ default: module.TutorialPage })));
@@ -62,6 +63,7 @@ export function resolvePage(path: string): PageRoute {
     case '/': return { title: '游戏大厅', page: <RootPage /> };
     case '/login': return { title: '账户登录', page: <LoginPage /> };
     case '/profile': return { title: '我的资料', page: <ProfilePage /> };
+    case '/friends': return { title: '好友', page: <FriendsPage /> };
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };
     case '/admin': return { title: '管理员后台', page: <AdminOverviewPage /> };

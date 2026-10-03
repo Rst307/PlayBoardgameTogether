@@ -1,5 +1,9 @@
 # 协议
 
+## 好友、私聊与邀请（2026-10-03）
+
+新增需 session 的 `/social`、`/social/search`、`/social/id`、`/social/requests`、`/social/friends/:id`、`/social/friends/:id/messages`、`/social/friends/:id/read`、`/social/invitations/:id` 以及 `/rooms/:id/friend-invitations`。严格 schema/DTO 由 protocol/social.ts 共享，client-sdk 逐响应解析 unknown。写请求保留 Origin/CSRF，并在事务重验活跃账户/session；UUID 回执摘要绑定操作、目标和完整内容，重复成功先于 revision。私聊按双方关系授权，分页游标和已读水位不能跨会话。社交同步采用可见页面每 5 秒认证 HTTP 读取，未新增 WS 广播私聊正文。字段、配额和错误见 [社交 API](social.md#api)。
+
 ## 管理员后台（2026-10-03）
 
 新增 GET `/api/v1/admin/overview`（真实非秘密计数）、GET `/api/v1/admin/accounts?search=&before=`（20 项账户概要分页）、PUT `/api/v1/admin/accounts/:id/status`、GET `/api/v1/admin/games`（全部安装版本，包括下架）、PUT `/api/v1/admin/games/:id/versions/:version/status`。均要求管理员 session，响应和错误 no-store/nosniff。写入额外校验 Origin/CSRF，并在事务内重验身份。

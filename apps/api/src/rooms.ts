@@ -170,27 +170,39 @@ export class RoomService {
       if (!id) throw new AppError('INVITE_UNAVAILABLE','邀请码不可用',404);
       const room = await this.locked(client,id);
       if (publicRoomId && room.visibility!=='public') throw new AppError('ROOM_NOT_FOUND','Room not found',404);
-      const member = await client.query('SELECT 1 FROM room_members WHERE room_id=$1 AND account_id=$2',[id,accountId]);
-      if (!member.rowCount) {
-        if(code && room.status!=='waiting')throw new AppError('INVITE_UNAVAILABLE','邀请码不可用',404);
-        this.assertWaiting(room);
-        if (code) {
-          const current=await client.query('SELECT 1 FROM room_invites WHERE room_id=$1 AND code_hash=$2 AND expires_at>now()',[id,sha(code)]);
-          if (!current.rowCount) throw new AppError('INVITE_UNAVAILABLE','邀请码不可用',404);
-        }
-        if (room.password_hash && (!body.password || !await verify(room.password_hash,body.password))) throw new AppError('FORBIDDEN','房间密码不正确',403);
-        const n=await client.query<{count:string}>("SELECT (SELECT count(*) FROM room_members WHERE room_id=$1)+(SELECT count(*) FROM seats WHERE room_id=$1 AND occupant_kind='bot') AS count",[id]);
-        if (Number(n.rows[0]!.count)>=room.seat_count) throw new AppError(code?'INVITE_UNAVAILABLE':'ROOM_FULL',code?'邀请码不可用':'房间已满',code?404:409);
-        await client.query('INSERT INTO room_members(room_id,account_id) VALUES($1,$2)',[id,accountId]);
-        await client.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'",[id]);
-        await client.query('UPDATE rooms SET room_revision=room_revision+1 WHERE id=$1',[id]);
+      if (code) {
+        const current = await client.query('SELECT 1 FROM room_invites WHERE room_id=$1 AND code_hash=$2 AND expires_at>now()', [id, sha(code)]);
+        if (!current.rowCount) throw new AppError('INVITE_UNAVAILABLE', '邀请码不可用', 404);
       }
+      await this.joinMemberWithClient(client, id, accountId, body.password, !!code);
       await this.saveReceipt(client,accountId,'room.join',body.requestId,receiptBody,id,{roomId:id});
       return {roomId:id};
     });
     this.changed(result.roomId);
     return this.snapshot(result.roomId,accountId);
   }
+
+  // Trusted service boundary: callers must first authorize the public/code/friend
+  // invitation in this same transaction. This method never grants that authority.
+  async joinMemberWithClient(client: Client, roomId: string, accountId: string, password?: string, codeEntry = false) {
+    const room = await this.locked(client, roomId);
+    const member = await client.query('SELECT 1 FROM room_members WHERE room_id=$1 AND account_id=$2', [roomId, accountId]);
+    if (member.rowCount) return;
+    if (codeEntry && room.status !== 'waiting') throw new AppError('INVITE_UNAVAILABLE', '邀请码不可用', 404);
+    this.assertWaiting(room);
+    if (room.password_hash && (!password || !await verify(room.password_hash, password)))
+      throw new AppError('FORBIDDEN', '房间密码不正确', 403);
+    const count = await client.query<{ count: string }>(
+      "SELECT (SELECT count(*) FROM room_members WHERE room_id=$1)+(SELECT count(*) FROM seats WHERE room_id=$1 AND occupant_kind='bot') AS count", [roomId],
+    );
+    if (Number(count.rows[0]!.count) >= room.seat_count)
+      throw new AppError(codeEntry ? 'INVITE_UNAVAILABLE' : 'ROOM_FULL', codeEntry ? '邀请码不可用' : '房间已满', codeEntry ? 404 : 409);
+    await client.query('INSERT INTO room_members(room_id,account_id) VALUES($1,$2)', [roomId, accountId]);
+    await client.query("UPDATE seats SET ready=false WHERE room_id=$1 AND occupant_kind='human'", [roomId]);
+    await client.query('UPDATE rooms SET room_revision=room_revision+1 WHERE id=$1', [roomId]);
+  }
+
+  notifyJoined(roomId: string) { this.changed(roomId); }
 
   private async assertNotPlaying(client: Client, room: RoomRow) {
     if (!room.active_match_id) return;

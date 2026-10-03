@@ -26,6 +26,8 @@ import { registerGameSubmissionRoutes } from './catalog/submission-routes.js';
 import { fileURLToPath } from 'node:url';
 import { AdminService } from './admin/service.js';
 import { registerAdminRoutes } from './admin/routes.js';
+import { SocialService } from './social/service.js';
+import { registerSocialRoutes } from './social/routes.js';
 
 export type AppDeps = { config: ApiConfigInput; db: Database; registry: GameRegistry; runner?: LabRunner;
   testMatchFaults?: { beforeCommit?: () => void; afterCommit?: () => void } };
@@ -48,8 +50,9 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
   registerGamePresentationRoutes(app, auth, new GamePresentationService(deps.db), config.NODE_ENV === 'production');
   registerGameSubmissionRoutes(app, auth, new GameSubmissionService(deps.db));
   registerAdminRoutes(app, auth, new AdminService(deps.db, deps.registry, config.NODE_ENV === 'production'));
+  registerSocialRoutes(app, auth, new SocialService(deps.db, rooms));
   app.addHook('onSend', async (request, reply, payload) => {
-    if (request.url.startsWith('/api/v1/game-submissions') || request.url.startsWith('/api/v1/admin/')) {
+    if (request.url.startsWith('/api/v1/game-submissions') || request.url.startsWith('/api/v1/admin/') || request.url.startsWith('/api/v1/social') || request.url.startsWith('/api/v1/profile')) {
       reply.header('cache-control', 'no-store');
       reply.header('x-content-type-options', 'nosniff');
     }

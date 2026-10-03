@@ -3,6 +3,8 @@ import { ApiError } from '@boardgame/client-sdk';
 import type { Profile, MatchHistory } from '@boardgame/protocol';
 import { PageFeedback } from '@boardgame/ui';
 import { api, navigate } from '../platform.js';
+import { FriendIdCard } from '../social/FriendIdCard.js';
+import '../styles/social.css';
 
 const avatars = [
   { id: 'dice', label: '骰子', symbol: '🎲' },
@@ -100,6 +102,7 @@ export function ProfilePage() {
         </fieldset>
       </form></section>
     </div>
+    <FriendIdCard />
     <section className="room-list"><h2>我的对局</h2><p className="muted">按开局时间排列，包含已结束与中止的对局。</p>
       {history.items.length === 0 ? <p className="muted">还没有对局记录。<a href="/">去游戏大厅开始第一局</a></p> : history.items.map(match =>
         <article className="room-row" key={match.id}><span><strong>{match.roomName}</strong><small>{match.gameId} · {match.gameVersion} · {date(match.createdAt)}</small></span>
