@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 
 test('model settings save and test an explicitly labelled mock profile', async ({ page }) => {
@@ -41,7 +42,7 @@ test('model settings save and test an explicitly labelled mock profile', async (
   await expect(page.getByRole('heading', { name: '浏览器模拟配置', exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('model-settings.png'), fullPage: true });
   await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('color-match@1.0.0');
   await page.getByLabel('房间名').fill(`模型托管 ${test.info().project.name}`);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
@@ -53,7 +54,9 @@ test('model settings save and test an explicitly labelled mock profile', async (
   await page.locator('.controller-panel summary').click();
   await page.getByRole('button', { name: '启用模型 · 浏览器模拟配置' }).last().click();
   await expect(page.getByText(/座位 1 · 模型 AI/)).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('.page-heading').getByText(/已结束/)).toBeVisible({ timeout: 60000 });
+  await expect(page).toHaveURL(/\/rooms\//, { timeout: 60000 });
+  await page.getByRole('link', { name: '查看本局结果' }).click();
+  await expect(page.locator('.page-heading').getByText(/已结束/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
@@ -104,4 +107,3 @@ test('model settings preserve keys on edit, show actionable failures and allow c
   await page.reload();
   await expect(card).toHaveCount(0);
 });
-

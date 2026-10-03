@@ -1,5 +1,7 @@
 # 决策记录
 
+- [ADR-005](adr/005-runtime-game-packages.md)：管理员即时安装固定三文件 ZIP，QuickJS WASM 规则与 sandbox HTML 桌面，复用正式游戏事务，持久精确版本并保留旧局；普通源码项目不执行在线 npm 构建。
+
 - 第九阶段保持原生 CSS 和 details/summary；公共 UI 增加状态反馈与扩展渲染边界，不引入新的游戏/通信框架。房间和对局页面按 ID 分别挂载，异步回复在原页面卸载后不得导航至旧对局。Grid Garden 的本地秘密选择与 Color Match 的目标选择新增显式确认，不新增服务端动作或人工公开步骤。
 - 固定 UI 场景只使用匿名公开 View，生产由 Vite build 命令关闭开发标志并替换开发模块。发现本地 .env 的 development 会影响 Vite 构建，故按构建命令约束，不覆盖用户 .env；生产 marker 检查实际验证排除。卡牌、棋盘的已确认变化仍以服务端快照为准，动画只展示 live 公开事件，不延迟规则。
 

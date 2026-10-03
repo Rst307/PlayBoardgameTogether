@@ -2,6 +2,8 @@
 
 应用唯一正式 AudioManager 位于 `apps/web/src/assets/audio-manager.ts`，游戏不自行 new Audio；管理员预览单独生命周期实例，音量和事件源隔离。旧独立开局提示不再在准备/导航时自动播放。
 
+2026-10-03 新增可选客户端 `PresentationAudioPort(eventId, cueId, key)`：可信游戏在 clientGames 注册 `boardAudio: true`，由桌面动画决定播放时点，仍委托唯一 AudioManager。MatchPage 仅在 PresentationConsumer 接受 WS live 批次，且声音已解锁、未静音、页面可见并持有 owner 时授权事件。BoardAudio 有界保留 100 个事件、每事件最多 256 个节拍键，逐 eventId/cueId/key 去重，绑定 AudioManager playbackEpoch；任何 invalidate 都使未播放节拍失效。资源仍按本局清单和契约解析，不修改网络 cue schema。花砖物语复用原三个 cue，覆盖选砖/移砖、逐项得分/奖励及动画结束后的胜利；其他游戏继续立即消费 live cues。
+
 游戏声音只来自已提交、按身份 projectEvents 后的 WS live 完整 revision 批次。HTTP 动作确认（含重复 receipt）永不播放。可信扩展生成 `cues:[{eventId,cueIndex,cueId}]`，资源包仅声明映射。Color Match 摸牌只用通用声，不按私密牌面选择音色；turn.started 仅给当前本人。
 
 客户端 PresentationConsumer 建立权威快照 revision 水位后消费；同批每个 eventId/cueIndex 均可播放，关闭 revision 水位后任何重复、迟到老批次都拒绝，不保存无限事件集合。断线/重连/后台/主控切换停止声音和旧异步操作，恢复先拉快照建立新基线。允许少播，不以音效补偿为由重放动作。详见 ADR-003。

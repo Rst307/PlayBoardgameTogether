@@ -6,6 +6,7 @@ import type { Database } from './db/index.js';
 import type pg from 'pg';
 import type { ApiConfig } from './config.js';
 import { AppError } from './errors.js';
+import { registrationInputSchema, registrationResultSchema } from '@boardgame/protocol';
 
 export const usernameSchema = z.string().regex(/^[A-Za-z0-9_]{3,32}$/);
 export const passwordSchema = z.string().min(12).max(128);
@@ -74,7 +75,34 @@ export class AuthService {
     } catch (error) { client.release(); this.retryNotifications(); throw error; }
   }
   assertOrigin(request: FastifyRequest) { if (request.headers.origin !== this.config.WEB_ORIGIN) throw new AppError('FORBIDDEN', 'Request origin is not allowed', 403); }
+  async register(raw: unknown) {
+    const input = registrationInputSchema.parse(raw);
+    const passwordHash = await hashPassword(input.password);
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+      // Serialize with friend ID edits and automatic CLI account ID allocation.
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended('social-write', 0))");
+      await client.query(`INSERT INTO accounts
+        (id,username_canonical,display_name,password_hash,role,status,friend_id)
+        VALUES($1,$2,$3,$4,'user','active',$5)`,
+      [randomUUID(), input.userId, input.displayName, passwordHash, input.userId]);
+      await client.query('COMMIT');
+      return registrationResultSchema.parse({
+        username: input.userId, displayName: input.displayName, friendId: input.userId,
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        throw new AppError('STATE_CONFLICT', '这个用户 ID 已被使用，请换一个', 409);
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   async login(username: string, password: string, ip: string) {
+    username = username.replace(/^@/, '');
     const canonical = username.toLowerCase(); this.ipLimiter.check(ip); this.userLimiter.check(canonical);
     const found = usernameSchema.safeParse(username).success ? await this.db.query<AccountRow>('SELECT id,username_canonical,display_name,password_hash,role,status FROM accounts WHERE username_canonical=$1', [canonical]) : { rows: [] as AccountRow[] };
     const row = found.rows[0];

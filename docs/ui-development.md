@@ -1,5 +1,9 @@
 # UI 开发与回归
 
+生产外壳回归：先 `pnpm build`，再 `pnpm test:ui`。playwright.ui.config.ts 复用公开文档生产预览，运行文档、更多导航及 platform-shell 测试，不调用数据库准备/清理。新增覆盖按页加载、浏览器标题、历史返回与焦点、320px/横屏/桌面布局、登录请求锁与分类反馈、页面加载失败和跨页恢复；截图在测试输出目录。正式身份、房间和完整对局仍使用 `pnpm test:e2e`，不能用模拟登录失败响应替代真实登录验收。
+
+2026-10-02 起 color-match、grid-garden、profile、navigation 回归将新截图写入 testInfo.outputPath，使用 `--output=.data/…` 可隔离本地验收产物；下方 docs/screenshots 路径保留历史记录。Color Match 心跳测试在按需页面加载完成后冻结时钟，并在刷新回归前恢复；不删除会话失效、心跳/重连或单连接断言。
+
 无刷新站内导航与 View Transition 的能力检测、清理、快速切页保护位于 `apps/web/src/app/navigation.ts`，沿用 `platform.navigate` 和 popstate，不增加路由依赖或传输通道。App 的 main 按路径隔离，离开中的内容 inert，导航后聚焦 main；更多菜单保留用户选择的展开状态，由 summary 手动切换。NewRoomPage 与 RoomCreateForm 在卸载后不执行迟到导航。`tests/e2e/navigation.spec.ts` 检查同一 document、前进后退、键盘焦点、错峰、减少动态效果和无 View Transition 回退；`tests/e2e/navigation-menu.spec.ts` 检查桌面/手机换页与历史导航保留菜单状态及手动收起。桌面/手机截图在 `docs/screenshots/page-motion/`。
 
 2026-10-01 后续动效/控件主题补齐位于 `styles/vibrancy.css`。新增 E2E 检查下拉菜单键盘选择、Escape 返回焦点、选牌位移和减少动态效果，截图位于 `docs/screenshots/motion-controls/`；现有五视口与真实流程继续回归。原生菜单在不支持 `base-select` 的浏览器中仍由系统绘制。

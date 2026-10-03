@@ -1,5 +1,48 @@
 # 数据模型
 
+## 在线包默认展示图（2026-10-03）
+
+025_game_package_presentation.sql 给 game_packages 追加 presentation jsonb NOT NULL DEFAULT '{}'，对象/长度受约束；可选 icon/cover/background 保存 PNG data URL，随包安装同事务提交，不另存磁盘。旧包默认空对象，包 hash 包含 descriptor/图片字节，同版本不可覆盖。game_presentations 保留管理员独立配置与 revision，读取以非空配置覆盖包默认；清空配置恢复默认，不改变旧规则或 State。
+
+
+## 公开注册（2026-10-03）
+
+无新增迁移。注册复用 accounts 与现有唯一约束，在共享 social-write advisory lock 的事务中同时写入规范 username_canonical、显示昵称、Argon2id password_hash、固定 user/active 和相同的显式 friend_id。登录 ID 或好友 ID 冲突整笔回滚，不由默认 ID trigger 添加后缀；不创建 session 或保存明文密码。social_revision、好友 ID 修改时间等继续使用原默认值，注册 ID 是初始值，首次后续自定义遵循现有政策。
+
+## 在线游戏包 023/024（2026-10-03）
+
+023 新增 `game_packages`，按 game_id/game_version 关联既有安装版本，持久 SHA-256、独立规则源码、自包含桌面、公开规则与安装审计 UUID/时间，文本总字节数限制 2 MiB；版本不可改写。`game_package_receipts` 按 account_id/request_id 唯一保存输入 hash 和公开结果，与安装行和包同事务提交。024 移除上传者账户外键，保留审计 UUID，使删除上传者或账户生命周期操作不会连带删除旧局规则。回执仍随账户级联，不影响已安装版本。安装全局事务锁保证并发去重与 100 版本/10000 回执配额。
+
+## 好友 ID 修改规则 022（2026-10-03）
+
+`022_friend_id_policy.sql` 新增单行 social_settings（friend_id_change_days 0–3650、revision），默认 30 天；accounts.friend_id_changed_at 保存最后一次成功显式修改时间。旧时间由返回 friendId/revision 的历史回执补齐，不把默认分配或 021 迁移计入。管理员设置与 ID 修改共用社交写锁；设置/revision/摘要回执或 ID/时间/revision/回执在单事务提交，失败回滚。0 不限；冷却由服务端 clock_timestamp 与固定 24 小时天数计算。
+
+## 自定义 @好友名字 021（2026-10-03）
+
+021 替换 accounts 的默认好友 ID 分配触发器：默认使用 username_canonical，重名时追加有界 `_2` 等后缀，分配与社交编辑共享 advisory lock。只迁移 social_revision=1 且仍等于原 `p_`+UUID 的账户，保留自定义 ID；迁移推进 social revision，不改变账户 UUID、关系、消息和对局。展示和复制添加 `@`，输入接受可选 `@`，存储/DTO 继续保存无前缀 canonical 名字。下方 020 为历史迁移行为。
+
+## 社交 020（2026-10-03）
+
+accounts 新增唯一 lowercase friend_id 和 social_revision；迁移及插入 trigger 为既有/新账户分配 `p_` + UUID hex。friendships 使用有序账户 UUID 对作为主键，保存 requested_by、pending/accepted/rejected/removed、revision 和更新时间。direct_messages 保存单调 sequence、消息 UUID、双方身份、文字和时间；direct_message_reads 为每人/peer 保存单调读取水位。friend_room_invitations 保存房间/发送人/接收人、pending/accepted/rejected 和 24 小时 expiry；social_command_receipts 保存 account/requestId 主键、输入 SHA-256 和投影结果，不保存房间密码正文。均有外键及约束，没有完整 State 或对局权限副本。
+
+社交写事务 advisory lock 排序；房间邀请相关操作 room → account/session 锁序。接受时同事务调用原 rooms 加入规则并更新邀请与回执；失败整体回滚，commit 后原 realtime 通知。社交读取使用 REPEATABLE READ。记录随账户保留，无自动清理，配额和边界见 [社交功能](social.md)。
+
+## 管理员后台 019（2026-10-03）
+
+新增 accounts.admin_revision 与 game_installations.admin_revision，初始 1；数据库触发器仅在 status/enabled 实质改变时递增，覆盖既有账户 CLI 和管理接口，避免外部更新绕过并发检查。
+
+admin_command_receipts 使用 account_id + UUID request_id 主键，保存仅含非秘密目标/命令字段的 input、公开结果 DTO 和创建时间；管理员命令去重先于 revision 校验。罕见管理写入通过独立事务 advisory lock 串行化，账户/session 重验、目标行锁、状态变更、会话撤销、pg_notify 与回执在同一事务提交。回执无自动清理；账户的既有不物理删除约束保留。不读取或修改 State/RNG、动作、match participants 或锁定资源。旧迁移未改写。
+
+## 游戏接入申请 018（2026-10-03）
+
+game_submissions 持久化申请人 account_id、UUID request_id、严格校验的 input JSONB（纯文本与 GitHub 地址），唯一键为账户 + 请求 ID。id、created_at 组成分页顺序与索引。状态 pending/reviewed/rejected；pending revision=1，审核后 revision=2，review_note/reviewed_by/review_input/reviewed_at 由 CHECK 约束保持同步；审核回执只用于同一申请和审核者去重，不作为代码安全或安装许可。
+
+新申请在独立 advisory transaction lock 与账户/session 锁内去重、检查配额、写入；每账户 pending≤3、24 小时新申请≤5、累计≤100，全平台累计≤10000。去重先于配额；审核锁申请并检查原 revision，原子保存审阅与回执。失败回滚；quota/receipt 不依赖进程内存。无自动清理以保留回执，累计容量需维护者另行管理。申请与 game_installations 没有外键/触发器或激活逻辑，申请游戏 ID 无需已安装。
+
+## 游戏展示 015（2026-10-02）
+
+`015_game_presentations.sql` 新增 game_presentations，以 game_id/game_version 为主键并引用 game_installations；保存可空 icon_url/cover_url/background_url、递增 revision、updated_by 与 updated_at。公开查询只投影游戏 ID、版本、revision 与图片地址。管理员保存先锁安装版本行，串行化首建和后续编辑，校验 expectedRevision 后单事务写入；冲突或无版本不产生记录。null 使用客户端内置图片。未改写历史迁移、manifest、State、RNG、对局资源摘要或房间 revision；展示地址属于平台目录配置，不是对局资源版本。
+
 ## 个人资料 014（2026-10-01）
 
 `014_account_profiles.sql` 为 accounts 新增 avatar（dice/leaf/cat/rocket/star/coffee，默认 dice）和 bio（最多 300 字，默认空字符串），保留既有 display_name 与账户 UUID。历史列表直接查询 match_participants → matches → rooms 的非秘密概要，不新建第二份对局记录，不读取 State、RNG 或动作。单语句使用 created_at/id 降序游标，每页 20 项，游标也要求属于本人；关闭房间不删除参与历史。
@@ -37,3 +80,9 @@ rooms.asset_version_id 与 matches.asset_version_id 外键绑定精确版本；m
 迁移 009_room_lobby.sql：rooms 新增 creator_account_id、visibility、password_hash 与创建者/大厅索引。历史创建者以当前房主回填；历史房为 private，既有重复房间保留，配额由创建事务串行强制检查。密码原文不写入响应或 receipt result_ref。历史 human/script controller 被归还 human、推进 epoch/controllerVersion 并取消旧 epoch 任务；专用 bot 与模型控制器保留。
 
 迁移 010_room_match_rounds.sql：移除 matches.room_id 的全局唯一约束，改为 status=active 的部分唯一索引并增加房间历史索引。match_participants.seat_id 是开局固定的身份，移除其对可重配 seats 的外键，使下一轮缩减座位不破坏历史；动作与 AI 任务仍通过 match_id/seat_id 复合外键引用参与者，开局仍从锁定的房间座位创建参与者。迁移仅将引用 finished 对局的 in_game 房间恢复 waiting、清空 active_match_id、递增 room_revision、取消真人准备。后续结算在原动作事务中执行同样复位，失败完整回滚，旧请求回执不再次复位房间。
+
+## 模型 bot 016/017（2026-10-03）
+
+016 为 seats 增加 bot_model_profile_id，并为 match_participants 增加 model_owner_account_id。模型 bot 保持 account_id=NULL，controller_type=model，保存 model_profile_id 与独立授权 owner；二者的复合外键引用 model_profiles(id,owner_account_id)。真人沿用既有账户/profile 外键且 model_owner_account_id=NULL。017 进一步约束：model 座位必须有模型引用，脚本和真人座位不得有该引用。测试库已应用的 016 初版保持原校验和，约束增强使用后续迁移，不修改其历史含义。
+
+等待房间只保存 profile 引用，开局重新校验所有者、active、enabled、未删除和凭证，并在同一开局事务中固定授权。使用既有活跃绑定保护冻结本局配置；未新增 profile 版本快照机制。模型调用失败继续使用已有合法 fallback。

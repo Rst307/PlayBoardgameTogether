@@ -2,11 +2,141 @@ import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, model
 import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
+import { gamePackageResultSchema } from '@boardgame/protocol';
+import {
+  adminOverviewSchema, adminAccountPageSchema, adminAccountSchema, adminGameSchema,
+  adminAccountCommandSchema, adminGameCommandSchema,
+  type AdminAccountCommand, type AdminGameCommand,
+} from '@boardgame/protocol';
+import {
+  gameSubmissionInputSchema, gameSubmissionReviewSchema, gameSubmissionSchema, gameSubmissionPageSchema,
+  type GameSubmissionInput, type GameSubmissionReview,
+} from '@boardgame/protocol';
+import { botSeatCommandSchema, roomSnapshotSchema, type BotSeatCommand } from '@boardgame/protocol';
+import { gamePresentationSchema, gamePresentationInputSchema, type GamePresentationInput } from '@boardgame/protocol';
 import { profileSchema, profileInputSchema, matchHistorySchema, type ProfileInput } from '@boardgame/protocol';
+import {
+  socialOverviewSchema, socialPersonSchema, socialIdentitySchema, friendIdInputSchema,
+  friendRequestInputSchema, friendshipSchema, friendshipCommandSchema, socialDoneSchema,
+  messagePageSchema, messageInputSchema, socialMessageSchema, readMessagesInputSchema,
+  friendInviteInputSchema, friendInviteSchema, friendInviteCommandSchema,
+  socialSettingsSchema, socialSettingsInputSchema, type SocialSettingsInput,
+  type FriendshipCommand, type FriendInviteCommand,
+} from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
+
+import { registrationInputSchema, registrationResultSchema, type RegistrationInput } from '@boardgame/protocol';
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async register(input: RegistrationInput) {
+    return registrationResultSchema.parse(await this.request<unknown>('/auth/register', {
+      method: 'POST', body: JSON.stringify(registrationInputSchema.parse(input)),
+    }));
+  }
+  async installGamePackage(file: Blob, requestId: string, signal?: AbortSignal) {
+    return gamePackageResultSchema.parse(await this.request<unknown>(
+      `/admin/game-packages?requestId=${encodeURIComponent(requestId)}`,
+      { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file, ...(signal ? { signal } : {}) },
+    ));
+  }
+  async socialSettings() {
+    return socialSettingsSchema.parse(await this.request<unknown>('/admin/social-settings'));
+  }
+  async setSocialSettings(input: SocialSettingsInput) {
+    return socialSettingsSchema.parse(await this.request<unknown>('/admin/social-settings', {
+      method: 'PUT', body: JSON.stringify(socialSettingsInputSchema.parse(input)),
+    }));
+  }
+  async social(signal?: AbortSignal) {
+    return socialOverviewSchema.parse(await this.request<unknown>('/social', signal ? { signal } : undefined));
+  }
+  async searchFriend(friendId: string) {
+    return socialPersonSchema.nullable().parse(await this.request<unknown>(`/social/search?friendId=${encodeURIComponent(friendId)}`));
+  }
+  async changeFriendId(input: { requestId: string; friendId: string; expectedRevision: number }) {
+    return socialIdentitySchema.parse(await this.request<unknown>('/social/id', { method: 'PUT', body: JSON.stringify(friendIdInputSchema.parse(input)) }));
+  }
+  async requestFriend(input: { requestId: string; friendId: string }) {
+    return friendshipSchema.parse(await this.request<unknown>('/social/requests', { method: 'POST', body: JSON.stringify(friendRequestInputSchema.parse(input)) }));
+  }
+  async updateFriend(id: string, input: FriendshipCommand) {
+    return socialDoneSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(friendshipCommandSchema.parse(input)) }));
+  }
+  async directMessages(id: string, before?: string, signal?: AbortSignal, after?: string) {
+    const query = new URLSearchParams();
+    if (before) query.set('before', before);
+    if (after) query.set('after', after);
+    return messagePageSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/messages${query.size ? `?${query}` : ''}`, signal ? { signal } : undefined));
+  }
+  async sendDirectMessage(id: string, input: { requestId: string; text: string }) {
+    return socialMessageSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify(messageInputSchema.parse(input)), signal: AbortSignal.timeout(10000) }));
+  }
+  async readDirectMessages(id: string, input: { requestId: string; messageId: string }) {
+    return socialDoneSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/read`, { method: 'POST', body: JSON.stringify(readMessagesInputSchema.parse(input)) }));
+  }
+  async inviteFriendToRoom(id: string, input: { requestId: string; friendAccountId: string; expectedRoomRevision: number }) {
+    return friendInviteSchema.parse(await this.request<unknown>(`/rooms/${encodeURIComponent(id)}/friend-invitations`, { method: 'POST', body: JSON.stringify(friendInviteInputSchema.parse(input)) }));
+  }
+  async respondFriendInvitation(id: string, input: FriendInviteCommand) {
+    return friendInviteSchema.parse(await this.request<unknown>(`/social/invitations/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(friendInviteCommandSchema.parse(input)) }));
+  }
+  async adminOverview() {
+    return adminOverviewSchema.parse(await this.request<unknown>('/admin/overview'));
+  }
+  async adminAccounts(search = '', before?: string) {
+    const query = new URLSearchParams({ search });
+    if (before) query.set('before', before);
+    return adminAccountPageSchema.parse(await this.request<unknown>(`/admin/accounts?${query}`));
+  }
+  async setAdminAccountStatus(id: string, input: AdminAccountCommand) {
+    return adminAccountSchema.parse(await this.request<unknown>(`/admin/accounts/${encodeURIComponent(id)}/status`, {
+      method: 'PUT', body: JSON.stringify(adminAccountCommandSchema.parse(input)),
+    }));
+  }
+  async adminGames() {
+    return adminGameSchema.array().parse(await this.request<unknown>('/admin/games'));
+  }
+  async setAdminGameStatus(id: string, version: string, input: AdminGameCommand) {
+    return adminGameSchema.parse(await this.request<unknown>(`/admin/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/status`, {
+      method: 'PUT', body: JSON.stringify(adminGameCommandSchema.parse(input)),
+    }));
+  }
+  async submitGame(input: GameSubmissionInput) {
+    return gameSubmissionSchema.parse(await this.request<unknown>('/game-submissions', {
+      method: 'POST', body: JSON.stringify(gameSubmissionInputSchema.parse(input)),
+    }));
+  }
+  async gameSubmissions(before?: string) {
+    return gameSubmissionPageSchema.parse(await this.request<unknown>(
+      `/game-submissions${before ? `?before=${encodeURIComponent(before)}` : ''}`,
+    ));
+  }
+  async gameSubmission(id: string) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/game-submissions/${encodeURIComponent(id)}`));
+  }
+  async adminGameSubmissions(before?: string) {
+    return gameSubmissionPageSchema.parse(await this.request<unknown>(
+      `/admin/game-submissions${before ? `?before=${encodeURIComponent(before)}` : ''}`,
+    ));
+  }
+  async adminGameSubmission(id: string) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/admin/game-submissions/${encodeURIComponent(id)}`));
+  }
+  async reviewGameSubmission(id: string, input: GameSubmissionReview) {
+    return gameSubmissionSchema.parse(await this.request<unknown>(`/admin/game-submissions/${encodeURIComponent(id)}/review`, {
+      method: 'POST', body: JSON.stringify(gameSubmissionReviewSchema.parse(input)),
+    }));
+  }
+  async gamePresentations() {
+    return gamePresentationSchema.array().parse(await this.request<unknown>('/games/presentations'));
+  }
+  async saveGamePresentation(id: string, version: string, input: GamePresentationInput) {
+    return gamePresentationSchema.parse(await this.request<unknown>(
+      `/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/presentation`,
+      { method: 'PUT', body: JSON.stringify(gamePresentationInputSchema.parse(input)) },
+    ));
+  }
   async profile() { return profileSchema.parse(await this.request<unknown>('/profile')); }
   async saveProfile(input: ProfileInput) {
     return profileSchema.parse(await this.request<unknown>('/profile', {
@@ -37,6 +167,11 @@ export class ApiClient {
   }
   async gameRules(id:string,version:string) {
     return gameRulesSchema.parse(await this.request<unknown>(`/games/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/rules`));
+  }
+  async saveRoomBot(id: string, seatId: string, method: 'PUT' | 'PATCH', body: BotSeatCommand) {
+    return roomSnapshotSchema.parse(await this.request<unknown>(`/rooms/${encodeURIComponent(id)}/seats/${encodeURIComponent(seatId)}/bot`, {
+      method, body: JSON.stringify(botSeatCommandSchema.parse(body)),
+    }));
   }
   room<T>(id:string){return this.request<T>(`/rooms/${encodeURIComponent(id)}`);}
   createRoom<T>(body:unknown){return this.request<T>('/rooms',{method:'POST',body:JSON.stringify(body)});}

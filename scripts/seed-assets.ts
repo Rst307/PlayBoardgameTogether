@@ -10,6 +10,8 @@ import {
 import { LocalAssetStorage } from "../apps/api/src/assets/storage.js";
 import type { PackManifest } from "@boardgame/game-sdk/assets";
 import { validateMedia } from "../apps/api/src/assets/media.js";
+import { seedSplendorAssets } from './seed-splendor-assets.js';
+import { azulWav } from './azul-audio.js';
 
 // Original geometric art: no fonts, external images or commercial game material.
 function crc(bytes: Buffer) {
@@ -124,7 +126,7 @@ export function demoWav(frequency: number) {
 
 export async function seedAssets(service: AssetService) {
   const actor = "00000000-0000-4000-8000-000000000007";
-  for (const { contract, hash } of service.contracts())
+  for (const { contract, hash } of service.contracts().filter(entry => entry.contract.gameId !== 'splendor.base'))
     for (const paper of [false, true]) {
       const packId = `${contract.gameId}.${paper ? "paper" : "classic"}`;
       const existing = await service.db.query<{ id: string }>(
@@ -149,7 +151,7 @@ export async function seedAssets(service: AssetService) {
             const bytes =
               slot.kind === "image"
                 ? demoPng(slot.key, paper)
-                : demoWav((paper ? 330 : 520) + index * 19);
+                : contract.gameId === 'azul.base' ? azulWav(slot.key) : demoWav((paper ? 330 : 520) + index * 19);
             const restored = await validateMedia(
               bytes,
               slot.kind === "image" ? "image/png" : "audio/wav",
@@ -185,7 +187,7 @@ export async function seedAssets(service: AssetService) {
         const bytes =
           slot.kind === "image"
             ? demoPng(slot.key, paper)
-            : demoWav((paper ? 330 : 520) + index * 19);
+            : contract.gameId === 'azul.base' ? azulWav(slot.key) : demoWav((paper ? 330 : 520) + index * 19);
         const file = await service.upload(
           actor,
           draft.id,
@@ -230,6 +232,7 @@ export async function seedAssets(service: AssetService) {
       );
       console.log(`installed ${packId}@1.0.0`);
     }
+  await seedSplendorAssets(service);
 }
 if (process.argv[1]?.endsWith("seed-assets.ts")) {
   const test = process.argv.includes("--test"),

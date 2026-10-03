@@ -24,5 +24,4 @@ Grid Garden 通过一个新扩展包和两处装配入口接入。认证、房�
 | 图包和声音是否可替换 | 是；复用 asset contract、版本锁和 AudioManager |
 | Color Match 是否仍保持独立 | 是；其 State、client、策略和资源契约未迁入 Grid Garden |
 
-依赖检查由 `scripts/check-boundaries.mjs`、TypeScript project references 和生产 bundle/runtime 检查共同覆盖；浏览器入口没有导入 Grid Garden server State。
-
+依赖检查由 `scripts/check-boundaries.ts`（2026-10-02 改用 TypeScript AST）、TypeScript project references 和生产 bundle/runtime 检查共同覆盖；浏览器入口没有导入 Grid Garden server State。

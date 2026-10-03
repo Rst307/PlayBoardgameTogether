@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+<path fill="#453d36" d="M0 0h800v450H0z"/><g stroke="#a88966" opacity=".08"><path d="M0 45h800M0 100h800M0 155h800M0 210h800M0 265h800M0 320h800M0 375h800M0 430h800"/></g>
+<g transform="translate(125 114) rotate(-7 280 100)"><rect x="8" y="12" width="560" height="210" rx="12" fill="#241f1b"/><rect width="560" height="210" rx="12" fill="#b79b74"/><rect x="14" y="14" width="532" height="182" rx="5" fill="#cfbd95"/><path d="M55 109h448" stroke="#8d7452" stroke-width="3"/>
+<g fill="#716850"><circle cx="61" cy="105" r="7"/><circle cx="106" cy="105" r="7"/><circle cx="151" cy="105" r="7"/><circle cx="196" cy="105" r="7"/><circle cx="241" cy="105" r="7"/><circle cx="286" cy="105" r="7"/><circle cx="331" cy="105" r="7"/><circle cx="376" cy="105" r="7"/><circle cx="421" cy="105" r="7"/><circle cx="466" cy="105" r="7"/><circle cx="511" cy="105" r="7"/></g>
+<g font-family="Georgia,serif" font-size="25" fill="#62533f" text-anchor="middle"><text x="61" y="68">0</text><text x="151" y="68">2</text><text x="241" y="68">4</text><text x="331" y="68">6</text><text x="421" y="68">8</text><text x="511" y="68">10</text></g>
+<g transform="translate(191 75)"><path d="m-17 14 10-35h14l10 35z" fill="#bd6954"/><circle cy="-27" r="14" fill="#db8d73"/><ellipse cy="15" rx="22" ry="8" fill="#97533f"/></g>
+<g transform="translate(376 117)"><path d="m-17 14 10-35h14l10 35z" fill="#477f83"/><circle cy="-27" r="14" fill="#74abad"/><ellipse cy="15" rx="22" ry="8" fill="#35676b"/></g></g>
+<g transform="translate(590 320) rotate(18)"><rect width="64" height="64" rx="9" fill="#e5dcc4"/><g fill="#51463e"><circle cx="18" cy="18" r="5"/><circle cx="46" cy="46" r="5"/><circle cx="32" cy="32" r="5"/></g></g>
+</svg>

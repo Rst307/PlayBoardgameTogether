@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import { expect, test } from './fixtures.js';
 
 test('Grid Garden completes three simultaneous rounds with script placement', async ({ page }, testInfo) => {
@@ -7,7 +8,7 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
   await page.getByLabel('密码').fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅' })).toBeVisible();
-  await page.getByRole('link', { name: '创建房间' }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
   await page.getByLabel('房间名').fill(`Grid Garden ${test.info().project.name}`);
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
@@ -18,8 +19,18 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
   await page.getByRole('button', { name: '开始游戏' }).click();
   await expect(page.getByRole('heading', { name: 'Grid Garden', exact: true })).toBeVisible();
   await expect(page.getByRole('grid', { name: '我的4乘4花园' })).toBeVisible();
+  const table = page.getByRole('region', { name: '游戏桌', exact: true });
+  const support = page.getByRole('complementary', { name: '对局辅助', exact: true });
+  const tableBox = (await table.boundingBox())!, supportBox = (await support.boundingBox())!;
+  if (testInfo.project.name === 'desktop') {
+    expect(tableBox.width).toBeGreaterThan(supportBox.width * 2);
+    expect(supportBox.x).toBeGreaterThan(tableBox.x);
+  } else {
+    expect(supportBox.y).toBeGreaterThan(tableBox.y + tableBox.height - 1);
+  }
+  await page.screenshot({ path: testInfo.outputPath('game-first-layout.png'), fullPage: true });
   async function submitAndWait(round: number, choice: 'harvest' | 'build') {
-    const next = round < 3 ? page.getByText(`第 ${round + 1} / 3 轮`) : page.getByRole('heading', { name: '最终得分' });
+    const next = round < 3 ? page.getByText(`第 ${round + 1} / 3 轮`) : page.getByRole('region', { name: '本局已结束', exact: true });
     const choiceButton = page.getByRole('button', { name: choice === 'build' ? '建造 -1' : '收获 +2' });
     for (let attempt = 0; attempt < 8; attempt++) {
       if (await next.isVisible().catch(() => false)) return;
@@ -46,7 +57,11 @@ test('Grid Garden completes three simultaneous rounds with script placement', as
     await expect(page.getByText(`第 ${round} / 3 轮`)).toBeVisible();
     await submitAndWait(round, round === 1 ? 'build' : 'harvest');
   }
-  await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/rooms\//, { timeout: 30_000 });
+  await expect(page.getByRole('button', { name: '准备', exact: true })).toBeEnabled();
+  await page.getByRole('link', { name: '查看本局结果' }).click();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
   await expect(page.getByRole('list').getByText(/获胜/)).toBeVisible();
   await expect(page.locator('.garden-results').getByText(/^第 1 轮/).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -69,12 +84,12 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       await page.getByRole('button', { name: '登录', exact: true }).click();
       await expect(page.getByRole('heading', { name: '游戏大厅' })).toBeVisible();
     }
-    await a.getByRole('link', { name: '创建房间' }).click();
+    await openRoomCreation(a);
     await a.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
     await a.getByLabel('房间名').fill('双人花园交互验收');
     await a.getByRole('button', { name: '创建并生成邀请码' }).click();
     const invite = await a.locator('.invite-box strong').textContent();
-    await b.getByLabel('12 位邀请码').fill(invite!);
+    await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(invite!);
     await b.getByRole('button', { name: '加入私人房间' }).click();
     await b.getByRole('button', { name: '坐这里' }).click();
     await b.getByRole('button', { name: '准备', exact: true }).click();
@@ -115,7 +130,7 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     releaseHeldRequest = undefined;
     await expect(a.getByRole('alert')).toContainText('局面已变化');
     await expect(a.getByText(/待确认草稿：建造/)).toBeVisible();
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/conflict-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('conflict-real.png'), fullPage: true });
     await expect(a.getByRole('button', { name: '建造 -1' })).toHaveAttribute('aria-pressed', 'true');
     await a.getByRole('button', { name: '建造 -1' }).click();
     await a.getByRole('button', { name: '确认选择' }).click();
@@ -136,7 +151,7 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     await expect(a.getByText('对局 · revision 3')).toBeVisible();
     await expect(a.getByText('B1 · 纵向')).toBeVisible();
     await a.screenshot({ path: testInfo.outputPath('garden-keyboard-preview.png'), fullPage: true });
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/garden-preview-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('garden-preview-real.png'), fullPage: true });
     await a.getByRole('button', { name: '确认放置' }).click();
     for (const round of [2, 3]) {
       for (const page of [a, b]) await expect(page.getByText(`第 ${round} / 3 轮`)).toBeVisible();
@@ -153,17 +168,18 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       await a.getByRole('button', { name: '确认放置' }).click();
     }
     for (const page of [a, b]) {
+      await expect(page).toHaveURL(/\/rooms\//);
+      await page.getByRole('link', { name: '查看本局结果' }).click();
       await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
       await expect(page.getByText('座位 1：6 分（占格 6 + 能量 0） · 获胜')).toBeVisible();
       await expect(page.getByText('座位 2：5 分（占格 2 + 能量 3）')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     }
     await a.screenshot({ path: testInfo.outputPath('garden-human-finished.png'), fullPage: true });
-    await a.screenshot({ path: `docs/screenshots/stage-9/after/garden-finished-real-${testInfo.project.name}.png`, fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath('garden-finished-real.png'), fullPage: true });
   } finally {
     releaseHeldRequest?.();
     await first.close();
     await second.close();
   }
 });
-

@@ -11,9 +11,11 @@
     "build": "node build.mjs"
   },
   "dependencies": {
+    "@boardgame/azul": "workspace:*",
     "@boardgame/client-sdk": "workspace:*",
     "@boardgame/color-match": "workspace:*",
     "@boardgame/grid-garden": "workspace:*",
+    "@boardgame/splendor": "workspace:*",
     "@boardgame/protocol": "workspace:*",
     "@boardgame/test-counter": "workspace:*",
     "@boardgame/ui": "workspace:*",

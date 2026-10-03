@@ -59,7 +59,7 @@ export class ModelProfileService {
   private async assertNotInUse(client: PoolClient, id: string) {
     const active = await client.query(`SELECT 1 FROM match_participants p JOIN matches m ON m.id=p.match_id
       WHERE p.model_profile_id=$1 AND p.controller_type='model' AND m.status='active' LIMIT 1`, [id]);
-    if (active.rowCount) throw new AppError('STATE_CONFLICT', '此配置正在用于模型托管，请先在对局中收回控制，再编辑或删除', 409);
+    if (active.rowCount) throw new AppError('STATE_CONFLICT', '此配置正在用于模型托管或模型 AI，请先收回本人控制或结束对局，再编辑或删除', 409);
   }
 
   private async writeCredential(client: PoolClient, owner: string, profileId: string, endpointId: string, apiKey: string) {

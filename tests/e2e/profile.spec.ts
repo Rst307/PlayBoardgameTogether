@@ -1,3 +1,4 @@
+import { openRoomCreation } from './fixtures.js';
 import { test, expect } from './fixtures.js';
 
 test('lobby owns creation and profile changes persist across reloads', async ({ page }, info) => {
@@ -8,12 +9,13 @@ test('lobby owns creation and profile changes persist across reloads', async ({ 
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await expect(page.locator('nav').getByRole('link', { name: '创建房间' })).toHaveCount(0);
   await expect(page.getByLabel('游戏与版本')).toHaveCount(0);
-  await page.getByRole('link', { name: '创建房间', exact: true }).click();
-  await expect(page).toHaveURL('/rooms/new');
+  await openRoomCreation(page);
+  await expect(page).toHaveURL('/games/color-match/1.0.0/new');
   await expect(page.getByLabel('游戏与版本')).toBeVisible();
+  await page.getByRole('link', { name: '返回游戏详情' }).click();
   await page.getByRole('link', { name: '返回游戏大厅' }).click();
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
-  await page.screenshot({ path: `docs/screenshots/lobby-profile/lobby-${info.project.name}.png`, fullPage: true, animations: 'disabled' });
+  await page.screenshot({ path: info.outputPath('lobby.png'), fullPage: true, animations: 'disabled' });
   await page.getByRole('link', { name: '我的资料', exact: true }).click();
   await expect(page.getByRole('heading', { name: '我的资料', exact: true })).toBeVisible();
   await expect(page.locator('.account-id')).toHaveText(/^[0-9a-f-]{36}$/);
@@ -40,7 +42,7 @@ test('lobby owns creation and profile changes persist across reloads', async ({ 
   expect(alignment.x).toBeLessThanOrEqual(2);
   expect(alignment.y).toBeLessThanOrEqual(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  await page.screenshot({ path: `docs/screenshots/lobby-profile/profile-${info.project.name}.png`, fullPage: true, animations: 'disabled' });
+  await page.screenshot({ path: info.outputPath('profile.png'), fullPage: true, animations: 'disabled' });
   await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
   await expect(page.getByText('你好，周末桌友')).toBeVisible();
 });

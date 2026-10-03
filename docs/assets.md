@@ -1,5 +1,9 @@
 # 图片与短音效资源
 
+## 大厅展示图片（2026-10-02）
+
+游戏目录图片在 `/admin/games` 单独管理，支持图标、封面和详情背景的公开地址，留空恢复 `apps/web/public/game-art` 下的原创插画。地址按精确游戏版本保存到 015 game_presentations；公开目录可读取。此配置面向大厅展示，不使用下面的私密资源文件路由、不改变对局锁定图包；此页面没有本地上传，现有 `/admin/assets` 的隔离媒体上传与发布流程保持。使用新功能前执行 `pnpm db:migrate`。
+
 第七阶段实现入口是 `/admin/assets`，仅 `administrator` 可使用；登录玩家可读取发布及归档资源，草稿仅管理员可读。素材本身不是秘密手牌，真实归属仍由 View 和事件投影保护。
 
 ## 安装与存储
@@ -30,6 +34,8 @@ pnpm assets:check
 归档隐藏新选择，但 waiting 房间的既有选择仍可开局。任何保留对局（active/finished/aborted）或未关闭房间引用都阻止删除版本；内置包不可删除/归档。删除草稿只移除草稿引用，不删除已发布版本。界面显示引用总数和原因，不暴露私密对局。
 
 ## 默认包和旧局
+
+2026-10-02 璀璨宝石增加 splendor-assets@1.0.0 契约，默认原创 SVG 与用户提供的 TTS 经典卡面两个版本。pnpm assets:seed 安装原创版本；存在本地准备目录 .data/extracted-assets/splendor-tts-platform/files.json 时再按现有上传、隔离媒体校验、发布链路安装完整 109 槽 TTS 版本。缺素材的新环境只安装原创，不自动下载。原图与准备文件不提交仓库，安装与恢复见 [璀璨宝石](games/splendor.md)。首次发布前须将图片缩至网页适用尺寸，以满足原有 100 MiB 总配额；不增加配额或放宽媒体校验。旧璀璨宝石空绑定仍保留原始摘要和 SVG。
 
 新房默认安装的 `color-match.classic@1.0.0`，可选明显不同的 `color-match.paper@1.0.0`；两者由 `scripts/seed-assets.ts` 原创生成 PNG/WAV，许可见游戏 assets/NOTICE.md。内置文件丢失时 seed 仅在重新生成后最终 hash 与保存值相同才补回；不同解码器版本生成不同字节时拒绝，要求恢复备份。
 

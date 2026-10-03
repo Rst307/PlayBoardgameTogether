@@ -1,5 +1,7 @@
 # 游戏资源契约
 
+2026-10-02 璀璨宝石在独立 ./assets 导出 splendor-assets@1.0.0，109 个图片槽（90 卡面、10 贵族、3 级牌背、6 筹码）均可选，允许原创 SVG 空映射和完整 TTS 卡面版本共存。客户端仅向 AssetResolver 请求公开卡面与自己的预留卡，不按他人预留身份请求文件；缺图恢复 SVG。没有新增 cue 或改动规则版本。
+
 `@boardgame/game-sdk/assets` 提供 `AssetContract`、`PackManifest`、严格 schema、canonicalAssetJson、parseAssetJson、AssetResolverPort 与 PresentationCue。这是独立入口，未改动旧规则摘要覆盖的 SDK index 或 Color Match shared/server 规则文件。
 
 契约由可信游戏包声明，服务端仅在 `apps/api/src/registry` 注册 `assetContracts` 和 `presentation`。Color Match 示例位于 `games/color-match/src/shared/assets.ts`，包含 20 种颜色数字卡面、统一牌背、桌面、摸牌图标、4 个可选声音槽位。契约 hash 为 canonical JSON 的 SHA-256；manifest 精确绑定 id/version/hash/gameId，不存在 latest 或运行时继承。

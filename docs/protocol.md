@@ -1,5 +1,51 @@
 # 协议
 
+## 账号注册（2026-10-03）
+
+POST `/api/v1/auth/register`：严格 JSON `{displayName,userId,password}`，由 `protocol/auth.ts` 共享 schema 校验。displayName trim 后 1–32 字，userId 可带单个 @、名字部分 3–32 位 ASCII 字母/数字/下划线，trim/lowercase；password 6–128 位，含 ASCII 字母和数字，不 trim。成功 201 返回 `{username,displayName,friendId}`，username/friendId 是无 @ 的规范 ID。固定普通账户，不创建 session；Origin 必须匹配，4 KiB 上限，每 IP 每分钟 5 次。ID 已被登录名或好友 ID 使用返回 STATE_CONFLICT/409；无效输入 VALIDATION_ERROR/400，频控 RATE_LIMITED/429。响应 no-store，无密码/摘要/令牌。ApiClient.register 使用共享输入/响应 schema，返回类型由 schema 推导。登录 username 最大 33 位，以接受 32 位 ID 加 @，服务端去前缀后沿用既有身份认证。
+
+## 在线游戏 ZIP 的 AI 与展示图（2026-10-03）
+
+boardgame-package-v1 的 game.json 可选 presentation，icon/cover/background 为有界 PNG data URL；新增 025 持久字段，与安装元数据和回执原子提交。GET /api/v1/game-packages/:id/versions/:version/art/{icon|cover|background}.png 返回公开 PNG、nosniff/sandbox CSP/immutable 缓存；games/presentations 的三个 URL 允许这类精确路径，管理员配置优先于包默认。图片不包含秘密，不覆盖旧版本。server.js 可选 getDecisionContext 在 QuickJS 中返回 key 与有界合法候选，接入原脚本/模型调度，未改变正式动作协议或身份。
+
+## 管理员在线游戏 ZIP（2026-10-03）
+
+POST `/api/v1/admin/game-packages?requestId=UUID` 使用 application/zip 字节（最大 5 MiB），管理员/Origin/CSRF 在读正文前检查，事务内重验活跃身份。共享 `gamePackageResultSchema` 返回 `{gameId,version,name,hash}`，client-sdk `installGamePackage` 解析 unknown。重复成功按账户/requestId/ZIP SHA-256 返回原结果；不同字节复用 ID 为 REQUEST_ID_CONFLICT；同版本不同包/覆盖内置版本为 STATE_CONFLICT。提交后注册并可立即建房，新动作沿用原事务。
+
+GET `/api/v1/game-packages/example.zip` 下载固定时间戳的可玩示例；GET `/api/v1/game-packages/:id/versions/:version/desktop` 返回公开自包含 HTML，CSP 强制 sandbox allow-scripts、限制外部资源与连接。旧版本下架后保留桌面以恢复旧局；源码和 HTML 均不能嵌入秘密。桥接 boardgame:view/ready/action 只面向本人 iframe，不新增正式动作协议。完整限制见 [包格式](../apps/web/public/developer-docs/game-packages.md)。
+
+恢复读取时使用实际源码参与规则摘要；损坏或变更与已保存摘要不一致时，沿用既有 RECOVERY_BLOCKED/503，不重置 State、RNG 或 revision。
+
+## 好友 ID 冷却规则（2026-10-03）
+
+socialIdentity 增加 changeIntervalDays（0–3650）、nextChangeAt（ISO UTC 或 null）、canChange。首次自定义或 0 天不受限，实际改名后按服务端时间重新计算；失败、原成功请求重试及相同 ID 不重新计时。冷却期间改名为 RATE_LIMITED。GET `/api/v1/admin/social-settings` 返回 `{friendIdChangeDays,revision}`，PUT 接收 `{requestId,expectedRevision,friendIdChangeDays}`，管理员/Origin/CSRF 校验与事务角色重验，严格拒绝额外字段。成功回执先于 revision；设置与改名串行。旧 ID 回执重试保留原 friendId/revision，并补齐当前策略元数据。
+
+## 好友、私聊与邀请（2026-10-03）
+
+好友名字输入（ID 编辑、精确搜索和申请）接受可选单个 `@`，trim 后去前缀、lowercase 并严格校验；`@RST307` 与 `rst307` 指向同一名字。DTO 保持无前缀值，Web 展示与复制使用 `formatFriendId` 输出 `@rst307`。数据库及关系身份仍使用原账户 UUID。
+
+新增需 session 的 `/social`、`/social/search`、`/social/id`、`/social/requests`、`/social/friends/:id`、`/social/friends/:id/messages`、`/social/friends/:id/read`、`/social/invitations/:id` 以及 `/rooms/:id/friend-invitations`。严格 schema/DTO 由 protocol/social.ts 共享，client-sdk 逐响应解析 unknown。写请求保留 Origin/CSRF，并在事务重验活跃账户/session；UUID 回执摘要绑定操作、目标和完整内容，重复成功先于 revision。私聊按双方关系授权，分页游标和已读水位不能跨会话。社交同步采用可见页面每 5 秒认证 HTTP 读取，未新增 WS 广播私聊正文。字段、配额和错误见 [社交 API](social.md#api)。
+
+## 管理员后台（2026-10-03）
+
+新增 GET `/api/v1/admin/overview`（真实非秘密计数）、GET `/api/v1/admin/accounts?search=&before=`（20 项账户概要分页）、PUT `/api/v1/admin/accounts/:id/status`、GET `/api/v1/admin/games`（全部安装版本，包括下架）、PUT `/api/v1/admin/games/:id/versions/:version/status`。均要求管理员 session，响应和错误 no-store/nosniff。写入额外校验 Origin/CSRF，并在事务内重验身份。
+
+账户命令为严格 `{requestId: UUID, expectedRevision: positive integer, status: active|disabled}`；游戏命令为严格 `{requestId,expectedRevision,enabled:boolean}`。同一管理员 UUID 请求跨目标/内容复用返回 REQUEST_ID_CONFLICT，相同成功重试优先返回原 DTO；旧 revision 返回 STATE_CONFLICT。禁止通过 body 修改角色，禁止后台停用管理员账户。上架规则/资源缺失返回 GAME_VERSION_UNAVAILABLE，不存在版本 GAME_NOT_FOUND。共享 schema 位于 protocol/admin.ts；client-sdk 提供五个类型化管理方法并解析请求/响应。
+
+下架仅更改安装启用状态，隐藏目录、阻止新建/开局，已开始对局按原锁定版本继续；游戏安装检查用共享行锁与上下架串行化。健康就绪检查核对安装和清单，不要求所有安装版本启用。申请审核沿用既有接入 API，没有安装或执行代码能力。见 [管理指南](admin.md)。
+
+## 游戏接入申请（2026-10-03）
+
+`POST /api/v1/game-submissions` 接收 gameSubmissionInputSchema：UUID requestId、gameId、version、name、description、固定格式 HTTPS GitHub repositoryUrl。只存纯文本资料，不下载/执行代码或修改游戏目录。登录用户 GET 同一路径（before UUID 游标，20 项分页）与 `/:id` 只读取本人；越权/不存在统一 GAME_NOT_FOUND/404。
+
+管理员 GET `/api/v1/admin/game-submissions`、`/:id` 读取全部申请；POST `/:id/review` 接收 gameSubmissionReviewSchema：UUID requestId、expectedRevision、reviewed/rejected、必填 reviewNote。仅 pending 可审核，revision 1 → 2；reviewed 仅代表资料审阅。写入沿用 Origin/session/CSRF，事务内再次验证账户、会话及管理员角色。创建按账户 + requestId 去重，审核按申请 + 审核者 + requestId 去重，重复成功优先于配额/revision 检查；内容冲突 REQUEST_ID_CONFLICT，竞争审核 STATE_CONFLICT。
+
+DTO 不包含申请人/审核人 ID、请求回执或会话信息，全部响应 no-store。仅 JSON，8 KiB 上限，未知字段拒绝；传输错误按 VALIDATION_ERROR 返回 400/413/415。配额与单进程 IP 限流及完整示例见 [公开接入指南](../apps/web/public/developer-docs/add-game.md)。client-sdk 提供六个类型化方法，逐边界解析共享 schema；没有上传、安装或热加载端点。
+
+## 游戏展示配置（2026-10-02）
+
+`GET /api/v1/games/presentations` 无需登录，返回 `{gameId,version,revision,iconUrl,coverUrl,backgroundUrl}[]`，没有配置时 revision 为 0、地址为 null。`PUT /api/v1/games/:id/versions/:version/presentation` 仅管理员可调用，继续验证 Origin/session/CSRF，输入 `{expectedRevision,iconUrl,coverUrl,backgroundUrl}`。地址为 null、公开 HTTPS（不含凭据/查询/片段）或 `/game-art/` 图片路径；禁止脚本/data/私密 API 和路径穿越。旧 revision 返回 STATE_CONFLICT，停用或不存在版本返回 GAME_NOT_FOUND。接口 no-store；返回公开展示字段，不返回修改者。协议 schema 与 client-sdk 方法共用校验。此配置不进入规则清单、对局状态或图包摘要，不提供上传端点。
+
 ## 本人资料与历史（2026-10-01）
 
 - `GET /api/v1/profile`：返回 id、username、displayName、avatar、bio、createdAt，只能读取当前 session 账户。
@@ -26,7 +72,7 @@ HTTP envelope 为 `{ok:true,data,traceId}` 或 `{ok:false,error:{code,message,re
 - `PATCH /rooms/:id/config`
 - `POST /rooms/:id/invite|leave|host|start|close`
 - `PUT|DELETE /rooms/:id/my-seat`、`PUT /rooms/:id/my-ready`
-- `PUT|DELETE /rooms/:id/seats/:seatId/bot`：waiting 房间内仅房主可添加/移除白名单脚本 AI。
+- `PUT|PATCH|DELETE /rooms/:id/seats/:seatId/bot`：waiting 房主添加/修改/移除 AI。script 输入 policyId=basic-v1（兼容省略 controllerType）；model 输入 controllerType=model 与本人的 profileId。请求严格校验并携带 requestId/expectedRoomRevision；回执绑定目标 seatId。模型变更取消真人准备，开局重新校验并固定授权。快照仅房主可见 botModelProfileId，其他成员该字段为 null；没有 profile 地址、密钥或 bot 私密 View。
 - `GET /games/:id/ai-policies`：公开兼容策略描述，不返回模块路径。
 - `GET /api/v1/matches/:id/view`
 - `POST /api/v1/matches/:id/actions`：`{requestId,expectedRevision,expectedControllerEpoch,action}`；不接受客户端 seatId/automation 标记。epoch 0 的旧阶段 4 请求保留兼容，发生控制切换后必须携带当前 epoch。

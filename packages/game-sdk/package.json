@@ -11,6 +11,10 @@
       "production": "./dist/assets.js",
       "default": "./src/assets.ts"
     },
+    "./tutorial": {
+      "production": "./dist/tutorial.js",
+      "default": "./src/tutorial.ts"
+    },
     "./multi-action": {
       "production": "./dist/multi-action.js",
       "default": "./src/multi-action.ts"

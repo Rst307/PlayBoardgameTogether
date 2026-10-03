@@ -10,6 +10,7 @@ import { type GameRegistry } from './registry/index.js';
 import { LabRunner, RunnerError } from './runtime/runner.js';
 import { AppError } from './errors.js';
 import { AuthService } from './auth.js';
+import { registerRegistrationRoutes } from './registration-routes.js';
 import { ProfileService } from './profiles.js';
 import { profileInputSchema, matchHistoryQuerySchema } from '@boardgame/protocol';
 import { RoomService } from './rooms.js';
@@ -19,7 +20,17 @@ import { ModelProfileService } from './model-profiles.js';
 import { AssetService } from './assets/service.js';
 import { LocalAssetStorage } from './assets/storage.js';
 import { registerAssetRoutes } from './assets/routes.js';
+import { GamePresentationService } from './catalog/presentations.js';
+import { registerGamePresentationRoutes } from './catalog/routes.js';
+import { GameSubmissionService } from './catalog/submissions.js';
+import { registerGameSubmissionRoutes } from './catalog/submission-routes.js';
 import { fileURLToPath } from 'node:url';
+import { AdminService } from './admin/service.js';
+import { registerAdminRoutes } from './admin/routes.js';
+import { SocialService } from './social/service.js';
+import { registerSocialRoutes } from './social/routes.js';
+import { GamePackageService } from './catalog/package-service.js';
+import { registerGamePackageRoutes } from './catalog/package-routes.js';
 
 export type AppDeps = { config: ApiConfigInput; db: Database; registry: GameRegistry; runner?: LabRunner;
   testMatchFaults?: { beforeCommit?: () => void; afterCommit?: () => void } };
@@ -39,8 +50,47 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
     fileURLToPath(new URL(config.NODE_ENV === 'test' ? '../../../.data/test-assets/' : '../../../.data/assets/', import.meta.url));
   const assets = new AssetService(deps.db, deps.registry, new LocalAssetStorage(assetRoot));
   await registerAssetRoutes(app, auth, assets);
+  registerGamePresentationRoutes(app, auth, new GamePresentationService(deps.db), config.NODE_ENV === 'production');
+  registerGameSubmissionRoutes(app, auth, new GameSubmissionService(deps.db));
+  registerAdminRoutes(app, auth, new AdminService(deps.db, deps.registry, config.NODE_ENV === 'production'));
+  registerSocialRoutes(app, auth, new SocialService(deps.db, rooms));
+  const packages = await GamePackageService.create(deps.db, deps.registry);
+  registerGamePackageRoutes(app, auth, packages);
+  app.addHook('onRequest', async request => {
+    if (/^\/api\/v1\/(?:games|rooms|matches|admin|ws\/session)(?:\/|\?|$)/.test(request.url)) await packages.refresh();
+  });
+  app.addHook('onSend', async (request, reply, payload) => {
+    if (request.url.startsWith('/api/v1/game-submissions') || request.url.startsWith('/api/v1/admin/') || request.url.startsWith('/api/v1/social') || request.url.startsWith('/api/v1/profile')) {
+      reply.header('cache-control', 'no-store');
+      reply.header('x-content-type-options', 'nosniff');
+    }
+    return payload;
+  });
   app.addHook('onSend',async(request,reply,payload)=>{if(request.url.startsWith('/api/v1/me/model-')||request.url.startsWith('/api/v1/model-endpoints')||request.url.startsWith('/api/v1/auth')||request.url.startsWith('/api/v1/rooms')||request.url.startsWith('/api/v1/matches'))reply.header('cache-control','no-store');return payload;});
-  app.setErrorHandler((error,request,reply)=>{let code:ErrorCode='INTERNAL_ERROR';let message='Unexpected server error';let status=500;let retryable=false;if(error instanceof ZodError){code='VALIDATION_ERROR';message='Request validation failed';status=400;}else if(error instanceof AppError){code=error.code;message=error.message;status=error.status;retryable=error.retryable;}else if(error instanceof RunnerError){code=error.code;message=error.message;status=statusFor[code]??500;}else if(databaseUnavailable(error)){code='SERVICE_UNAVAILABLE';message='Database is temporarily unavailable';status=503;retryable=true;}else request.log.error({errorType:error instanceof Error?error.name:'unknown'},'request failed');if(code==='RATE_LIMITED')reply.header('retry-after','60');reply.status(status).send({ok:false,error:{code,message,retryable},traceId:request.id});});
+  app.setErrorHandler((error, request, reply) => {
+    let code: ErrorCode = 'INTERNAL_ERROR';
+    let message = 'Unexpected server error';
+    let status = 500;
+    let retryable = false;
+    const transportCode = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    if (error instanceof ZodError) {
+      code = 'VALIDATION_ERROR'; message = 'Request validation failed'; status = 400;
+    } else if (transportCode === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+      code = 'VALIDATION_ERROR'; message = 'Request body is too large'; status = 413;
+    } else if (transportCode === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
+      code = 'VALIDATION_ERROR'; message = 'Unsupported content type'; status = 415;
+    } else if (transportCode === 'FST_ERR_CTP_INVALID_JSON_BODY' || transportCode === 'FST_ERR_CTP_EMPTY_JSON_BODY') {
+      code = 'VALIDATION_ERROR'; message = 'Invalid JSON body'; status = 400;
+    } else if (error instanceof AppError) {
+      code = error.code; message = error.message; status = error.status; retryable = error.retryable;
+    } else if (error instanceof RunnerError) {
+      code = error.code; message = error.message; status = statusFor[code] ?? 500;
+    } else if (databaseUnavailable(error)) {
+      code = 'SERVICE_UNAVAILABLE'; message = 'Database is temporarily unavailable'; status = 503; retryable = true;
+    } else request.log.error({ errorType: error instanceof Error ? error.name : 'unknown' }, 'request failed');
+    if (code === 'RATE_LIMITED') reply.header('retry-after', '60');
+    reply.status(status).send({ ok: false, error: { code, message, retryable }, traceId: request.id });
+  });
   const ok=<T>(request:any,data:T)=>({ok:true,data,traceId:request.id}); const requireAuth=(request:any)=>auth.authenticate(request); const protectedWrite=async(request:any)=>{auth.assertOrigin(request);const current=await auth.authenticate(request);auth.assertCsrf(request,current!);return current!;};
   app.get('/health/live',async request=>ok(request,{status:'live'}));
   app.get('/health/ready',async(request,reply)=>{const status=await databaseStatus(deps.db,deps.registry.manifests());if(!status.ready)reply.status(503);return ok(request,{status:status.ready?'ready':'not-ready',database:status});});
@@ -53,7 +103,8 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
     return ok(request,{gameId:p.id,version:p.version,rules});
   });
   app.get('/api/v1/games/:id/ai-policies',async request=>{const id=(request.params as{id:string}).id;const supported=deps.registry.manifests().some(item=>item.id===id&&!!deps.registry.get(item.id,item.version)?.getDecisionContext);return ok(request,supported?[{id:'basic-v1',version:'1.0.0',name:'基础脚本 AI'}]:[]);});
-  const loginSchema=z.object({username:z.string().min(1).max(32),password:z.string().min(1).max(128)}).strict();
+  const loginSchema=z.object({username:z.string().min(1).max(33),password:z.string().min(1).max(128)}).strict();
+  registerRegistrationRoutes(app, auth);
   app.post('/api/v1/auth/login',async(request,reply)=>{auth.assertOrigin(request);const body=loginSchema.parse(request.body);const previous=await auth.authenticate(request,true);const result=await auth.login(body.username,body.password,request.ip);await auth.logout(previous);auth.setCookie(reply,result.token,result.csrfToken);return ok(request,{account:result.account,csrfToken:result.csrfToken,expiresAt:result.expiresAt.toISOString()});});
   app.get('/api/v1/auth/me',async request=>{const current=await requireAuth(request);return ok(request,{account:current!.account,csrfToken:auth.csrfFor(request,current!),expiresAt:current!.expiresAt.toISOString()});});
   const profiles = new ProfileService(deps.db);
@@ -116,6 +167,11 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
   app.post('/api/v1/rooms/:id/host',async request=>{const a=await protectedWrite(request);return ok(request,await rooms.transfer(a.account.id,(request.params as any).id,request.body));});
   app.post('/api/v1/rooms/:id/start',async request=>{const a=await protectedWrite(request);const result=await rooms.start(a.account.id,(request.params as any).id,request.body);scheduler.wake(result.matchId);return ok(request,result);});
   app.put('/api/v1/rooms/:id/seats/:seatId/bot',async request=>{const a=await protectedWrite(request);const p=request.params as{id:string;seatId:string};return ok(request,await rooms.addBot(a.account.id,p.id,p.seatId,request.body));});
+  app.patch('/api/v1/rooms/:id/seats/:seatId/bot', async request => {
+    const current = await protectedWrite(request);
+    const params = request.params as {id: string; seatId: string};
+    return ok(request, await rooms.configureBot(current.account.id, params.id, params.seatId, request.body));
+  });
   app.delete('/api/v1/rooms/:id/seats/:seatId/bot',async request=>{const a=await protectedWrite(request);const p=request.params as{id:string;seatId:string};return ok(request,await rooms.removeBot(a.account.id,p.id,p.seatId,request.body));});
   app.post('/api/v1/rooms/:id/close',async request=>{const a=await protectedWrite(request);return ok(request,await rooms.closeRoom(a.account.id,(request.params as any).id,request.body));});
   app.get('/api/v1/matches/:id/view',async request=>{const a=await requireAuth(request);return ok(request,await matches.view(a!.account.id,(request.params as {id:string}).id));});

@@ -80,7 +80,7 @@ describe.skipIf(!url)("stage 7 real assets and reference transactions", () => {
     other: Session,
     base: Awaited<ReturnType<AssetService["version"]>>;
   const registry = createRegistry(false),
-    storage = new LocalAssetStorage(resolve(".data/test-assets"));
+    storage = new LocalAssetStorage(resolve(process.env.TEST_ASSET_STORAGE_DIR ?? ".data/test-assets"));
   beforeAll(async () => {
     db = createDatabase(url!);
     assets = new AssetService(db, registry, storage);

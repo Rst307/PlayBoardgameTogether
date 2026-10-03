@@ -13,3 +13,7 @@
 - 断线、登出和 session 过期不自动改变控制权；停用账户会阻止该真人席位后续自动动作。
 
 客户端分别按 match revision、controllerVersion 和 aiStatusVersion 合并状态。相同游戏 revision 的收回控制不会被旧快照覆盖。
+
+## 模型 bot（2026-10-03）
+
+waiting 房主可通过 PUT /rooms/:id/seats/:seatId/bot 添加模型 AI，以 PATCH 修改已有 AI 的类型或 profileId。模型配置限当前房主本人，修改会清除真人准备；不能把 bot 席位转成房主账户身份。新房主不能用旧房主配置开始下一局，须显式改选自己的配置或切回脚本。对局已经开始则保留原授权 owner，不能在进行中修改 bot 设置。模型只消费该 bot 的 View；房主仍不能看私密信息。真人模型启用/收回与 bot 设置分开。

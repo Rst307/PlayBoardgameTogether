@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>夺分赛</title><style>
+body{margin:0;background:#222327;color:#f0f0f0;font:16px system-ui;padding:24px;box-sizing:border-box}
+h1{font-size:28px}ol{padding:0;list-style:none;display:grid;gap:12px}li{border-bottom:1px solid #45464a;padding:14px 0;display:flex;justify-content:space-between;gap:12px}
+button{background:#0a84ff;color:white;border:0;border-radius:8px;padding:14px 24px;font:inherit;cursor:pointer}button:disabled{opacity:.4;cursor:default}strong{font-size:24px}#status{min-height:48px;line-height:1.6}
+@media(max-width:480px){body{padding:16px}h1{font-size:24px}}
+</style></head><body><h1>夺分赛</h1><p>轮流抢分，每次获得 1 或 2 分，先到 5 分获胜。</p><ol id="scores"></ol><p id="status">正在同步桌面…</p><button id="claim" disabled>抢分</button>
+<script>
+const claim = document.getElementById('claim');
+window.addEventListener('message', event => {
+  if (event.source !== parent || event.data?.type !== 'boardgame:view') return;
+  const { view, busy } = event.data;
+  const rows = view.seats.map((seat, i) => {
+    const row = document.createElement('li');
+    const label = document.createElement('span'); label.textContent = `玩家 ${i+1}${seat === view.currentSeat && !view.winner ? ' · 当前回合' : ''}`;
+    const score = document.createElement('strong'); score.textContent = `${view.scores[i]} 分`;
+    row.append(label, score); return row;
+  });
+  document.getElementById('scores').replaceChildren(...rows);
+  document.getElementById('status').textContent = view.winner ? `玩家 ${view.seats.indexOf(view.winner)+1} 获胜！` : view.canClaim ? '轮到你了，点击抢分。' : '等待其他玩家抢分。';
+  claim.disabled = busy || !view.canClaim;
+});
+claim.addEventListener('click', () => { claim.disabled = true; parent.postMessage({ type: 'boardgame:action', action: { type: 'claim' } }, '*'); });
+parent.postMessage({ type: 'boardgame:ready' }, '*');
+</script></body></html>

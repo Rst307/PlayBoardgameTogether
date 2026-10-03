@@ -1,3 +1,4 @@
+import { openRoomCreation, openInviteJoin } from './fixtures.js';
 import { test, expect, type Page } from './fixtures.js';
 
 async function login(page: Page, user: string) {
@@ -58,7 +59,7 @@ test('dashboard distinguishes failed loading and clipboard failure offers select
   await expect(page.getByRole('heading', { name: '游戏大厅', exact: true })).toBeVisible();
   await page.screenshot({ path: `docs/screenshots/macos-vibrancy/lobby-${info.project.name}.png`, fullPage: true });
   await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }));
-  await page.getByRole('link', { name: '创建房间', exact: true }).click();
+  await openRoomCreation(page);
   await page.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
   await page.getByLabel('房间名', { exact: true }).fill('匿名体验检查');
   await page.getByRole('button', { name: '创建并生成邀请码' }).click();
@@ -160,14 +161,14 @@ test('four real accounts finish three harvest rounds with private choices and a 
   try {
     for (const [index, user] of ['stage3_a', 'stage3_b', 'stage2_a', 'stage2_b'].entries()) await login(pages[index]!, user);
     const host = pages[0]!;
-    await host.getByRole('link', { name: '创建房间', exact: true }).click();
+    await openRoomCreation(host);
     await host.getByLabel('游戏与版本').selectOption('grid-garden@1.0.0');
     await host.getByLabel('人数', { exact: true }).fill('4');
     await host.getByLabel('房间名', { exact: true }).fill('四人花园');
     await host.getByRole('button', { name: '创建并生成邀请码' }).press('Enter');
     const invite = await host.locator('.invite-box strong').textContent();
     for (const guest of pages.slice(1)) {
-      await guest.getByLabel('12 位邀请码').fill(invite!);
+      await openInviteJoin(guest); await guest.getByLabel('12 位邀请码').fill(invite!);
       await guest.getByRole('button', { name: '加入私人房间' }).press('Enter');
       await expect(guest.getByRole('button', { name: '坐这里' }).first()).toBeEnabled();
       await guest.getByRole('button', { name: '坐这里' }).first().press('Enter');
@@ -200,6 +201,8 @@ test('four real accounts finish three harvest rounds with private choices and a 
       }
     }
     for (const page of pages) {
+      await expect(page).toHaveURL(/\/rooms\//);
+      await page.getByRole('link', { name: '查看本局结果' }).click();
       await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
       await expect(page.locator('.garden-results:not(.garden-events) li')).toHaveCount(4);
       for (const seat of [1, 2, 3, 4]) await expect(page.getByText(`座位 ${seat}：4 分（占格 0 + 能量 4） · 获胜`)).toBeVisible();
@@ -208,5 +211,3 @@ test('four real accounts finish three harvest rounds with private choices and a 
     await host.screenshot({ path: `docs/screenshots/macos-vibrancy/tie-real-${info.project.name}.png`, fullPage: true });
   } finally { for (const context of contexts) await context.close(); }
 });
-
-
