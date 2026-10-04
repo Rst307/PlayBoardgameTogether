@@ -1178,3 +1178,9 @@ bot 保持无账户登录身份，通过独立 model_owner_account_id 在开局�
 - `pnpm db:migrate` 开发库新增 016/017 成功；本地 API 3001 health/live 与 Web 5173 均返回 200。
 
 限制：整局使用明确标记的 mock 模型适配器验证真实调度与动作事务，未使用用户密钥向真实供应商发送对局数据；真实连接、额度与响应时延仍需实际配置验证。保留既有供应商失败兜底、预算/profile 版本快照和长请求租约边界。本轮只验证受影响的三份 E2E，不宣称所有浏览器用例或生产多实例均验收。下一步刷新房间页，配置自己的真实模型并添加模型 AI 实际游玩。
+
+## 五子棋封面与背景（2026-10-04）
+
+五子棋上传包升级 1.0.3，新增与大厅现有游戏一致的原创扁平 SVG 图标、封面和背景。打包时经 Chromium 转成内嵌 PNG，背景同时用于 sandbox 对局桌面；没有平台特殊分支，规则、contentVersion 和旧局精确版本保持不变。资料见 game-packages/gomoku/README.md。
+
+实际验证：node scripts/package-gomoku.mjs 成功（146334 字节）；pnpm typecheck 通过；pnpm test tests/unit/gomoku-package.test.ts 10 项通过；node node_modules/@playwright/test/cli.js test --config playwright.gomoku-ui.config.ts --output .data/gomoku-art-validation 3 项通过，检查桌面、矮屏、手机与封面截图。新增断言确认三类展示图与桌面背景嵌入，并通过真实 ZIP 图片 schema。pnpm exec playwright 入口不可用，改用同一已安装 Playwright 的 Node CLI。pnpm lint 的 ESLint 阶段通过，tsx 边界检查因 uv_os_get_passwd ENOMEM 环境错误未完成。未执行数据库测试：本轮只修改上传包美术与打包，不改平台业务或数据库。未上传线上包；下一步管理员上传审核 dist/game-packages/gomoku-1.0.3.zip，更新大厅并开新局。

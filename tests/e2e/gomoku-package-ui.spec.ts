@@ -12,7 +12,10 @@ const webRequire = createRequire(new URL('../../apps/web/package.json', import.m
 const { buildSync } = createRequire(webRequire.resolve('vite'))('esbuild');
 
 test('sandbox desktop completes a QuickJS game and restores the authoritative board', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.2.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.3.zip'));
+  expect(Object.keys(parsed.presentation!)).toEqual(['icon', 'cover', 'background']);
+  expect(parsed.client).toContain(parsed.presentation!.background);
+  expect(parsed.client).not.toContain('__GOMOKU_BACKGROUND__');
   const game = (await PackageRuntime.create()).extension(parsed.server);
   const rng = new DeterministicRng(7);
   let state = game.setup({ seats: ['a', 'b'], options: {}, rng }).state;
@@ -44,7 +47,7 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
       import { PackageBoard } from './src/games/PackageBoard.tsx';
       const root = createRoot(document.getElementById('root'));
       const render = (view, busy = false) => root.render(<PackageBoard
-        id="online.gomoku" version="1.0.2" view={view} busy={busy} events={[]}
+        id="online.gomoku" version="1.0.3" view={view} busy={busy} events={[]}
         onAction={action => window.acceptAction(action)} />);
       addEventListener('message', event => {
         if (event.data?.type === 'fixture:view') render(event.data.view, event.data.busy);
