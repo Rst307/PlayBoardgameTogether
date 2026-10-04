@@ -1,0 +1,47 @@
+const RESOURCE_NAMES = ['木材', '砖块', '羊毛', '粮食', '矿石'];
+const CARD_NAMES = ['骑士', '修路', '丰收', '垄断', '胜利点'];
+const COSTS = { road: [1, 1, 0, 0, 0], settlement: [1, 1, 1, 1, 0], city: [0, 0, 0, 2, 3], buy: [0, 0, 1, 1, 1] };
+const sum = values => values.reduce((a, b) => a + b, 0);
+const clone = value => JSON.parse(JSON.stringify(value));
+const zeros = () => [0, 0, 0, 0, 0];
+function island() {
+    const hexes = [], nodes = [], edges = [], nodeMap = {}, edgeMap = {};
+    for (let q = -2; q <= 2; q++) {
+        for (let r = -2; r <= 2; r++) {
+            if (Math.abs(q + r) > 2)
+                continue;
+            const x = Math.sqrt(3) * (q + r / 2), y = 1.5 * r, corners = [];
+            for (let k = 0; k < 6; k++) {
+                const angle = (60 * k - 30) * Math.PI / 180;
+                const nx = x + Math.cos(angle), ny = y + Math.sin(angle);
+                const key = Math.round(nx * 10000) + ':' + Math.round(ny * 10000);
+                if (nodeMap[key] === undefined) {
+                    nodeMap[key] = nodes.length;
+                    nodes.push({ x: nx, y: ny, hexes: [], edges: [] });
+                }
+                const id = nodeMap[key];
+                nodes[id].hexes.push(hexes.length);
+                corners.push(id);
+            }
+            const sides = [];
+            for (let k = 0; k < 6; k++) {
+                const a = corners[k], b = corners[(k + 1) % 6], key = [a, b].sort((a, b) => a - b).join(':');
+                if (edgeMap[key] === undefined) {
+                    edgeMap[key] = edges.length;
+                    nodes[a].edges.push(edges.length);
+                    nodes[b].edges.push(edges.length);
+                    edges.push({ a, b, hexes: [] });
+                }
+                edges[edgeMap[key]].hexes.push(hexes.length);
+                sides.push(edgeMap[key]);
+            }
+            hexes.push({ x, y, corners, sides });
+        }
+    }
+    const coast = edges.map((e, id) => ({ ...e, id })).filter(e => e.hexes.length === 1)
+        .sort((a, b) => Math.atan2(nodes[a.a].y + nodes[a.b].y, nodes[a.a].x + nodes[a.b].x)
+        - Math.atan2(nodes[b.a].y + nodes[b.b].y, nodes[b.a].x + nodes[b.b].x));
+    const ports = [0, 3, 6, 10, 13, 16, 20, 23, 26].map((i, k) => ({ edge: coast[i].id, resource: [-1, 0, -1, 1, 2, -1, 3, -1, 4][k] }));
+    return { hexes, nodes, edges, ports };
+}
+const MAP = island();

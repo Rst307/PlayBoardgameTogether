@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>卡坦岛 · 岛屿棋桌</title>
+<style>
+:root {
+  --background:#153a49;
+  --surface:#204958;
+  --raised:#2a5967;
+  --text:#f4ead5;
+  --secondary:#b7cbd0;
+  --muted:#8caab3;
+  --border:#426574;
+  --accent:#efd18a;
+  --success:#a7cd9b;
+  --warning:#e9b07c;
+  --danger:#ef9e8c;
+  --s1:4px;
+  --s2:8px;
+  --s3:12px;
+  --s4:16px;
+  --s6:24px;
+  --r1:4px;
+  --r2:8px;
+  --r3:12px;
+  --fast:150ms;
+  --shadow:0 16px 56px #061b2670;
+  --player0:#ee9b80;
+  --player1:#83c8ef;
+  --player2:#f5d784;
+  --player3:#d4bae7
+}
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0;
+  color:var(--text);
+  background:var(--background);
+  font:14px/1.45 "Microsoft YaHei",system-ui,sans-serif
+}
+button,select,input {
+  font:inherit
+}
+button {
+  color:inherit;
+  border:1px solid var(--border);
+  background:transparent;
+  padding:8px 12px;
+  border-radius:var(--r1);
+  cursor:pointer;
+  min-height:40px;
+  transition:background var(--fast)
+}
+button:hover:not(:disabled) {
+  background:var(--raised)
+}
+button:disabled {
+  opacity:.42;
+  cursor:default
+}
+button:focus-visible,select:focus-visible,input:focus-visible,[role=button]:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:2px
+}
+.primary {
+  background:var(--accent);
+  color:#243a3f;
+  border-color:var(--accent);
+  font-weight:700
+}
+.primary:hover:not(:disabled) {
+  background:#ffe4a3
+}
+.quiet {
+  border-color:transparent;
+  color:var(--secondary)
+}
+main {
+  height:100dvh;
+  min-height:360px;
+  display:grid;
+  grid-template-rows:auto minmax(140px,1fr) auto;
+  max-width:1440px;
+  margin:auto;
+  padding:var(--s3) var(--s4);
+  gap:var(--s2)
+}
+header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--s3)
+}
+h1 {
+  font:600 25px/1.2 "Palatino Linotype","Songti SC",serif;
+  margin:0;
+  letter-spacing:2px
+}
+.topline {
+  display:flex;
+  align-items:center;
+  gap:var(--s3)
+}
+#status {
+  color:var(--secondary);
+  margin:4px 0 0;
+  font-size:13px
+}
+#players {
+  display:flex;
+  gap:var(--s3);
+  align-items:center;
+  flex-wrap:wrap
+}
+.player {
+  border-bottom:2px solid transparent;
+  padding:4px 0;
+  color:var(--secondary);
+  font-size:12px
+}
+.player.active {
+  border-color:var(--accent);
+  color:var(--text)
+}
+.player strong {
+  color:var(--color);
+  font-size:16px;
+  margin:0 4px
+}
+.achievement {
+  color:var(--accent);
+  font-size:11px
+}
+.stage {
+  min-height:0;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:var(--r3);
+  background:radial-gradient(ellipse at center,#39788965,transparent 70%);
+  overflow:hidden
+}
+svg {
+  display:block;
+  height:100%;
+  width:100%;
+  max-width:1100px
+}
+.hex {
+  stroke:#e9d3a1;
+  stroke-width:.035
+}
+.number {
+  fill:#fff0ce;
+  stroke:#b39768;
+  stroke-width:.025
+}
+.pip {
+  fill:#776342
+}
+.red {
+  fill:#ab423a
+}
+.label {
+  font-size:.21px;
+  fill:#233c34;
+  pointer-events:none;
+  paint-order:stroke;
+  stroke:#ffefca80;
+  stroke-width:.014
+}
+.number-text {
+  font:bold .3px Georgia,serif;
+  fill:#3e4238;
+  pointer-events:none
+}
+.red-text {
+  fill:#a5362d
+}
+.road {
+  stroke-linecap:round;
+  stroke-width:.13;
+  filter:drop-shadow(0 .025px .025px #203d45)
+}
+.road-background {
+  stroke:#244e5680;
+  stroke-width:.065
+}
+.hotspot {
+  cursor:pointer;
+  fill:#f8eacb33;
+  stroke:#ffe6a1;
+  stroke-width:.04
+}
+.edge-target {
+  stroke:#fff2b28c;
+  stroke-width:.2;
+  stroke-linecap:round;
+  cursor:pointer
+}
+.selected {
+  stroke:#fff9cf;
+  stroke-width:.1;
+  filter:drop-shadow(0 0 .08px #fff2b2)
+}
+.robber {
+  fill:#203841;
+  stroke:#fff4ca;
+  stroke-width:.025
+}
+.port-label {
+  fill:#d3e5df;
+  font-size:.16px;
+  pointer-events:none
+}
+.port-line {
+  stroke:#bdd6d455;
+  stroke-width:.025
+}
+.tile-target {
+  fill:transparent;
+  stroke:none;
+  cursor:pointer
+}
+.tile-target:hover {
+  fill:#ffffff33
+}
+.building {
+  stroke:#fff0cf;
+  stroke-width:.035;
+  filter:drop-shadow(0 .035px .03px #203d45)
+}
+.footer {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:var(--s3);
+  padding-top:var(--s2);
+  border-top:1px solid var(--border)
+}
+#hand {
+  display:flex;
+  gap:var(--s3);
+  align-items:center;
+  flex-wrap:wrap
+}
+.resource {
+  display:flex;
+  gap:6px;
+  align-items:center;
+  color:var(--secondary);
+  font-size:12px
+}
+.resource b {
+  font-size:22px;
+  font-family:Georgia,serif;
+  color:var(--text)
+}
+.resource i {
+  height:9px;
+  width:9px;
+  border-radius:50%;
+  background:var(--color);
+  display:inline-block
+}
+.resource small {
+  color:var(--muted)
+}
+#toolbar {
+  display:flex;
+  gap:var(--s2);
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap
+}
+#hint {
+  grid-column:1/-1;
+  font-size:12px;
+  color:var(--secondary);
+  min-height:18px
+}
+#selection {
+  color:var(--accent)
+}
+#dice {
+  font:bold 19px Georgia,serif;
+  white-space:nowrap;
+  color:var(--accent)
+}
+dialog {
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:var(--r3);
+  box-shadow:var(--shadow);
+  padding:var(--s6);
+  width:min(520px,calc(100vw - 24px));
+  max-height:85dvh;
+  overflow:auto
+}
+dialog::backdrop {
+  background:#051d2bc2
+}
+dialog h2 {
+  font:600 23px "Songti SC",serif;
+  margin:0 0 12px
+}
+dialog p {
+  color:var(--secondary);
+  font-size:13px
+}
+dialog label {
+  display:block;
+  color:var(--secondary);
+  font-size:12px
+}
+dialog select {
+  color:var(--text);
+  background:var(--raised);
+  border:1px solid var(--border);
+  padding:8px;
+  width:100%;
+  border-radius:4px
+}
+dialog input {
+  color:var(--text);
+  background:var(--raised);
+  border:1px solid var(--border);
+  padding:6px;
+  width:60px;
+  border-radius:4px
+}
+dialog .actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:16px;
+  flex-wrap:wrap
+}
+#choices {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+.trade-row {
+  display:grid;
+  grid-template-columns:1fr 70px 70px;
+  gap:8px;
+  align-items:center;
+  margin:10px 0
+}
+.trade-row input {
+  width:100%
+}
+.trade-heading {
+  color:var(--accent)
+}
+.cost {
+  display:block;
+  font-size:11px;
+  color:var(--muted)
+}
+#offer-summary {
+  color:var(--accent);
+  margin:10px 0
+}
+#panel-error {
+  color:var(--danger);
+  font-size:12px
+}
+.bank-row {
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  gap:12px;
+  align-items:center
+}
+.sr {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0)
+}
+@media(max-width:760px) {
+  main {
+    padding:8px;
+    gap:4px
+  }
+  header {
+    display:block
+  }
+  h1 {
+    font-size:20px
+  }
+  .topline {
+    justify-content:space-between
+  }
+  #players {
+    gap:10px;
+    margin-top:4px
+  }
+  .player {
+    font-size:10px
+  }
+  .player strong {
+    font-size:14px
+  }
+  .footer {
+    grid-template-columns:1fr;
+    gap:6px;
+    padding-top:6px
+  }
+  #hand {
+    gap:10px;
+    justify-content:center
+  }
+  .resource {
+    gap:4px;
+    font-size:11px
+  }
+  .resource b {
+    font-size:19px
+  }
+  .resource small {
+    display:none
+  }
+  #toolbar {
+    justify-content:center;
+    gap:4px
+  }
+  #toolbar button {
+    padding:6px 8px;
+    font-size:12px;
+    min-height:40px
+  }
+  #hint {
+    text-align:center;
+    font-size:11px
+  }
+  .stage {
+    border-radius:4px
+  }
+  #dice {
+    font-size:16px
+  }
+  dialog {
+    padding:16px
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  * {
+    transition:none!important
+  }
+}
+.zoom-tools {
+  position: absolute;
+  right: 8px;
+  top: 0;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--background);
+  border-radius: var(--r2);
+}
+.zoom-tools button {
+  min-width: 40px;
+  padding: 4px 8px;
+  color: var(--secondary);
+  border-color: transparent;
+}
+@media(max-width:760px) {
+  .port-label { font-size: .21px; }
+  .number-text { font-size: .36px; }
+  .label { font-size: .25px; }
+}
+</style>
+</head>
+<body><main>
+<header><div class="topline"><div><h1>卡坦岛</h1><p id="status" role="status">等待棋桌…</p></div><div id="dice"></div><button class="quiet" id="help" aria-label="玩法说明">玩法</button></div><div id="players" aria-label="玩家与分数"></div></header>
+<div class="stage"><svg id="board" viewBox="-5 -4.5 10 9" role="group" aria-label="卡坦岛棋盘"></svg><div class="zoom-tools" aria-label="棋盘缩放"><button id="zoom-in" aria-label="放大棋盘">＋</button><button id="zoom-out" aria-label="缩小棋盘">−</button><button id="zoom-reset">全岛</button></div></div>
+<div class="footer"><div id="hand" aria-label="本人资源"></div><div id="toolbar"></div><div id="hint"><span id="selection"></span><span id="instruction"></span></div></div>
+</main>
+<dialog id="panel" aria-labelledby="panel-title"><h2 id="panel-title"></h2><div id="panel-content"></div><p id="panel-error" role="alert"></p><div class="actions"><button id="panel-close">回到棋桌</button><button id="panel-submit" class="primary">确认</button></div></dialog>
+<dialog id="rules"><h2>探索、交易、建设</h2><p>在自己的回合达到 10 分获胜。聚落 1 分、城市 2 分；最长道路（至少 5 条）与最大骑士军（至少 3 名）各 2 分；秘密胜利点牌计入本人分数。</p><p>开局按顺序放聚落和道路，再逆序各放一次；第二座聚落获得相邻地块资源。聚落之间至少隔一条道路。自己的道路可延伸，不能穿过对手建筑；道路最多 15 条，聚落 5 座、城市 4 座。</p><p>掷骰后相应地块生产资源：聚落 1 张，城市 2 张。强盗所在地块不生产。掷出 7 后，超过 7 张资源的玩家弃一半（向下取整），当前玩家移强盗并随机偷取相邻对手的一张资源。</p><p>道路：木材＋砖块；聚落：木材＋砖块＋羊毛＋粮食；城市：2 粮食＋3 矿石；发展卡：羊毛＋粮食＋矿石。建设和交易可以交替。</p><p>银行 4:1，通用港 3:1，专用港对应资源 2:1。玩家交易只能与当前回合玩家进行，双方必须各提供资源，不能赠送或交换同类资源。向指定玩家发出报价，对方可接受、拒绝或还价，发起人或当前玩家可取消。</p><p>每回合最多使用一张非胜利点发展卡，新购牌本回合不能使用。骑士移强盗；修路免费建两条；丰收取两张银行资源；垄断拿取其他人全部指定资源。胜利点立即计分且获胜前对手不可见。骑士也可在掷骰前使用。</p><p>最长道路不重复计算同一边，分叉取最长路线，对手建筑截断道路；平局由原持有者保留，无原持有者则暂不授予。最大骑士军同样要求超过持有者才转移。</p><div class="actions"><button id="rules-close">回到棋桌</button></div></dialog>
+<script>
+/* CATAN_SHARED */
+let view = null, busy = false, pending = null, mode = null, dialogAction = null, stamp = '';
+const camera = { x: 0, y: 0, zoom: 1 };
+let pan = null, moved = false;
+const $ = id => document.getElementById(id);
+const COLORS = ['#ee9b80', '#83c8ef', '#f5d784', '#d4bae7'];
+const TERRAIN = ['#598d65', '#bd7755', '#a7b979', '#d7b96b', '#879795'];
+const TERRAIN_LABEL = ['森林', '丘陵', '牧场', '麦田', '山地'];
+const ACTION_NAMES = { roll: '掷骰', end: '结束回合', buy: '购买发展卡', knight: '使用骑士', road_card: '使用修路', plenty: '使用丰收', monopoly: '使用垄断', accept: '接受交易', reject: '拒绝', cancel: '取消交易', finish_roads: '完成修路', claim: '宣布获胜', settlement: '聚落', city: '城市', road: '道路', bank: '银行交易', robber: '移动强盗', steal: '偷取资源', discard: '确认弃牌' };
+const PHASE_NAMES = { setup_settlement: '放置起始聚落', setup_road: '放置起始道路', roll: '掷骰生产', main: '交易与建设', discard: '弃掉一半资源', robber: '移动强盗', steal: '选择偷取对象', trade: '回应交易', free_roads: '免费修路', finished: '对局结束' };
+function player(p) { return p === view.you ? '你' : '玩家 ' + (p + 1); }
+function el(tag, text, className) { const e = document.createElement(tag); if (text !== undefined)
+    e.textContent = text; if (className)
+    e.className = className; return e; }
+function button(text, fn, primary = false) { const b = el('button', text, primary ? 'primary' : ''); b.disabled = busy; b.addEventListener('click', fn); return b; }
+function svg(tag, attrs = {}, text) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs))
+    e.setAttribute(k, String(v)); if (text !== undefined)
+    e.textContent = text; return e; }
+function send(action) { if (busy || !view || view.winner !== null)
+    return; busy = true; pending = null; render(); parent.postMessage({ type: 'boardgame:action', action }, '*'); }
+function selectable(e, name, fn) { e.setAttribute('role', 'button'); e.setAttribute('aria-label', name); e.setAttribute('tabindex', '0'); e.addEventListener('click', fn); e.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    moved = false;
+    fn();
+} }); }
+function choose(a) {
+    if (busy) return;
+    if (moved) { moved = false; return; }
+    pending = a;
+    render();
+}
+function legal(type) { return view.actions.filter(a => a.type === type); }
+function drawBoard() {
+    const root = $('board');
+    updateCamera();
+    root.replaceChildren();
+    MAP.hexes.forEach((hex, h) => {
+        const points = hex.corners.map(n => MAP.nodes[n].x + ',' + MAP.nodes[n].y).join(' ');
+        root.append(svg('polygon', { points, fill: view.terrain[h] < 0 ? '#d5c392' : TERRAIN[view.terrain[h]], class: 'hex' }));
+        // Terrain motifs are original geometric art; labels and pips carry the same meaning without color.
+        for (let k = 0; k < 3; k++) {
+            const x = hex.x + (k - 1) * .33, y = hex.y - .36;
+            if (view.terrain[h] === 0)
+                root.append(svg('path', { d: `M${x} ${y - .18}l-.12 .25h.24z`, fill: '#294e3980' }));
+            if (view.terrain[h] === 4)
+                root.append(svg('path', { d: `M${x} ${y - .15}l-.19 .3h.38z`, fill: '#3e555980' }));
+            if (view.terrain[h] === 3)
+                root.append(svg('path', { d: `M${x} ${y - .18}v.3m-.08-.2l.08.08 .08-.08`, stroke: '#80662680', 'stroke-width': .035, fill: 'none' }));
+            if (view.terrain[h] === 2)
+                root.append(svg('ellipse', { cx: x, cy: y, rx: .09, ry: .06, fill: '#fff5d799' }));
+            if (view.terrain[h] === 1)
+                root.append(svg('path', { d: `M${x - .16} ${y + .07}q.16-.3 .32 0`, fill: '#824a2a80' }));
+        }
+        root.append(svg('text', { x: hex.x, y: hex.y + .59, 'text-anchor': 'middle', class: 'label' }, view.terrain[h] < 0 ? '沙漠' : TERRAIN_LABEL[view.terrain[h]]));
+        if (view.numbers[h]) {
+            root.append(svg('circle', { cx: hex.x, cy: hex.y + .03, r: .29, class: 'number' }));
+            root.append(svg('text', { x: hex.x, y: hex.y + .09, 'text-anchor': 'middle', class: 'number-text' + ([6, 8].includes(view.numbers[h]) ? ' red-text' : '') }, view.numbers[h]));
+            const count = 6 - Math.abs(7 - view.numbers[h]);
+            for (let k = 0; k < count; k++)
+                root.append(svg('circle', { cx: hex.x + (k - (count - 1) / 2) * .055, cy: hex.y + .19, r: .018, class: [6, 8].includes(view.numbers[h]) ? 'red' : 'pip' }));
+        }
+        if (view.robber === h)
+            root.append(svg('path', { d: `M${hex.x + .35} ${hex.y + .3}q-.16-.27 0-.44q.16.17 0 .44z`, class: 'robber' }));
+        if (legal('robber').some(a => a.hex === h)) {
+            const target = svg('polygon', { points, class: 'tile-target' + (pending?.hex === h ? ' selected' : '') });
+            selectable(target, '强盗地块 ' + (h + 1), () => choose({ type: 'robber', hex: h }));
+            root.append(target);
+        }
+    });
+    MAP.ports.forEach(port => {
+        const e = MAP.edges[port.edge], a = MAP.nodes[e.a], b = MAP.nodes[e.b], x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
+        const length = Math.hypot(x, y), tx = x * (1 + .42 / length), ty = y * (1 + .42 / length);
+        root.append(svg('line', { x1: x, y1: y, x2: tx, y2: ty, class: 'port-line' }));
+        root.append(svg('text', { x: tx, y: ty, 'text-anchor': 'middle', class: 'port-label' }, port.resource < 0 ? '3:1' : RESOURCE_NAMES[port.resource] + ' 2:1'));
+    });
+    MAP.edges.forEach((edge, id) => {
+        const a = MAP.nodes[edge.a], b = MAP.nodes[edge.b];
+        root.append(svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: view.roads[id] === null ? 'road-background' : 'road', stroke: view.roads[id] === null ? '#244e5680' : COLORS[view.roads[id]] }));
+        const action = legal('road').find(a => a.edge === id);
+        if (action && (mode === 'road' || view.phase === 'setup_road' || view.phase === 'free_roads')) {
+            const x1 = a.x * .8 + b.x * .2, y1 = a.y * .8 + b.y * .2, x2 = a.x * .2 + b.x * .8, y2 = a.y * .2 + b.y * .8;
+            const dx = b.x - a.x, dy = b.y - a.y, nx = -dy * .13, ny = dx * .13;
+            const line = svg('polygon', { points: [[x1 + nx, y1 + ny], [x2 + nx, y2 + ny], [x2 - nx, y2 - ny], [x1 - nx, y1 - ny]].map(p => p.join(',')).join(' '), fill: '#fff2b255', class: 'edge-target' + (pending?.edge === id ? ' selected' : '') });
+            selectable(line, '道路 ' + (id + 1), () => choose(action));
+            root.append(line);
+        }
+    });
+    MAP.nodes.forEach((node, id) => {
+        const building = view.buildings[id];
+        if (building) {
+            const d = building.level === 1 ? `M${node.x - .12} ${node.y + .12}v-.17l.12-.1 .12.1v.17z` : `M${node.x - .18} ${node.y + .13}v-.2l.11-.1 .1.1h.15v.2z`;
+            root.append(svg('path', { d, fill: COLORS[building.owner], class: 'building' }));
+        }
+        const type = view.phase === 'setup_settlement' ? 'settlement' : mode;
+        const action = legal(type).find(a => a.node === id);
+        if (action) {
+            const circle = svg('circle', { cx: node.x, cy: node.y, r: .16, class: 'hotspot' + (pending?.node === id ? ' selected' : '') });
+            selectable(circle, ACTION_NAMES[type] + ' ' + (id + 1), () => choose(action));
+            root.append(circle);
+        }
+    });
+}
+function render() {
+    if (!view)
+        return;
+    $('status').textContent = view.winner !== null ? player(view.winner) + '获胜' : player(view.current) + ' · ' + PHASE_NAMES[view.phase] + (busy ? ' · 提交中' : '');
+    $('dice').textContent = view.dice ? view.dice.join(' + ') + ' = ' + sum(view.dice) : '';
+    const players = $('players');
+    players.replaceChildren();
+    view.players.forEach((p, i) => {
+        const row = el('div', undefined, 'player' + (i === view.current ? ' active' : ''));
+        row.style.setProperty('--color', COLORS[i]);
+        row.append(el('span', player(i)), el('strong', p.points + '分'), el('span', p.resources + '资源 · ' + p.cards + '牌'));
+        if (view.longestOwner === i)
+            row.append(el('span', ' 道路', 'achievement'));
+        if (view.armyOwner === i)
+            row.append(el('span', ' 骑士', 'achievement'));
+        players.append(row);
+    });
+    const hand = $('hand');
+    hand.replaceChildren();
+    RESOURCE_NAMES.forEach((name, r) => { const item = el('div', undefined, 'resource'); item.style.setProperty('--color', TERRAIN[r]); item.append(el('i'), el('span', name), el('b', view.hand[r]), el('small', '银行 ' + view.bank[r])); hand.append(item); });
+    drawBoard();
+    const bar = $('toolbar');
+    bar.replaceChildren();
+    const can = type => legal(type).length > 0;
+    if (pending) {
+        bar.append(button('取消选择', () => { pending = null; render(); }), button('确认' + ACTION_NAMES[pending.type], () => send(pending), true));
+    }
+    else if (can('roll'))
+        bar.append(button('掷骰', () => send({ type: 'roll' }), true));
+    if (!pending && view.phase === 'main' && view.you === view.turn) {
+        bar.append(button('建造', () => openBuild()));
+        bar.append(button('交易', () => openTrade()));
+        if (can('buy') || view.cards.length)
+            bar.append(button('发展卡', () => openCards()));
+        bar.append(button('结束回合', () => send({ type: 'end' }), true));
+    }
+    else if (!pending && view.phase === 'roll' && view.cards.some(c => c.playable))
+        bar.append(button('发展卡', () => openCards()));
+    if (view.tradeAllowed && view.you !== view.turn)
+        bar.append(button('提出交易', () => openTrade()));
+    if (can('discard'))
+        bar.append(button('选择弃牌', () => openDiscard(), true));
+    if (view.phase === 'trade' && view.actions.length)
+        bar.append(button('查看交易', () => openOffer(), true));
+    if (can('steal'))
+        bar.append(button('选择对手', () => openTargets(), true));
+    if (can('finish_roads'))
+        bar.append(button('完成修路', () => send({ type: 'finish_roads' }), true));
+    if (!pending && (view.phase.startsWith('setup_') || view.phase === 'free_roads' || mode) && view.actions.length)
+        bar.append(button('选择位置', () => openLocations()));
+    if (!pending && mode && view.phase === 'main')
+        bar.append(button('取消建造', () => { mode = null; render(); }));
+    const hints = { setup_settlement: '点选一个空交点，再确认聚落。聚落之间至少隔一条边。', setup_road: '点选刚放置的聚落旁的一条边，再确认道路。', free_roads: '点选高亮边，再确认免费道路。', robber: '点选另一块地，再确认移动强盗。', roll: '掷骰让整座岛屿生产资源。', main: '建造、交易与使用发展卡可以交替进行。', trade: '交易待回应；发起人和当前玩家可取消。', discard: '超过 7 张资源时弃一半；轮到你后选择弃牌。', steal: '选择相邻对手，随机偷取一张资源。', finished: '可通过平台返回房间，再开一局。' };
+    $('selection').textContent = pending ? '已选择' + ACTION_NAMES[pending.type] + ' · ' : mode ? '选择' + ACTION_NAMES[mode] + '位置 · ' : '';
+    $('instruction').textContent = hints[view.phase] || '';
+    if (view.you < 0)
+        $('instruction').textContent = '只读棋桌';
+    $('panel-submit').disabled = busy;
+}
+function openPanel(title, content, fn, submitText = '确认') {
+    $('panel-title').textContent = title;
+    $('panel-content').replaceChildren(content);
+    $('panel-error').textContent = '';
+    dialogAction = fn;
+    $('panel-submit').hidden = !fn;
+    $('panel-submit').textContent = submitText;
+    $('panel-submit').disabled = busy;
+    if (!$('panel').open)
+        $('panel').showModal();
+}
+function closePanel() { $('panel').close(); dialogAction = null; }
+function openBuild() {
+    const content = el('div');
+    content.id = 'choices';
+    for (const type of ['road', 'settlement', 'city']) {
+        const b = button(ACTION_NAMES[type], () => { mode = type; pending = null; closePanel(); render(); });
+        b.disabled = busy || !legal(type).length;
+        b.append(el('span', COSTS[type].map((n, r) => n ? RESOURCE_NAMES[r] + '×' + n : '').filter(Boolean).join(' '), 'cost'));
+        content.append(b);
+    }
+    openPanel('建设岛屿', content, null);
+}
+function openLocations() {
+    const type = view.phase === 'setup_settlement' ? 'settlement' : view.phase === 'setup_road' || view.phase === 'free_roads' ? 'road' : mode;
+    const content = el('div'), label = el('label', '可用位置'), select = el('select');
+    select.setAttribute('aria-label', '可用位置');
+    for (const a of legal(type)) {
+        const id = a.node ?? a.edge;
+        const hexes = a.node !== undefined ? MAP.nodes[id].hexes : MAP.edges[id].hexes;
+        const caption = hexes.map(h => view.terrain[h] < 0 ? '沙漠' : TERRAIN_LABEL[view.terrain[h]] + ' ' + view.numbers[h]).join(' / ');
+        const option = el('option', ACTION_NAMES[type] + ' ' + (id + 1) + ' · ' + caption);
+        option.value = String(id);
+        select.append(option);
+    }
+    label.append(select);
+    content.append(label);
+    openPanel('选择' + ACTION_NAMES[type] + '位置', content, () => {
+        const a = legal(type).find(a => (a.node ?? a.edge) === Number(select.value));
+        pending = a;
+        closePanel();
+        render();
+        return null;
+    }, '预览位置');
+}
+function cardPicker(type, title) {
+    const content = el('div');
+    content.id = 'choices';
+    for (const a of legal(type))
+        content.append(button(type === 'plenty' ? a.take.map((n, r) => n ? RESOURCE_NAMES[r] + '×' + n : '').filter(Boolean).join(' + ') : RESOURCE_NAMES[a.resource], () => { closePanel(); send(a); }));
+    openPanel(title, content, null);
+}
+function openCards() {
+    const content = el('div');
+    content.id = 'choices';
+    for (const [type, card] of [['knight', 0], ['road_card', 1], ['plenty', 2], ['monopoly', 3]]) {
+        const count = view.cards.filter(c => c.type === card).length;
+        if (!count)
+            continue;
+        const b = button(CARD_NAMES[card] + ' ×' + count, () => { if (type === 'plenty')
+            cardPicker(type, '丰收：选择两张资源');
+        else if (type === 'monopoly')
+            cardPicker(type, '垄断：选择资源');
+        else {
+            closePanel();
+            send({ type });
+        } });
+        b.disabled = busy || !legal(type).length;
+        content.append(b);
+    }
+    content.append(el('p', '胜利点 ' + view.cards.filter(c => c.type === 4).length + ' 张 · 已计入本人分数。新购卡下回合可用，每回合最多使用一张行动卡。'));
+    if (legal('buy').length)
+        content.append(button('购买发展卡', () => { closePanel(); send({ type: 'buy' }); }));
+    openPanel('发展卡', content, null);
+}
+function resourceInputs(content, give = true, want = true) {
+    const rows = [];
+    content.append(el('div', give && want ? '资源　　你提供　　你需要' : '选择资源数量', 'trade-heading'));
+    RESOURCE_NAMES.forEach((name, r) => {
+        const row = el('div', undefined, 'trade-row');
+        row.append(el('span', name));
+        const values = {};
+        for (const key of ['give', 'want'])
+            if (key === 'give' ? give : want) {
+                const input = el('input');
+                input.type = 'number';
+                input.min = '0';
+                input.max = key === 'give' ? String(view.hand[r]) : '19';
+                input.value = '0';
+                input.setAttribute('aria-label', name + (key === 'give' ? '提供' : '需要'));
+                values[key] = input;
+                row.append(input);
+            }
+        content.append(row);
+        rows.push(values);
+    });
+    return key => rows.map(row => Number(row[key]?.value || 0));
+}
+function openDiscard() {
+    const content = el('div');
+    content.append(el('p', '请弃掉 ' + view.discardCount + ' 张资源。'));
+    const values = resourceInputs(content, true, false);
+    openPanel('选择弃牌', content, () => { const give = values('give'); if (!give.every((n, r) => Number.isInteger(n) && n >= 0 && n <= view.hand[r]) || sum(give) !== view.discardCount)
+        throw Error('数量必须合计 ' + view.discardCount + ' 张，且不能超过手牌。'); return { type: 'discard', give }; }, '确认弃牌');
+}
+function openTrade(counter = false) {
+    const content = el('div');
+    if (!counter && view.you === view.turn && legal('bank').length)
+        content.append(button('与银行 / 港口交易', () => openBank()));
+    const label = el('label', '交易对象'), select = el('select');
+    select.setAttribute('aria-label', '交易对象');
+    view.players.forEach((_, p) => { if (p !== view.you && (view.you === view.turn || p === view.turn) && (!counter || p === view.offer.from)) {
+        const option = el('option', player(p));
+        option.value = String(p);
+        select.append(option);
+    } });
+    label.append(select);
+    content.append(label);
+    const values = resourceInputs(content);
+    openPanel(counter ? '向对方还价' : '玩家交易', content, () => {
+        const give = values('give'), want = values('want');
+        if (!give.every((n, r) => Number.isInteger(n) && n >= 0 && n <= view.hand[r]) || !want.every(n => Number.isInteger(n) && n >= 0 && n <= 19) || !sum(give) || !sum(want) || give.some((n, r) => n && want[r]))
+            throw Error('双方各提供资源；不能超过手牌，也不能交换同类资源。');
+        return { type: counter ? 'counter' : 'offer', target: Number(select.value), give, want };
+    }, counter ? '提交还价' : '发出报价');
+}
+function openBank() {
+    const content = el('div'), row = el('div', undefined, 'bank-row'), give = el('select'), take = el('select');
+    give.setAttribute('aria-label', '银行提供资源');
+    take.setAttribute('aria-label', '银行需要资源');
+    for (let r = 0; r < 5; r++) {
+        const a = el('option', RESOURCE_NAMES[r] + ' ' + view.rates[r] + ':1');
+        a.value = String(r);
+        a.disabled = view.hand[r] < view.rates[r];
+        give.append(a);
+        const b = el('option', RESOURCE_NAMES[r] + '（余 ' + view.bank[r] + '）');
+        b.value = String(r);
+        b.disabled = !view.bank[r];
+        take.append(b);
+    }
+    const first = legal('bank')[0];
+    if (first) {
+        give.value = String(first.give);
+        take.value = String(first.take);
+    }
+    row.append(give, el('span', '→'), take);
+    content.append(row);
+    openPanel('银行 / 港口交易', content, () => { const a = { type: 'bank', give: Number(give.value), take: Number(take.value) }; if (!legal('bank').some(b => b.give === a.give && b.take === a.take))
+        throw Error('请选择不同资源，并确认手牌与银行库存足够。'); return a; }, '确认交易');
+}
+function openOffer() {
+    const o = view.offer, content = el('div');
+    if (!o)
+        return;
+    const format = v => v.map((n, r) => n ? RESOURCE_NAMES[r] + '×' + n : '').filter(Boolean).join('、');
+    content.append(el('p', player(o.from) + '向' + player(o.to) + '提出交易'), el('p', '提供：' + format(o.give)), el('p', '需要：' + format(o.want)));
+    for (const type of ['accept', 'reject', 'cancel'])
+        if (legal(type).length)
+            content.append(button(ACTION_NAMES[type], () => { closePanel(); send({ type }); }, type === 'accept'));
+    if (view.you === o.to)
+        content.append(button('还价', () => openTrade(true)));
+    openPanel('交易报价', content, null);
+}
+function openTargets() { const content = el('div'); for (const a of legal('steal'))
+    content.append(button(player(a.target) + '（' + view.players[a.target].resources + ' 张）', () => { closePanel(); send(a); })); openPanel('选择偷取对象', content, null); }
+$('panel-close').addEventListener('click', closePanel);
+$('panel-submit').addEventListener('click', () => { if (busy || !dialogAction)
+    return; try {
+    const action = dialogAction();
+    closePanel();
+    if (action)
+        send(action);
+}
+catch (error) {
+    $('panel-error').textContent = error.message;
+} });
+$('help').addEventListener('click', () => $('rules').showModal());
+$('rules-close').addEventListener('click', () => $('rules').close());
+function onView(event) {
+    if (event.source !== parent || event.data?.type !== 'boardgame:view')
+        return;
+    const next = event.data.view;
+    if (!next || !Array.isArray(next.terrain) || !Array.isArray(next.actions))
+        return;
+    const nextStamp = next.you + ':' + next.move + ':' + next.phase;
+    if (nextStamp !== stamp) {
+        pending = null;
+        mode = null;
+        closePanel();
+        stamp = nextStamp;
+    }
+    view = next;
+    busy = Boolean(event.data.busy);
+    render();
+}
+window.addEventListener('message', onView);
+function updateCamera() {
+    $('board').setAttribute('viewBox', [camera.x - 5 / camera.zoom, camera.y - 4.5 / camera.zoom, 10 / camera.zoom, 9 / camera.zoom].join(' '));
+    $('board').style.touchAction = camera.zoom > 1 ? 'none' : 'auto';
+    $('zoom-in').disabled = camera.zoom >= 2.2;
+    $('zoom-out').disabled = camera.zoom <= 1;
+}
+$('zoom-in').addEventListener('click', () => { camera.zoom = Math.min(2.2, camera.zoom + .4); updateCamera(); });
+$('zoom-out').addEventListener('click', () => { camera.zoom = Math.max(1, camera.zoom - .4); if (camera.zoom === 1) { camera.x = 0; camera.y = 0; } updateCamera(); });
+$('zoom-reset').addEventListener('click', () => { camera.zoom = 1; camera.x = 0; camera.y = 0; moved = false; updateCamera(); });
+function point(event) {
+    return new DOMPoint(event.clientX, event.clientY).matrixTransform($('board').getScreenCTM().inverse());
+}
+function panStart(event) {
+    moved = false;
+    if (camera.zoom <= 1) return;
+    const position = point(event);
+    pan = { id: event.pointerId, startX: event.clientX, startY: event.clientY, position, matrix: $('board').getScreenCTM().inverse(), x: camera.x, y: camera.y };
+}
+function panMove(event) {
+    if (!pan || event.pointerId !== pan.id) return;
+    if (Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) < 6 && !moved) return;
+    moved = true;
+    const position = new DOMPoint(event.clientX, event.clientY).matrixTransform(pan.matrix);
+    camera.x = Math.max(-3, Math.min(3, pan.x - position.x + pan.position.x));
+    camera.y = Math.max(-3, Math.min(3, pan.y - position.y + pan.position.y));
+    updateCamera();
+}
+function panEnd() { pan = null; }
+$('board').addEventListener('pointerdown', panStart);
+window.addEventListener('pointermove', panMove);
+window.addEventListener('pointerup', panEnd);
+window.addEventListener('pointercancel', panEnd);
+window.addEventListener('pagehide', () => {
+    window.removeEventListener('message', onView);
+    window.removeEventListener('pointermove', panMove);
+    window.removeEventListener('pointerup', panEnd);
+    window.removeEventListener('pointercancel', panEnd);
+    $('board').removeEventListener('pointerdown', panStart);
+}, { once: true });
+parent.postMessage({ type: 'boardgame:ready' }, '*');
+parent.postMessage({ type: 'boardgame:resize', height: 680, fit: 'viewport' }, '*');
+</script></body></html>

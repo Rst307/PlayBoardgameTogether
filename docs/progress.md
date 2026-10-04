@@ -1228,3 +1228,26 @@ bot 保持无账户登录身份，通过独立 model_owner_account_id 在开局�
 五子棋上传包升级 1.0.3，新增与大厅现有游戏一致的原创扁平 SVG 图标、封面和背景。打包时经 Chromium 转成内嵌 PNG，背景同时用于 sandbox 对局桌面；没有平台特殊分支，规则、contentVersion 和旧局精确版本保持不变。资料见 game-packages/gomoku/README.md。
 
 实际验证：node scripts/package-gomoku.mjs 成功（146334 字节）；pnpm typecheck 通过；pnpm test tests/unit/gomoku-package.test.ts 10 项通过；node node_modules/@playwright/test/cli.js test --config playwright.gomoku-ui.config.ts --output .data/gomoku-art-validation 3 项通过，检查桌面、矮屏、手机与封面截图。新增断言确认三类展示图与桌面背景嵌入，并通过真实 ZIP 图片 schema。pnpm exec playwright 入口不可用，改用同一已安装 Playwright 的 Node CLI。pnpm lint 的 ESLint 阶段通过，tsx 边界检查因 uv_os_get_passwd ENOMEM 环境错误未完成。未执行数据库测试：本轮只修改上传包美术与打包，不改平台业务或数据库。未上传线上包；下一步管理员上传审核 dist/game-packages/gomoku-1.0.3.zip，更新大厅并开新局。
+
+## 卡坦岛经典基础版在线包（2026-10-04）
+
+新增 `online.catan@1.0.0`、3–4 人自包含 ZIP：19 地块/54 交点/72 边/9 固定沿海港口，确定性随机先手与地形、6/8 不相邻，顺序与逆序两次聚落/道路摆放及第二聚落起始资源。实现聚落/城市生产、各 19 张银行资源与不足处理、7 点串行弃牌、强盗阻断和随机偷取、15/5/4 棋子上限、距离/连通/对手建筑阻断、建设成本、港口比例、双方任意资源组合报价/接受/拒绝/还价/取消、五类发展卡与购买时机/每回合限制。最长道路按不重复边的连续路线计数，支持闭环/分叉/建筑截断/平局保持与转移；最大骑士军、秘密胜利点与当前玩家 10 分终局均实现。序列化检查地图/资源/发展卡/棋子/阶段/奖项守恒，失败不修改输入 State/RNG。
+
+编码前完成目标、信息架构、流程与布局，比较俱乐部/游戏平台/数字棋桌并选择数字棋桌。海蓝背景、自然色地块、原创几何图案、概率点数与聚落/城市形状作为游戏舞台；资源与当前行动常驻，建设/发展卡/交易/弃牌/规则进入按需弹窗。选择 → 预览 → 确认，支持键盘、手机位置列表、2.2 倍放大/拖动/全岛复位，身份或权威 revision 变化清除私密表单与选择。检查桌面、1280px 笔记本、390px/320px 手机实际截图；扩大道路选区，移缩放控件到棋盘右上空白，避免覆盖港口，核心操作在视口内。移动与放大只管理本地视角，不消费规则 RNG。
+
+`shared.txt` 只含公开拓扑/成本/名称；服务端拥有完整 State。本人 View 隐藏他人资源组成、发展卡身份与牌堆次序，公共偷取事件不含资源类型。平台继续负责原正式身份、事务、revision、回执、AI fencing 与精确版本恢复/回放，不新增平台协议、registry 游戏规则分支、迁移或运行单元。基础 AI 候选有界，不穷尽组合谈判；报价/还价与弃牌组合由真人自由提交并独立校验。规则来源及数字版选择见 [卡坦岛](games/catan.md)、[包说明](../game-packages/catan/README.md)。
+
+实际验证：
+
+- `node scripts/package-catan.mjs` 成功，最终 ZIP `dist/game-packages/catan-1.0.0.zip`，136734 字节，携带原创 PNG 图标/封面/背景。没有在开发/生产库安装，不把测试库安装计为正式上架。
+- `pnpm typecheck` 通过；`pnpm lint` 通过（20 个 AST source roots），后续仅新增测试断言并单独 ESLint 通过。沙箱内 tsx 读取 Windows 用户信息 ENOMEM，原 lint/集成/E2E 命令在沙箱外完成；没有改运行时或降低检查。
+- `pnpm test tests/unit/catan-package.test.ts`：最终专项结果另记录于本节结尾。涵盖真实 QuickJS 最小/最大人数、拓扑/确定性、起始摆放、错误身份/非法动作/RNG 不消耗、生产/短缺、弃牌/强盗/隐私、报价/还价、港口/建设、发展牌时机/效果、道路与骑士奖项、秘密 VP/终局、守恒与四脚本完整对局。首轮 12 项中交易取消路径失败，修正后 12/12 通过；新增道路截断测试首轮因选中仅两条相邻边的海岸交点而失败，改为真实三岔交点后定向 1/1 通过（其余 12 项按过滤排除，不计该轮通过）。
+- `node node_modules/@playwright/test/cli.js test --config playwright.catan-ui.config.ts --output .data/catan-ui-final-artifact`：最终 4/4 通过，无 skip。真实 React PackageBoard + sandbox/CSP + QuickJS 验证键盘/点击起始摆放、位置预览/缩放复位、忙碌禁用、报价/还价/接受、规则弹窗、保存恢复、身份切换清除表单、无页面溢出与视口内主操作。初轮道路 SVG line 零宽选区与 fixture 未等待掷骰异步完成的问题已修正并复验；没有削弱断言。
+- `pnpm test:integration`：忽略目录 wrapper 仅覆盖进程 `TEST_DATABASE_URL` 为独立 `boardgame_catan_20261004`，原保护脚本创建、迁移/同步/资源种子后 24 文件/162 项通过，无 skip。新增卡坦岛覆盖实际 ZIP 审核/安装/展示图、三人真人开局、身份/错误动作/非成员保护、失败事务回滚、成功去重/内容冲突、实际 HTTP 摆放和后续阶段、API 重启恢复与本人资源投影。没有改 .env 或清理开发库。
+- `pnpm test:e2e tests/e2e/game-packages.spec.ts --output .data/catan-platform-e2e`：通过同一独立测试库串行执行，桌面/手机 2/2 通过，无 skip，复用通用示例验证上传/审核/发布和双浏览器正式 iframe 对局。卡坦岛自身桌面与规则在上述专项与 HTTP 集成验证，不把示例对局声称为完整卡坦岛平台 E2E。
+- `pnpm build` 通过，保留生产 bundle、API runtime、隔离 ZIP 与 AI worker 检查。后续修改只在独立上传包/专项测试/文档，平台构建输入未改变；最终包另实际打包与浏览器运行。
+
+剩余边界：未上线/上传生产，未验证真实外部模型；没有扩展、计时赛、官方美术、平台音效、可切换图包或交互教程。基础 AI 不保证最佳策略，玩家交易仅提供指定对象的资源报价，没有自动撮合或聊天谈判。本轮工作区同时存在其他拉密/AGENTS.md 改动，保留并排除卡坦岛提交。下一步管理员上传生成的 ZIP，并组织真实玩家体验。
+
+最终规则专项：pnpm test tests/unit/catan-package.test.ts，13/13 通过，无 skip，四脚本完整对局通过。
+最后仅将缩放工具顶部间距改为 0，320px 手机专项 1/1 再验通过并查看截图，港口文字完整；其余 3 个尺寸按该次 project 过滤不运行，不计该次通过。

@@ -1,0 +1,572 @@
+function insist(condition, message = '非法动作') { if (!condition)
+    throw new Error(message); }
+function exact(value, keys) {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        && Object.keys(value).length === keys.length && keys.every(k => Object.hasOwn(value, k));
+}
+const integer = (n, min, max) => Number.isSafeInteger(n) && n >= min && n <= max;
+const vector = v => Array.isArray(v) && v.length === 5 && v.every(n => integer(n, 0, 19));
+const affordable = (hand, cost) => cost.every((n, i) => hand[i] >= n);
+function shuffle(list, rng) {
+    for (let i = list.length - 1; i > 0; i--) {
+        const j = rng.nextInt(0, i + 1);
+        [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+}
+function pieceCount(s, p, level) { return s.buildings.filter(b => b && b.owner === p && b.level === level).length; }
+function roadCount(s, p) { return s.roads.filter(owner => owner === p).length; }
+function freeNode(s, id) {
+    return !s.buildings[id] && MAP.nodes[id].edges.every(e => {
+        const edge = MAP.edges[e];
+        return !s.buildings[edge.a === id ? edge.b : edge.a];
+    });
+}
+function connected(s, p, id) {
+    const b = s.buildings[id];
+    return b ? b.owner === p : MAP.nodes[id].edges.some(e => s.roads[e] === p);
+}
+function roadAllowed(s, p, id) {
+    const e = MAP.edges[id];
+    return s.roads[id] === null && roadCount(s, p) < 15 && (connected(s, p, e.a) || connected(s, p, e.b));
+}
+function longest(s, p) {
+    let best = 0;
+    function walk(node, used) {
+        best = Math.max(best, used.length);
+        if (used.length && s.buildings[node] && s.buildings[node].owner !== p)
+            return;
+        for (const id of MAP.nodes[node].edges) {
+            if (s.roads[id] !== p || used.includes(id))
+                continue;
+            const e = MAP.edges[id];
+            walk(e.a === node ? e.b : e.a, [...used, id]);
+        }
+    }
+    for (let id = 0; id < MAP.nodes.length; id++)
+        walk(id, []);
+    return best;
+}
+function award(values, owner, minimum) {
+    const maximum = Math.max(...values);
+    if (maximum < minimum)
+        return null;
+    if (owner !== null && values[owner] === maximum)
+        return owner;
+    const leaders = values.map((v, p) => v === maximum ? p : -1).filter(p => p >= 0);
+    return leaders.length === 1 ? leaders[0] : null;
+}
+function publicPoints(s, p) {
+    return pieceCount(s, p, 1) + 2 * pieceCount(s, p, 2)
+        + (s.longestOwner === p ? 2 : 0) + (s.armyOwner === p ? 2 : 0);
+}
+function totalPoints(s, p) { return publicPoints(s, p) + s.cards[p].filter(c => c.type === 4).length; }
+function refresh(s) {
+    s.longestOwner = award(s.seats.map((_, p) => longest(s, p)), s.longestOwner, 5);
+    s.armyOwner = award(s.knights, s.armyOwner, 3);
+    if (s.setupStep >= 2 * s.seats.length && totalPoints(s, s.turn) >= 10) {
+        s.winner = s.turn;
+        s.phase = 'finished';
+        s.offer = null;
+    }
+}
+function rate(s, p, resource) {
+    let ratio = 4;
+    for (const port of MAP.ports) {
+        const e = MAP.edges[port.edge];
+        if ([e.a, e.b].some(id => s.buildings[id]?.owner === p)) {
+            if (port.resource === resource)
+                ratio = 2;
+            else if (port.resource === -1)
+                ratio = Math.min(ratio, 3);
+        }
+    }
+    return ratio;
+}
+function pay(s, p, amounts) {
+    insist(affordable(s.resources[p], amounts));
+    amounts.forEach((n, r) => { s.resources[p][r] -= n; s.bank[r] += n; });
+}
+function receive(s, p, amounts) {
+    insist(affordable(s.bank, amounts), '银行资源不足');
+    amounts.forEach((n, r) => { s.resources[p][r] += n; s.bank[r] -= n; });
+}
+function setupPlayer(s) {
+    const n = s.seats.length;
+    return s.setupStep < n ? (s.start + s.setupStep) % n : (s.start + 2 * n - 1 - s.setupStep) % n;
+}
+function responsible(s) {
+    if (s.phase.startsWith('setup_'))
+        return setupPlayer(s);
+    if (s.phase === 'discard')
+        return s.discards[0];
+    if (s.phase === 'trade')
+        return s.offer.to;
+    return s.turn;
+}
+function availableCard(s, p, type) {
+    return !s.played && s.cards[p].some(c => c.type === type && c.bought < s.turnNumber);
+}
+function stealTargets(s) {
+    return [...new Set(MAP.hexes[s.robber].corners.map(id => s.buildings[id]?.owner)
+            .filter(p => p !== undefined && p !== s.turn && sum(s.resources[p]) > 0))];
+}
+function nodeValue(s, id) {
+    return MAP.nodes[id].hexes.reduce((score, h) => score + (s.terrain[h] < 0 ? 0 : 6 - Math.abs(7 - s.numbers[h])), 0);
+}
+function actions(s, p) {
+    if (p < 0 || s.winner !== null)
+        return [];
+    const list = [];
+    if (s.phase === 'trade') {
+        if (p === s.offer.to) {
+            if (affordable(s.resources[p], s.offer.want) && affordable(s.resources[s.offer.from], s.offer.give))
+                list.push({ type: 'accept' });
+            list.push({ type: 'reject' });
+        }
+        if (p === s.turn || p === s.offer.from)
+            list.push({ type: 'cancel' });
+        return list;
+    }
+    // Others may propose a trade only with the active player. Arbitrary offers are validated independently.
+    if (p !== responsible(s))
+        return [];
+    if (s.phase === 'setup_settlement') {
+        return MAP.nodes.map((_, node) => ({ type: 'settlement', node })).filter(a => freeNode(s, a.node))
+            .sort((a, b) => nodeValue(s, b.node) - nodeValue(s, a.node));
+    }
+    if (s.phase === 'setup_road') {
+        return MAP.nodes[s.anchor].edges.filter(edge => s.roads[edge] === null).map(edge => ({ type: 'road', edge }));
+    }
+    if (s.phase === 'discard') {
+        const give = zeros(), hand = [...s.resources[p]];
+        const count = Math.floor(sum(hand) / 2);
+        for (let n = 0; n < count; n++) {
+            const r = hand.indexOf(Math.max(...hand));
+            give[r]++;
+            hand[r]--;
+        }
+        return [{ type: 'discard', give }];
+    }
+    if (s.phase === 'robber') {
+        return s.terrain.map((_, hex) => ({ type: 'robber', hex })).filter(a => a.hex !== s.robber)
+            .sort((a, b) => {
+            const score = h => MAP.hexes[h].corners.reduce((v, id) => v + (s.buildings[id] ? (s.buildings[id].owner === p ? -3 : s.buildings[id].level) : 0), 0);
+            return score(b.hex) - score(a.hex);
+        });
+    }
+    if (s.phase === 'steal')
+        return stealTargets(s).map(target => ({ type: 'steal', target }));
+    if (s.phase === 'free_roads') {
+        for (let edge = 0; edge < 72; edge++)
+            if (roadAllowed(s, p, edge))
+                list.push({ type: 'road', edge });
+        if (!list.length)
+            list.push({ type: 'finish_roads' });
+        return list;
+    }
+    if (s.phase === 'main') {
+        for (let node = 0; node < 54; node++) {
+            if (s.buildings[node]?.owner === p && s.buildings[node].level === 1 && pieceCount(s, p, 2) < 4 && affordable(s.resources[p], COSTS.city))
+                list.push({ type: 'city', node });
+            if (freeNode(s, node) && connected(s, p, node) && pieceCount(s, p, 1) < 5 && affordable(s.resources[p], COSTS.settlement))
+                list.push({ type: 'settlement', node });
+        }
+        list.sort((a, b) => (a.type === 'city' ? -1 : 1) - (b.type === 'city' ? -1 : 1) || nodeValue(s, b.node) - nodeValue(s, a.node));
+        if (affordable(s.resources[p], COSTS.road)) {
+            for (let edge = 0; edge < 72; edge++)
+                if (roadAllowed(s, p, edge))
+                    list.push({ type: 'road', edge });
+        }
+        if (s.deck.length && affordable(s.resources[p], COSTS.buy))
+            list.push({ type: 'buy' });
+    }
+    if (s.phase === 'roll' || s.phase === 'main') {
+        if (availableCard(s, p, 0))
+            list.push({ type: 'knight' });
+        if (availableCard(s, p, 1) && roadCount(s, p) < 15 && s.roads.some((_, e) => roadAllowed(s, p, e)))
+            list.push({ type: 'road_card' });
+        if (availableCard(s, p, 2)) {
+            for (let a = 0; a < 5; a++)
+                for (let b = a; b < 5; b++) {
+                    const take = zeros();
+                    take[a]++;
+                    take[b]++;
+                    if (affordable(s.bank, take))
+                        list.push({ type: 'plenty', take });
+                }
+            if (sum(s.bank) === 1)
+                list.push({ type: 'plenty', take: [...s.bank] });
+            if (sum(s.bank) === 1)
+                list.push({ type: 'plenty', take: [...s.bank] });
+        }
+        if (availableCard(s, p, 3))
+            for (let resource = 0; resource < 5; resource++)
+                list.push({ type: 'monopoly', resource });
+    }
+    if (s.phase === 'roll')
+        list.push({ type: 'roll' });
+    if (s.phase === 'main') {
+        for (let give = 0; give < 5; give++)
+            if (s.resources[p][give] >= rate(s, p, give)) {
+                for (let take = 0; take < 5; take++)
+                    if (give !== take && s.bank[take])
+                        list.push({ type: 'bank', give, take });
+            }
+        // Prefer useful maritime trades; never cycle through inverse exchanges in the basic policy.
+        const builds = list.filter(a => ['city', 'settlement', 'road', 'buy'].includes(a.type));
+        const other = list.filter(a => !['city', 'settlement', 'road', 'buy', 'bank'].includes(a.type));
+        const banks = list.filter(a => a.type === 'bank');
+        const desired = ['settlement', 'city', 'road', 'buy'].find(type => COSTS[type].some((n, r) => n > s.resources[p][r])) || 'city';
+        banks.sort((a, b) => (COSTS[desired][b.take] - s.resources[p][b.take]) - (COSTS[desired][a.take] - s.resources[p][a.take]));
+        return [...builds, ...other, ...banks.filter(a => COSTS[desired][a.take] > s.resources[p][a.take]), { type: 'end' }, ...banks.filter(a => COSTS[desired][a.take] <= s.resources[p][a.take])];
+    }
+    return list;
+}
+function parse(value) {
+    insist(value && typeof value === 'object' && typeof value.type === 'string');
+    const simple = ['roll', 'end', 'buy', 'knight', 'road_card', 'accept', 'reject', 'cancel', 'finish_roads', 'claim'];
+    if (simple.includes(value.type))
+        insist(exact(value, ['type']));
+    else if (['settlement', 'city', 'road', 'robber', 'steal', 'monopoly'].includes(value.type)) {
+        const [key, max] = { settlement: ['node', 53], city: ['node', 53], road: ['edge', 71], robber: ['hex', 18], steal: ['target', 3], monopoly: ['resource', 4] }[value.type];
+        insist(exact(value, ['type', key]) && integer(value[key], 0, max));
+    }
+    else if (value.type === 'bank') {
+        insist(exact(value, ['type', 'give', 'take']) && integer(value.give, 0, 4) && integer(value.take, 0, 4) && value.give !== value.take);
+    }
+    else if (value.type === 'discard' || value.type === 'plenty') {
+        const key = value.type === 'discard' ? 'give' : 'take';
+        insist(exact(value, ['type', key]) && vector(value[key]));
+    }
+    else if (value.type === 'offer' || value.type === 'counter') {
+        insist(exact(value, ['type', 'target', 'give', 'want']) && integer(value.target, 0, 3) && vector(value.give) && vector(value.want)
+            && sum(value.give) > 0 && sum(value.want) > 0 && value.give.every((n, r) => !n || !value.want[r]), '双方必须交换不同的资源');
+    }
+    else
+        insist(false);
+    return clone(value);
+}
+function validate(s, actor, raw) {
+    const a = parse(raw), p = actor.kind === 'seat' ? s.seats.indexOf(actor.seatId) : -1;
+    insist(p >= 0 && s.winner === null);
+    if (a.type === 'claim') {
+        insist(p === s.turn && s.setupStep === 2 * s.seats.length && totalPoints(s, p) >= 10);
+        return;
+    }
+    if (a.type === 'offer' || a.type === 'counter') {
+        insist(a.target < s.seats.length && a.target !== p && (p === s.turn || a.target === s.turn) && affordable(s.resources[p], a.give));
+        if (a.type === 'offer')
+            insist(s.phase === 'main');
+        else
+            insist(s.phase === 'trade' && s.offer.to === p && a.target === s.offer.from);
+        return;
+    }
+    if (a.type === 'discard') {
+        insist(s.phase === 'discard' && p === responsible(s) && sum(a.give) === Math.floor(sum(s.resources[p]) / 2) && affordable(s.resources[p], a.give));
+        return;
+    }
+    insist(actions(s, p).some(candidate => Object.keys(candidate).length === Object.keys(a).length
+        && Object.keys(candidate).every(key => JSON.stringify(candidate[key]) === JSON.stringify(a[key]))));
+}
+function produce(s, number) {
+    const needs = s.seats.map(zeros);
+    s.terrain.forEach((resource, h) => {
+        if (resource < 0 || s.numbers[h] !== number || s.robber === h)
+            return;
+        MAP.hexes[h].corners.forEach(id => { const b = s.buildings[id]; if (b)
+            needs[b.owner][resource] += b.level; });
+    });
+    for (let r = 0; r < 5; r++) {
+        const recipients = needs.map((v, p) => ({ p, n: v[r] })).filter(v => v.n);
+        const total = recipients.reduce((v, item) => v + item.n, 0);
+        if (s.bank[r] >= total || recipients.length === 1) {
+            for (const { p, n } of recipients) {
+                const amount = Math.min(n, s.bank[r]);
+                s.resources[p][r] += amount;
+                s.bank[r] -= amount;
+            }
+        }
+    }
+}
+function consume(s, p, type) {
+    const index = s.cards[p].findIndex(c => c.type === type && c.bought < s.turnNumber);
+    insist(index >= 0 && !s.played);
+    s.cards[p].splice(index, 1);
+    s.used[type]++;
+    s.played = true;
+}
+function check(s) {
+    const keys = ['seats', 'start', 'terrain', 'numbers', 'resources', 'bank', 'cards', 'deck', 'used', 'buildings', 'roads', 'robber', 'turn', 'turnNumber', 'phase', 'setupStep', 'anchor', 'discards', 'returnPhase', 'played', 'freeRemaining', 'offer', 'knights', 'longestOwner', 'armyOwner', 'winner', 'dice', 'move'];
+    insist(exact(s, keys), '无效存档');
+    const n = s.seats.length;
+    insist(n >= 3 && n <= 4 && new Set(s.seats).size === n && s.seats.every(v => typeof v === 'string' && v.length > 0 && v.length <= 128));
+    const player = p => integer(p, 0, n - 1), maybePlayer = p => p === null || player(p);
+    insist(player(s.start) && player(s.turn) && integer(s.turnNumber, 0, 1000000) && integer(s.move, 0, 10000000)
+        && integer(s.setupStep, 0, n * 2) && (s.anchor === null || integer(s.anchor, 0, 53)) && integer(s.robber, 0, 18)
+        && ['setup_settlement', 'setup_road', 'roll', 'main', 'discard', 'robber', 'steal', 'trade', 'free_roads', 'finished'].includes(s.phase)
+        && ['roll', 'main'].includes(s.returnPhase) && typeof s.played === 'boolean' && integer(s.freeRemaining, 0, 2));
+    insist(Array.isArray(s.terrain) && s.terrain.length === 19 && s.terrain.every(r => integer(r, -1, 4))
+        && [-1, 0, 1, 2, 3, 4].every((r, i) => s.terrain.filter(v => v === r).length === [1, 4, 3, 4, 4, 3][i]));
+    insist(Array.isArray(s.numbers) && s.numbers.length === 19 && s.numbers.every((v, h) => s.terrain[h] === -1 ? v === 0 : integer(v, 2, 12) && v !== 7));
+    for (let number = 2; number <= 12; number++)
+        if (number !== 7)
+            insist(s.numbers.filter(v => v === number).length === ([2, 12].includes(number) ? 1 : 2));
+    insist(MAP.edges.every(e => e.hexes.length < 2 || !e.hexes.every(h => [6, 8].includes(s.numbers[h]))));
+    insist(vector(s.bank) && Array.isArray(s.resources) && s.resources.length === n && s.resources.every(vector));
+    for (let r = 0; r < 5; r++)
+        insist(s.bank[r] + s.resources.reduce((total, v) => total + v[r], 0) === 19);
+    insist(Array.isArray(s.cards) && s.cards.length === n && s.cards.every(hand => Array.isArray(hand) && hand.length <= 25 && hand.every(c => exact(c, ['type', 'bought']) && integer(c.type, 0, 4) && integer(c.bought, 0, s.turnNumber)))
+        && Array.isArray(s.deck) && s.deck.length <= 25 && s.deck.every(c => integer(c, 0, 4)) && vector(s.used) && s.used[4] === 0);
+    for (let t = 0; t < 5; t++)
+        insist(s.used[t] + s.deck.filter(c => c === t).length + s.cards.flat().filter(c => c.type === t).length === [14, 2, 2, 2, 5][t]);
+    insist(Array.isArray(s.buildings) && s.buildings.length === 54 && s.buildings.every(b => b === null || exact(b, ['owner', 'level']) && player(b.owner) && integer(b.level, 1, 2))
+        && Array.isArray(s.roads) && s.roads.length === 72 && s.roads.every(maybePlayer));
+    insist(MAP.edges.every(e => !s.buildings[e.a] || !s.buildings[e.b]));
+    for (let p = 0; p < n; p++)
+        insist(pieceCount(s, p, 1) <= 5 && pieceCount(s, p, 2) <= 4 && roadCount(s, p) <= 15);
+    insist(Array.isArray(s.knights) && s.knights.length === n && s.knights.every(k => integer(k, 0, 14)) && sum(s.knights) === s.used[0]);
+    insist(maybePlayer(s.longestOwner) && maybePlayer(s.armyOwner) && maybePlayer(s.winner)
+        && award(s.seats.map((_, p) => longest(s, p)), s.longestOwner, 5) === s.longestOwner && award(s.knights, s.armyOwner, 3) === s.armyOwner);
+    insist(Array.isArray(s.discards) && new Set(s.discards).size === s.discards.length && s.discards.every(p => player(p) && sum(s.resources[p]) > 7)
+        && (s.phase === 'discard') === (s.discards.length > 0));
+    insist((s.phase.startsWith('setup_')) === (s.setupStep < 2 * n));
+    if (s.phase === 'setup_road')
+        insist(s.anchor !== null && s.buildings[s.anchor]?.owner === setupPlayer(s));
+    else
+        insist(s.anchor === null);
+    insist((s.phase === 'free_roads') === (s.freeRemaining > 0));
+    if (s.phase === 'trade') {
+        const o = s.offer;
+        insist(exact(o, ['from', 'to', 'give', 'want']) && player(o.from) && player(o.to) && o.from !== o.to && (o.from === s.turn || o.to === s.turn)
+            && vector(o.give) && vector(o.want) && sum(o.give) > 0 && sum(o.want) > 0 && o.give.every((v, r) => !v || !o.want[r]) && affordable(s.resources[o.from], o.give));
+    }
+    else
+        insist(s.offer === null);
+    if (s.phase === 'steal')
+        insist(stealTargets(s).length > 0);
+    insist(s.dice === null || Array.isArray(s.dice) && s.dice.length === 2 && s.dice.every(v => integer(v, 1, 6)));
+    insist((s.winner !== null) === (s.phase === 'finished'));
+    if (s.winner !== null)
+        insist(s.winner === s.turn && totalPoints(s, s.winner) >= 10);
+    return s;
+}
+const game = {
+    manifest: {
+        id: 'online.catan', version: '1.0.0', contentVersion: '1.0.0', sdkRange: '^0.1.0', name: '卡坦岛',
+        description: '3–4 人经典基础版：生产与交易资源，建设岛屿，发展卡与最长道路，率先在自己回合达到 10 分。',
+        players: { min: 3, max: 4 }, mode: 'rules-driven', capabilities: ['private-view', 'turn-based', 'spatial'],
+        defaultAssetPack: { id: 'online.catan.default', version: '1.0.0' }, developmentOnly: false
+    },
+    validateOptions(value) { insist(exact(value, [])); return {}; },
+    parseAction: parse,
+    setup({ seats, options, rng }) {
+        this.validateOptions(options);
+        const terrain = shuffle([-1, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4], rng);
+        const order = shuffle(terrain.map((_, i) => i).filter(h => terrain[h] >= 0), rng);
+        function reds(selected, offset) {
+            if (selected.length === 4)
+                return selected;
+            for (let i = offset; i < order.length; i++) {
+                const h = order[i];
+                if (selected.some(other => MAP.hexes[h].sides.some(e => MAP.edges[e].hexes.includes(other))))
+                    continue;
+                const result = reds([...selected, h], i + 1);
+                if (result)
+                    return result;
+            }
+            return null;
+        }
+        const red = reds([], 0), numbers = Array(19).fill(0), redNumbers = shuffle([6, 6, 8, 8], rng);
+        const rest = shuffle([2, 3, 3, 4, 4, 5, 5, 9, 9, 10, 10, 11, 11, 12], rng);
+        order.forEach(h => { numbers[h] = red.includes(h) ? redNumbers.pop() : rest.pop(); });
+        const start = rng.nextInt(0, seats.length);
+        const state = { seats: [...seats], start, terrain, numbers, resources: seats.map(zeros), bank: [19, 19, 19, 19, 19],
+            cards: seats.map(() => []), deck: shuffle([...Array(14).fill(0), 1, 1, 2, 2, 3, 3, ...Array(5).fill(4)], rng), used: zeros(),
+            buildings: Array(54).fill(null), roads: Array(72).fill(null), robber: terrain.indexOf(-1), turn: start, turnNumber: 0,
+            phase: 'setup_settlement', setupStep: 0, anchor: null, discards: [], returnPhase: 'main', played: false,
+            freeRemaining: 0, offer: null, knights: seats.map(() => 0), longestOwner: null, armyOwner: null, winner: null, dice: null, move: 0 };
+        check(state);
+        return { state, events: [] };
+    },
+    getView(s, viewer) {
+        const p = viewer.kind === 'seat' ? s.seats.indexOf(viewer.seatId) : -1;
+        return { you: p, seats: [...s.seats], current: responsible(s), turn: s.turn, phase: s.phase, turnNumber: s.turnNumber, move: s.move,
+            terrain: [...s.terrain], numbers: [...s.numbers], robber: s.robber, buildings: clone(s.buildings), roads: [...s.roads], bank: [...s.bank],
+            players: s.seats.map((seatId, i) => ({ seatId, points: s.winner !== null || i === p ? totalPoints(s, i) : publicPoints(s, i),
+                resources: sum(s.resources[i]), cards: s.cards[i].length, knights: s.knights[i], longest: longest(s, i) })),
+            hand: p < 0 ? zeros() : [...s.resources[p]], cards: p < 0 ? [] : s.cards[p].map(c => ({ type: c.type, playable: c.type !== 4 && c.bought < s.turnNumber && !s.played })),
+            actions: actions(s, p), tradeAllowed: p >= 0 && s.phase === 'main', offer: clone(s.offer), dice: clone(s.dice),
+            rates: p < 0 ? [4, 4, 4, 4, 4] : RESOURCE_NAMES.map((_, r) => rate(s, p, r)),
+            longestOwner: s.longestOwner, armyOwner: s.armyOwner, winner: s.winner, deckCount: s.deck.length,
+            discardCount: s.phase === 'discard' && p === responsible(s) ? Math.floor(sum(s.resources[p]) / 2) : 0 };
+    },
+    getActionSpec(s, viewer) { return { actions: this.getView(s, viewer).actions }; },
+    validateAction: validate,
+    applyAction(state, actor, raw, rng) {
+        validate(state, actor, raw);
+        const s = clone(state), a = parse(raw), p = s.seats.indexOf(actor.seatId), events = [{ type: 'action', seatId: actor.seatId, action: a.type }];
+        const use = type => consume(s, p, type);
+        if (a.type === 'settlement') {
+            const setup = s.phase === 'setup_settlement';
+            if (!setup)
+                pay(s, p, COSTS.settlement);
+            s.buildings[a.node] = { owner: p, level: 1 };
+            if (setup) {
+                if (s.setupStep >= s.seats.length) {
+                    const take = zeros();
+                    MAP.nodes[a.node].hexes.forEach(h => { if (s.terrain[h] >= 0)
+                        take[s.terrain[h]]++; });
+                    receive(s, p, take);
+                }
+                s.anchor = a.node;
+                s.phase = 'setup_road';
+            }
+        }
+        else if (a.type === 'road') {
+            if (s.phase === 'main')
+                pay(s, p, COSTS.road);
+            s.roads[a.edge] = p;
+            if (s.phase === 'setup_road') {
+                s.anchor = null;
+                s.setupStep++;
+                s.phase = s.setupStep < 2 * s.seats.length ? 'setup_settlement' : 'roll';
+                if (s.phase === 'roll')
+                    s.turnNumber = 1;
+            }
+            else if (s.phase === 'free_roads') {
+                s.freeRemaining--;
+                if (!s.freeRemaining)
+                    s.phase = s.returnPhase;
+            }
+        }
+        else if (a.type === 'city') {
+            pay(s, p, COSTS.city);
+            s.buildings[a.node].level = 2;
+        }
+        else if (a.type === 'roll') {
+            s.dice = [rng.nextInt(1, 7), rng.nextInt(1, 7)];
+            events.push({ type: 'dice', dice: [...s.dice] });
+            if (sum(s.dice) === 7) {
+                s.returnPhase = 'main';
+                s.discards = s.seats.map((_, i) => i).filter(i => sum(s.resources[i]) > 7);
+                s.phase = s.discards.length ? 'discard' : 'robber';
+            }
+            else {
+                produce(s, sum(s.dice));
+                s.phase = 'main';
+            }
+        }
+        else if (a.type === 'discard') {
+            pay(s, p, a.give);
+            s.discards.shift();
+            if (!s.discards.length)
+                s.phase = 'robber';
+        }
+        else if (a.type === 'robber') {
+            s.robber = a.hex;
+            s.phase = stealTargets(s).length ? 'steal' : s.returnPhase;
+        }
+        else if (a.type === 'steal') {
+            let draw = rng.nextInt(0, sum(s.resources[a.target]));
+            let r = 0;
+            while (draw >= s.resources[a.target][r]) {
+                draw -= s.resources[a.target][r];
+                r++;
+            }
+            s.resources[a.target][r]--;
+            s.resources[p][r]++;
+            events.push({ type: 'stolen', thief: p, target: a.target, resource: r });
+            s.phase = s.returnPhase;
+        }
+        else if (a.type === 'bank') {
+            const give = zeros(), take = zeros();
+            give[a.give] = rate(s, p, a.give);
+            take[a.take] = 1;
+            pay(s, p, give);
+            receive(s, p, take);
+        }
+        else if (a.type === 'buy') {
+            pay(s, p, COSTS.buy);
+            s.cards[p].push({ type: s.deck.pop(), bought: s.turnNumber });
+        }
+        else if (a.type === 'knight') {
+            use(0);
+            s.knights[p]++;
+            s.returnPhase = s.phase;
+            s.phase = 'robber';
+        }
+        else if (a.type === 'road_card') {
+            use(1);
+            s.returnPhase = s.phase;
+            s.phase = 'free_roads';
+            s.freeRemaining = Math.min(2, 15 - roadCount(s, p));
+        }
+        else if (a.type === 'finish_roads') {
+            s.freeRemaining = 0;
+            s.phase = s.returnPhase;
+        }
+        else if (a.type === 'plenty') {
+            use(2);
+            receive(s, p, a.take);
+        }
+        else if (a.type === 'monopoly') {
+            use(3);
+            s.resources.forEach((hand, other) => { if (other !== p) {
+                s.resources[p][a.resource] += hand[a.resource];
+                hand[a.resource] = 0;
+            } });
+        }
+        else if (a.type === 'offer' || a.type === 'counter') {
+            s.offer = { from: p, to: a.target, give: a.give, want: a.want };
+            s.phase = 'trade';
+        }
+        else if (a.type === 'accept') {
+            const o = s.offer;
+            for (let r = 0; r < 5; r++) {
+                s.resources[o.from][r] += o.want[r] - o.give[r];
+                s.resources[o.to][r] += o.give[r] - o.want[r];
+            }
+            s.offer = null;
+            s.phase = 'main';
+        }
+        else if (['reject', 'cancel'].includes(a.type)) {
+            s.offer = null;
+            s.phase = 'main';
+        }
+        else if (a.type === 'end') {
+            s.turn = (s.turn + 1) % s.seats.length;
+            s.turnNumber++;
+            s.played = false;
+            s.phase = 'roll';
+            s.dice = null;
+        }
+        s.move++;
+        refresh(s);
+        if (s.phase === 'finished') {
+            s.freeRemaining = 0;
+            s.discards = [];
+            events.push({ type: 'finished', winner: s.seats[s.winner] });
+        }
+        check(s);
+        return { state: s, events };
+    },
+    projectEvents(events) {
+        return events.map(e => {
+            if (e.type !== 'stolen')
+                return clone(e);
+            // Theft is public; resource identity stays out of public events.
+            return { type: e.type, thief: e.thief, target: e.target };
+        });
+    },
+    getOutcome(s) { return s.winner === null ? { status: 'ongoing' } : { status: 'finished', winners: [s.seats[s.winner]] }; },
+    serialize(s) { check(s); return clone(s); },
+    deserialize(s) { check(s); return clone(s); },
+    getDecisionContext(s, viewer) {
+        const view = this.getView(s, viewer);
+        if (!view.actions.length || s.phase === 'trade' && view.you !== s.offer.to)
+            return null;
+        return { decisionKey: 'catan:' + s.move + ':' + s.phase, legalActions: view.actions };
+    },
+    getFallbackAction(view) { return view.actions[0] || null; }
+};
