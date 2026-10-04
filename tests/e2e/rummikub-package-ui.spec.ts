@@ -12,8 +12,38 @@ const { buildSync } = createRequire(webRequire.resolve('vite'))('esbuild');
 const id = (color: number, number: number) => color * 26 + (number - 1) * 2;
 const run = (color: number, number: number, length = 3) => Array.from({ length }, (_, i) => id(color, number + i));
 
+test('catalog artwork fits the real cover and small icon without letterboxing or cropping', async ({ page }, info) => {
+  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.1.zip'));
+  const css = await readFile(new URL('../../apps/web/src/styles/catalog.css', import.meta.url), 'utf8');
+  await page.setContent(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    :root{--text:#eff0f3;--muted:#b7bec8;--line-strong:#69787e;--accent:#d9c08a}
+    *{box-sizing:border-box}body{margin:0;padding:12px;background:#1e2527;font-family:"Microsoft YaHei",sans-serif}
+    ${css}
+    .game-card{max-width:318px;margin:auto}
+    </style></head><body><a class="game-card" href="#">
+      <div class="game-cover"><img alt="拉密封面" src="${parsed.presentation.cover}"></div>
+      <div class="game-card-info"><div class="game-card-heading">
+        <div class="game-card-icon"><img alt="拉密图标" src="${parsed.presentation.icon}"></div><h3>拉密</h3>
+      </div><p class="game-card-desc">2–4 人经典数字牌桌：30 分破冰、普通百搭与自由重组。支持基础 AI。</p>
+      <div class="game-card-footer"><span class="game-card-players">2–4 人</span><span class="game-card-action">查看房间 →</span></div>
+      </div></a></body></html>`);
+  for (const img of [page.getByAltText('拉密封面'), page.getByAltText('拉密图标')]) {
+    await expect(img).toBeVisible();
+    await img.evaluate((el: HTMLImageElement) => el.decode());
+  }
+  const coverRatio = await page.getByAltText('拉密封面').evaluate((el: HTMLImageElement) => el.naturalWidth / el.naturalHeight);
+  expect(coverRatio).toBe(16 / 9);
+  expect(await page.getByAltText('拉密图标').evaluate((el: HTMLImageElement) => el.naturalWidth / el.naturalHeight)).toBe(1);
+  expect(parsed.presentation.icon).not.toBe(parsed.presentation.cover);
+  const box = (await page.locator('.game-cover').boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(coverRatio, 2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('.game-card').screenshot({ path: info.outputPath('catalog-cover.png') });
+});
+
 test('real sandbox tile drafting, atomic play, privacy, recovery and responsive motion', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.0.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.1.zip'));
   expect(Object.keys(parsed.presentation).sort()).toEqual(['background', 'cover', 'icon']);
   const game = (await PackageRuntime.create()).extension(parsed.server);
   const rng = new DeterministicRng(7);
@@ -45,7 +75,7 @@ test('real sandbox tile drafting, atomic play, privacy, recovery and responsive 
     import { PackageBoard } from './src/games/PackageBoard.tsx';
     const root = createRoot(document.getElementById('root'));
     const render = (view, busy = false, events = []) => root.render(<PackageBoard
-      id="online.rummikub" version="1.0.0" view={view} busy={busy} events={events}
+      id="online.rummikub" version="1.0.1" view={view} busy={busy} events={events}
       onAction={action => window.acceptAction(action)} />);
     addEventListener('message', event => {
       if (event.data?.type === 'fixture:view') render(event.data.view, event.data.busy, event.data.events);

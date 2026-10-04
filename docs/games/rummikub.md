@@ -1,6 +1,6 @@
 # 拉密
 
-拉密通过独立 `online.rummikub@1.0.0` 在线 ZIP 接入平台，2–4 人，支持真人和基础脚本 AI。
+拉密通过独立 `online.rummikub@1.0.1` 在线 ZIP 接入平台，2–4 人，支持真人和基础脚本 AI。
 
 打包、上架、规则、桌面交互与验证边界见 [拉密上传包](../../game-packages/rummikub/README.md)。用 `node scripts/package-rummikub.mjs` 生成安装文件，再由管理员在游戏管理上传、检查和审核。无需新增数据库迁移，未上传的环境不会自动显示在大厅。
 

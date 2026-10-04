@@ -1,5 +1,13 @@
 # 开发进度
 
+## 拉密 1.0.1 封面适配（2026-10-04）
+
+截图确认原 3:2 封面在大厅 16:9 容器内上下裁切，小字和复用封面的方形图标不可读。封面 SVG 改为原生 16:9，移除顶部英文小字，放大数字牌并保持标题/副标题在安全区域；新增独立方形三牌图标，打包输出封面/背景 960×540、图标 256×256，不改其他游戏的全局展示样式。manifest 升级 1.0.1，contentVersion 和全部规则行为保留，输出 `dist/game-packages/rummikub-1.0.1.zip`（543602 字节）。已安装版本不可覆盖，管理员需上传审核新版；尚未在开发/生产库安装。
+
+版本说明明确为经典标准规则：106 张牌、两张普通百搭、首次 30 分、无计时单局，不包含 Twist 的变色/镜像/双百搭特殊玩法；实体「豪华」装帧不作为代码玩法名称。README、包说明、游戏指南和当前包验收用例更新至 1.0.1，保留上一轮历史记录。
+
+实际验证：`node scripts/package-rummikub.mjs` 成功；`pnpm typecheck` 和 `pnpm lint` 通过；`pnpm test tests/unit/rummikub-package.test.ts` 8/8 通过；`node node_modules/@playwright/test/cli.js test --config playwright.rummikub-ui.config.ts --output .data/rummikub-cover-ui` 8/8 通过，包括四尺寸真实 catalog CSS 下的 16:9/1:1 图片比例及完整牌桌交互，已查看桌面和 320px 卡片截图，无裁切/留白带；忽略目录 wrapper 仅覆盖 `TEST_DATABASE_URL` 到已准备的独立 `boardgame_rummikub_20261004`，`pnpm test tests/integration/rummikub-package.test.ts` 1/1 通过，验证新版 ZIP 的真实审核/安装、图像读取、权限、回滚、去重、重启恢复、完整对局和回放，无 skip。没有修改开发库或 .env。本轮不重复上一轮全量构建和所有业务测试；当前包本身已实际打包并通过安装运行时。下一步管理员上传 1.0.1 更新大厅展示，旧局继续原版本。
+
 ## 拉密在线包与数字棋桌（2026-10-04）
 
 新增 `online.rummikub@1.0.0` 独立 ZIP：2–4 人、106 张牌、确定性洗牌与随机先手、每人 14 张、首次至少 30 分、百搭、桌面追加/拆分/重组、摸牌结束回合、牌堆耗尽连续跳过、空手胜利及余牌计分（百搭 30，支持并列）。动作提交完整桌面，校验牌守恒、旧公共牌保留、至少一张本人牌和所有组合；失败不修改输入 State/RNG。本人 View 隐藏对手手牌和牌堆次序，公开事件不含摸到的牌。有限脚本/模型候选只搜索手牌成组和已有组两端追加，不声称穷尽重组。
