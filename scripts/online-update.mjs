@@ -5,6 +5,8 @@ import { resolve, dirname, extname, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { setTimeout, clearTimeout, setInterval, clearInterval } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
+import { randomUUID } from 'node:crypto';
+import { createUpdateControl } from './update-control.mjs';
 const { fetch, AbortSignal } = globalThis;
 
 export function githubRemote(value) {
@@ -60,6 +62,7 @@ async function main() {
   let busy = false;
   let lastActivity = Date.now();
   let timer;
+  let updates;
   const env = { ...process.env, NODE_ENV: 'production', ENABLE_DEV_LAB: 'false',
     API_HOST: '127.0.0.1', ASSET_STORAGE_DIR: resolve(process.env.ASSET_STORAGE_DIR || resolve(root, '.data/assets')) };
   const apiPort = Number(env.API_PORT || 3001);
@@ -118,12 +121,22 @@ async function main() {
   async function start(release) {
     await stat(resolve(release.path, 'apps/web/dist/index.html'));
     child = fork(resolve(release.path, 'apps/api/dist/main.js'), [], {
-      cwd: release.path, env, execArgv: ['--conditions=production'], windowsHide: true,
+      cwd: release.path, env: { ...env, BOARDGAME_UPDATE_SUPERVISED: 'true' },
+      execArgv: ['--conditions=production'], windowsHide: true,
       stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
     });
     const target = child;
     let listening = false;
     target.on('message', message => { if (message === 'update.ready') listening = true; });
+    target.on('message', message => {
+      if (target !== child || !updates || message?.type !== 'update.control' ||
+          typeof message.id !== 'string' || !['status', 'check'].includes(message.action)) return;
+      if (message.action === 'check' && (typeof message.requestId !== 'string' ||
+          !/^[a-f0-9-]{36}:[a-f0-9-]{36}$/i.test(message.requestId))) return;
+      const status = message.action === 'check'
+        ? updates.check(message.requestId) : updates.snapshot();
+      if (target.connected) target.send({ type: 'update.control.result', id: message.id, status }, () => {});
+    });
     target.on('error', () => { log('API process error'); });
     for (let attempt = 0; attempt < 100; attempt++) {
       if (target.exitCode !== null || target.signalCode !== null) throw new Error('API exited during startup');
@@ -158,7 +171,7 @@ async function main() {
   const oldRoots = [];
   try {
     const remote = githubRemote(await command('git', ['remote', 'get-url', 'origin']));
-    const branch = env.UPDATE_BRANCH || await command('git', ['branch', '--show-current']);
+    const branch = env.UPDATE_BRANCH || 'main';
     await command('git', ['check-ref-format', '--branch', branch]);
     current = { sha: await command('git', ['rev-parse', 'HEAD']), path: root };
     try {
@@ -182,7 +195,8 @@ async function main() {
     const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
     server = createServer(async (req, res) => {
       if (req.url?.startsWith('/api/') || req.url?.startsWith('/health/')) {
-        lastActivity = Date.now();
+        // Viewing update progress must not indefinitely postpone its own quiet window.
+        if (!(req.method === 'GET' && req.url?.split('?')[0] === '/api/v1/admin/updates')) lastActivity = Date.now();
         if (switching || !child || child.exitCode !== null || child.signalCode !== null) {
           res.writeHead(503, { 'retry-after': '3', 'cache-control': 'no-store' }); res.end(); return;
         }
@@ -244,12 +258,15 @@ async function main() {
           try { await stat(cache); } catch { await command('git', ['clone', '--bare', remote, cache]); }
           await command('git', ['--git-dir', cache, 'fetch', remote, `+refs/heads/${branch}:refs/remotes/update/current`], root, 120000);
           const sha = await command('git', ['--git-dir', cache, 'rev-parse', 'refs/remotes/update/current']);
-          if (sha === current.sha || sha === blockedSha) return;
+          updates.patch({ candidateSha: sha });
+          if (sha === current.sha) { updates.patch({ phase: 'current', candidateSha: null }); return; }
+          if (sha === blockedSha) { updates.patch({ phase: 'maintenance' }); return; }
           await command('git', ['--git-dir', cache, 'merge-base', '--is-ancestor', current.sha, sha]);
           const release = resolve(stateRoot, 'releases', sha);
           try { await stat(release); } catch { await command('git', ['--git-dir', cache, 'worktree', 'add', '--detach', release, sha]); }
           await ensureReleaseEnvironment(release);
           log('preparing', sha);
+          updates.patch({ phase: 'building' });
           await command('pnpm', ['install', '--frozen-lockfile'], release);
           await command('pnpm', ['build'], release);
           // Applied migrations must never change. New migrations need deliberate rollout:
@@ -257,13 +274,16 @@ async function main() {
           const changed = await command('git', ['--git-dir', cache, 'diff', '--name-only', current.sha, sha, '--', 'apps/api/src/db/migrations']);
           if (changed && env.UPDATE_ALLOW_MIGRATIONS !== 'true') {
             blockedSha = sha;
+            updates.patch({ phase: 'maintenance' });
             log('pending migrations: run maintenance or explicitly enable UPDATE_ALLOW_MIGRATIONS', sha); return;
           }
           pending = { sha, path: release };
         }
+        updates.patch({ phase: 'waiting' });
         const applied = await applyPrepared({
           drain, current: () => current, stop, start,
           prepareDatabase: async release => {
+            updates.patch({ phase: 'applying' });
             await command('pnpm', ['db:migrate'], release);
             await command('pnpm', ['games:sync'], release);
           },
@@ -274,12 +294,20 @@ async function main() {
           activate: release => { oldRoots.unshift(current.path); current = release; },
           resume: () => { switching = false; if (child?.connected) child.send('update.resume'); },
         }, pending);
-        if (applied) { log('updated', pending.sha); pending = undefined; }
-      } catch { log('update failed; previous files retained; verify /health/ready for recovery'); }
+        if (applied) {
+          log('updated', pending.sha); pending = undefined;
+          updates.patch({ phase: 'updated', currentSha: current.sha, candidateSha: null });
+        }
+      } catch {
+        updates.patch({ phase: 'failed' });
+        log('update failed; previous files retained; verify /health/ready for recovery');
+      }
       finally { busy = false; }
     }
-    if (env.UPDATE_ENABLED !== 'false') timer = setInterval(() => { void cycle(); }, interval);
-    if (env.UPDATE_ENABLED !== 'false') void cycle();
+    updates = createUpdateControl({ enabled: env.UPDATE_ENABLED !== 'false', branch,
+      currentSha: current.sha, run: cycle });
+    if (env.UPDATE_ENABLED !== 'false') timer = setInterval(() => { updates.check(randomUUID()); }, interval);
+    if (env.UPDATE_ENABLED !== 'false') updates.check(randomUUID());
     let stopping = false;
     async function shutdown() {
       if (stopping) return;

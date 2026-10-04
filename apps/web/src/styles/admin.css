@@ -165,10 +165,30 @@
   }
   .admin-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .admin-nav a {
     padding-inline: 6px;
     justify-content: center;
   }
+}
+.admin-update-section {
+  max-width: 48rem;
+}
+.admin-update-details {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.admin-update-details > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 1rem;
+}
+.admin-update-details dt {
+  color: var(--muted);
+}
+.admin-update-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }

@@ -15,6 +15,7 @@ const links = [
   ['/admin/submissions', '接入审核'],
   ['/admin/games', '游戏展示'],
   ['/admin/assets', '资源管理'],
+  ['/admin/updates', '服务更新'],
 ] as const;
 
 export function AdminLayout({

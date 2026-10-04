@@ -6,6 +6,7 @@ import { gamePackageResultSchema } from '@boardgame/protocol';
 import {
   adminOverviewSchema, adminAccountPageSchema, adminAccountSchema, adminGameSchema,
   adminAccountCommandSchema, adminGameCommandSchema,
+  adminUpdateStatusSchema, adminUpdateCommandSchema,
   type AdminAccountCommand, type AdminGameCommand,
 } from '@boardgame/protocol';
 import {
@@ -29,6 +30,14 @@ import { registrationInputSchema, registrationResultSchema, type RegistrationInp
 
 export class ApiError extends Error { constructor(readonly code: string, message: string, readonly retryable: boolean, readonly traceId: string) { super(message); } }
 export class ApiClient {
+  async adminUpdateStatus(signal?: AbortSignal) {
+    return adminUpdateStatusSchema.parse(await this.request<unknown>('/admin/updates', signal ? { signal } : undefined));
+  }
+  async checkAdminUpdate(requestId: string, signal?: AbortSignal) {
+    return adminUpdateStatusSchema.parse(await this.request<unknown>('/admin/updates/check', {
+      method: 'POST', body: JSON.stringify(adminUpdateCommandSchema.parse({ requestId })), ...(signal ? { signal } : {}),
+    }));
+  }
   async register(input: RegistrationInput) {
     return registrationResultSchema.parse(await this.request<unknown>('/auth/register', {
       method: 'POST', body: JSON.stringify(registrationInputSchema.parse(input)),

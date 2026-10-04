@@ -1,5 +1,27 @@
 # 开发进度
 
+## 管理员立即检测并更新（2026-10-04）
+
+先完成后台页面职责、常驻/低频功能、层级与流程自检，新增独立 `/admin/updates`，只有一个「立即检测并更新」主按钮，展示发布分支、当前/候选提交、检测时间与真实阶段。手机后台导航保持两行，320/390/1440px 不横向溢出；等待、迁移待维护、失败、未启用/旧更新器分别反馈，不强制中断对局或刷新玩家页面。页面请求有锁、响应世代保护及卸载取消。
+
+新增共享严格 DTO、typed client-sdk 和管理员 GET/POST 接口，复用 session/role/Origin/CSRF。只有监督进程标记的自有 API 子进程经相关 ID/有界超时 IPC 发起更新；非监督 IPC 父进程不接收更新命令。手动和定时任务共用原监督构建/排空/迁移保护/恢复流程，进行中合并触发，最近 256 个受理 ID 去重；状态轮询不推进监督静默时间，仍受在途请求排空检查。默认发布分支改为 main，保留显式配置；README、在线更新、管理、协议及架构说明同步。没有新数据库迁移或运行服务。
+
+实际验证：
+
+- 最终 `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；`pnpm test tests/unit/admin-update-control.test.ts tests/unit/online-update.test.ts tests/unit/update-drain.test.ts tests/unit/admin-protocol.test.ts` 20/20 通过，无 skip；`pnpm build` 通过，包含生产 bundle/API runtime 和隔离 ZIP/AI worker 检查。
+- 初次集成暴露 Vitest 自身也有 IPC，修正为监督启动标记后重验。恢复 Docker/PostgreSQL 后原 boardgame_test 的缺失资源无法按旧 hash 恢复；没有覆盖旧资源记录或 .env，以进程级 TEST_DATABASE_URL 指向新建的独立 boardgame_admin_update_20261004，沿用原准备/迁移/同步/种子脚本串行验证。
+- 共享工作区首次 `pnpm test:integration`：146/147 通过，管理员更新权限等 7 项管理测试全通过，无 skip；旧 stage2-flow 的 CLI 管理员初始化用例超过原 5000ms 限时。保持代码/限时/断言，单独执行 `pnpm test tests/integration/stage2-flow.test.ts -t 'runs administrator initialization'`：该用例通过（4493ms），其余 24 项仅因过滤未执行；不把这次过滤视为整套通过。
+- `pnpm test:e2e tests/e2e/admin-management.spec.ts tests/e2e/admin-navigation.spec.ts`：真实数据库、登录、普通用户拒绝、未启用监督反馈与后台导航共 12/12 通过，无 skip。
+- `pnpm exec playwright test --config playwright.updates-ui.config.ts --output .data/admin-update-ui-verified`：生产预览桌面/手机 4/4 通过，无 skip；模拟合法更新 DTO 检查点击、请求锁、等待/迁移/成功/不可用反馈、站内导航和 320px 布局，未将模拟响应计为真实构建切换。已实际查看桌面、390px 与 320px 截图。
+- `node .data/smoke-admin-update.mjs`：在独立测试库启动真实监督进程和编译 API，管理员真实登录/CSRF POST 经父子 IPC 返回 202、disabled 和完整 SHA，验证默认分支 main 与停用检测保护；正常停止并释放锁。临时脚本、截图、缓存仅留忽略目录 .data。
+
+最终隔离分支验收：
+
+- 在基于 origin/main 的 codex/admin-update-button 工作树执行 pnpm install --frozen-lockfile、pnpm typecheck、pnpm lint、上述 20 项单测及 pnpm build，均通过；相关管理接口另行 7/7 通过，生产界面 4/4 通过，无 skip。
+- Windows 新工作树检出 SQL 换行与原测试库初始化字节不同，先确认规范化内容与提交完全一致，再保留初始化时原字节；未改迁移语义、checksum 校验或提交迁移改动。最终 pnpm test:integration 为 147/147 通过（22 文件，无 skip），旧 CLI 用例 3523ms；随后真实管理员 E2E 12/12 通过，无 skip。
+
+剩余限制与下一步：未部署公网服务器或验收真实 GitHub 新提交的安装/切换；首次启用需部署新版并重启监督进程，已有 UPDATE_BRANCH 要改为 main。刷新远程后确认 main 已经通过 PR 合入历史后台/更新器；本轮从最新 main 建立隔离分支，仅移入本任务差异，不连带共享分支的其他任务提交。隔离 main 基线的最终全量集成已通过；沿用迁移备份、旧资源保留及恢复边界。本轮提交不包含已有 AGENTS.md、文档排序或其他任务改动。
+
 ## 亮色主题与全站外观切换（2026-10-04）
 
 先完成页面目标、常驻/低频功能、层级与操作步骤自检，外观选择收进「更多」菜单，页面原主任务及主要操作保持。新增亮色、深色、跟随系统三种选择；默认跟随系统，亮色采用浅灰背景、白色表面、深色正文和蓝色强调。适配平台共享面板、侧栏/手机菜单、表单/焦点、状态提示、目录、规则、开发文档、模型设置及教程。游戏图包/语义色与独立棋盘配色保留，隔离上传包 HTML 不被自动改写。

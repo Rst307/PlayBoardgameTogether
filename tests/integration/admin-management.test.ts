@@ -94,6 +94,23 @@ describe('administrator management', () => {
       .parse(response.json().data)
       .find((item) => item.id === 'color-match')!;
   }
+  it('protects update triggers with session, role, Origin, CSRF and strict input', async () => {
+    const path = '/api/v1/admin/updates/check';
+    const payload = { requestId: randomUUID() };
+    const trigger = (headers: Partial<Headers>, body: unknown = payload) =>
+      app.inject({ method: 'POST', url: path, headers, payload: body });
+    expect((await app.inject({ url: '/api/v1/admin/updates' })).statusCode).toBe(401);
+    expect((await read('/api/v1/admin/updates', user)).statusCode).toBe(403);
+    expect((await trigger({ origin })).statusCode).toBe(401);
+    expect((await trigger(user)).statusCode).toBe(403);
+    expect((await trigger({ ...admin, origin: 'https://evil.example' })).statusCode).toBe(403);
+    expect((await trigger({ ...admin, 'x-csrf-token': '' })).statusCode).toBe(403);
+    expect((await trigger(admin, { ...payload, branch: 'evil', force: true })).statusCode).toBe(400);
+    const result = await trigger(admin);
+    expect(result.statusCode).toBe(202);
+    expect(result.json().data.phase).toBe('unavailable');
+    expect(result.headers['cache-control']).toBe('no-store');
+  });
   it('enforces administrator, origin, CSRF and strict input without leaking secrets', async () => {
     for (const path of [
       '/api/v1/admin/overview',

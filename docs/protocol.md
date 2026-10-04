@@ -1,5 +1,11 @@
 # 协议
 
+## 管理员服务更新（2026-10-04）
+
+GET `/api/v1/admin/updates` 返回严格 `adminUpdateStatusSchema`：enabled、branch、currentSha、candidateSha、lastCheckedAt、phase。phase 为 unavailable/disabled/idle/checking/building/current/waiting/maintenance/applying/updated/failed；提交为完整 SHA 或 null，不包含环境、日志、凭据或文件路径。仅管理员可读，响应 no-store。
+
+POST `/api/v1/admin/updates/check` 严格接收 `{requestId: UUID}`，验证 session、管理员、Origin、CSRF 后经本地 IPC 触发既有监督流程，返回 202 和同一状态 DTO；表示受理而非更新成功。拒绝额外执行参数。进程内最近 256 个受理 ID 去重；同时进行的触发合并，重启或淘汰后可再次检查。没有监督进程或配置停用时返回 unavailable/disabled，旧监督进程/IPC 超时返回 SERVICE_UNAVAILABLE。没有数据库、对局或规则协议变更。
+
 ## 账号注册（2026-10-03）
 
 POST `/api/v1/auth/register`：严格 JSON `{displayName,userId,password}`，由 `protocol/auth.ts` 共享 schema 校验。displayName trim 后 1–32 字，userId 可带单个 @、名字部分 3–32 位 ASCII 字母/数字/下划线，trim/lowercase；password 6–128 位，含 ASCII 字母和数字，不 trim。成功 201 返回 `{username,displayName,friendId}`，username/friendId 是无 @ 的规范 ID。固定普通账户，不创建 session；Origin 必须匹配，4 KiB 上限，每 IP 每分钟 5 次。ID 已被登录名或好友 ID 使用返回 STATE_CONFLICT/409；无效输入 VALIDATION_ERROR/400，频控 RATE_LIMITED/429。响应 no-store，无密码/摘要/令牌。ApiClient.register 使用共享输入/响应 schema，返回类型由 schema 推导。登录 username 最大 33 位，以接受 32 位 ID 加 @，服务端去前缀后沿用既有身份认证。

@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+export const adminUpdateCommandSchema = z.object({ requestId: z.string().uuid() }).strict();
+export const adminUpdateStatusSchema = z.object({
+  enabled: z.boolean(),
+  branch: z.string().min(1).max(255).nullable(),
+  currentSha: z.string().regex(/^[a-f0-9]{40}$/).nullable(),
+  candidateSha: z.string().regex(/^[a-f0-9]{40}$/).nullable(),
+  lastCheckedAt: z.string().datetime().nullable(),
+  phase: z.enum(['unavailable', 'disabled', 'idle', 'checking', 'building', 'current',
+    'waiting', 'maintenance', 'applying', 'updated', 'failed']),
+}).strict();
+export type AdminUpdateStatus = z.infer<typeof adminUpdateStatusSchema>;
+
 export const adminAccountSchema = z
   .object({
     id: z.string().uuid(),
