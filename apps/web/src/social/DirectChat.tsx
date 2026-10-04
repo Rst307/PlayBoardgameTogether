@@ -113,7 +113,29 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
       <small>{message.senderId === person.id ? person.displayName : '我'} · {new Date(message.createdAt).toLocaleString('zh-CN')}</small><p>{message.text}</p>
     </li>)}</ol>
     {messages.length === 0 && <p className="muted">还没有消息，打个招呼吧。</p>}
-    <form className="form-stack" onSubmit={send}><label>私聊消息<textarea ref={input} required maxLength={2000} rows={3} value={text} readOnly={retry} disabled={busy} onChange={event => setText(event.target.value)} /></label>
+    <form className="form-stack" onSubmit={send}>
+      <label>
+        私聊消息
+        <textarea
+          ref={input}
+          required
+          maxLength={2000}
+          rows={3}
+          placeholder="输入消息…（Enter 发送，Shift+Enter 换行）"
+          value={text}
+          readOnly={retry}
+          disabled={busy}
+          onChange={event => setText(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              if (!busy && (text.trim() || pending.current)) {
+                void send(event);
+              }
+            }
+          }}
+        />
+      </label>
       <button disabled={busy || !text.trim()}>{busy ? '发送中…' : retry ? '重试发送' : '发送消息'}</button>
     </form>
   </section>;
