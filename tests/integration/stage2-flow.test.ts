@@ -10,6 +10,100 @@ describe.skipIf(!url)('stage 2 account to initial match flow',()=>{let db:Databa
   beforeAll(async()=>{db=createDatabase(url!);registry=createRegistry(false);app=await createApp({config:{NODE_ENV:'test',API_HOST:'127.0.0.1',API_PORT:3001,DATABASE_URL:url!,WEB_ORIGIN:origin,ENABLE_DEV_LAB:false,LOG_LEVEL:'silent',PRESENCE_GRACE_MS:100},db,registry});});afterAll(()=>app.close());beforeEach(async()=>{await db.query('TRUNCATE accounts CASCADE');await createAccount(db,{username:'alice',displayName:'Alice',password:'correct horse battery',role:'user'});await createAccount(db,{username:'bob',displayName:'Bob',password:'correct horse battery',role:'user'});await createAccount(db,{username:'carol',displayName:'Carol',password:'correct horse battery',role:'user'});});
   async function login(username:string){const r=await app.inject({method:'POST',url:'/api/v1/auth/login',headers:{origin},payload:{username,password:'correct horse battery'}});expect(r.statusCode).toBe(200);const raw=r.headers['set-cookie'];const values=Array.isArray(raw)?raw:[String(raw)];const cookie=values.map(v=>v.split(';')[0]).join('; ');return{cookie,csrf:r.json().data.csrfToken};}
   const write=(method:string,url:string,session:{cookie:string;csrf:string},payload:unknown)=>app.inject({method:method as any,url,headers:{origin,cookie:session.cookie,'x-csrf-token':session.csrf},payload});
+  it('keeps a healthy subscribed room alive and reclaims it after disconnect', async () => {
+    const a = await login('alice');
+    const created = await write('POST', '/api/v1/rooms', a, { requestId: 'idle-ws', name: '在线桌', gameId: 'demo.counter-room', version: '1.0.0', options: { targetScore: 3 }, seatCount: 2 });
+    const roomId = created.json().data.roomId;
+    const service = new RoomService(db, registry, normalizeConfig({ NODE_ENV: 'test', API_HOST: '127.0.0.1', API_PORT: 3001, DATABASE_URL: url!, WEB_ORIGIN: origin, ENABLE_DEV_LAB: false, LOG_LEVEL: 'silent' }));
+    if (!app.server.listening) await app.listen({ host: '127.0.0.1', port: 0 });
+    const address = app.server.address();
+    if (!address || typeof address === 'string') throw new Error('Expected TCP address');
+    const socket = new WebSocket(`ws://127.0.0.1:${address.port}/api/v1/ws/session`, { origin, headers: { cookie: a.cookie } });
+    try {
+      const snapshot = new Promise<void>(resolve => socket.on('message', raw => {
+        if (JSON.parse(raw.toString()).type === 'room.snapshot') resolve();
+      }));
+      await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
+      socket.send(JSON.stringify({ protocolVersion: 1, type: 'room.subscribe', roomId }));
+      await snapshot;
+      await db.query("UPDATE rooms SET last_activity_at=now()-interval '31 minutes' WHERE id=$1", [roomId]);
+      const deadline = Date.now() + 7000;
+      let renewed = false;
+      while (Date.now() < deadline) {
+        renewed = (await db.query<{ renewed: boolean }>("SELECT last_activity_at>now()-interval '1 minute' AS renewed FROM rooms WHERE id=$1", [roomId])).rows[0]!.renewed;
+        if (renewed) break;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      expect(renewed).toBe(true);
+      expect(await service.closeIdleRooms()).toEqual([]);
+      await new Promise<void>(resolve => { socket.once('close', resolve); socket.close(); });
+      await db.query("UPDATE rooms SET last_activity_at=now()-interval '31 minutes' WHERE id=$1", [roomId]);
+      expect(await service.closeIdleRooms()).toEqual([roomId]);
+    } finally { socket.terminate(); }
+  }, 15_000);
+  it('reclaims abandoned rooms atomically, retains history and releases creator quota', async () => {
+    const a = await login('alice'), b = await login('bob');
+    const created = await write('POST', '/api/v1/rooms', a, {
+      requestId: 'idle-create', name: '无人桌', gameId: 'demo.counter-room',
+      version: '1.0.0', options: { targetScore: 3 }, seatCount: 2, visibility: 'public',
+    });
+    const { roomId, inviteCode } = created.json().data;
+    await write('POST', '/api/v1/rooms/join', b, { requestId: 'idle-join', inviteCode });
+    await write('PUT', `/api/v1/rooms/${roomId}/my-seat`, b, { requestId: 'idle-seat', expectedRoomRevision: 1, seatIndex: 1 });
+    await write('PUT', `/api/v1/rooms/${roomId}/my-ready`, a, { requestId: 'idle-ready-a', expectedRoomRevision: 2, ready: true });
+    await write('PUT', `/api/v1/rooms/${roomId}/my-ready`, b, { requestId: 'idle-ready-b', expectedRoomRevision: 3, ready: true });
+    const started = await write('POST', `/api/v1/rooms/${roomId}/start`, a, { requestId: 'idle-start', expectedRoomRevision: 4 });
+    expect(started.statusCode).toBe(200);
+    const matchId = started.json().data.matchId;
+    const service = new RoomService(db, registry, normalizeConfig({ NODE_ENV: 'test', API_HOST: '127.0.0.1', API_PORT: 3001, DATABASE_URL: url!, WEB_ORIGIN: origin, ENABLE_DEV_LAB: false, LOG_LEVEL: 'silent' }));
+    const notified: string[] = [];
+    service.onChanged(id => notified.push(id));
+    const expire = () => db.query("UPDATE rooms SET last_activity_at=now()-interval '31 minutes' WHERE id=$1", [roomId]);
+    await expire();
+    const outsider = (await db.query<{ id: string }>("SELECT id FROM accounts WHERE username_canonical='carol'")).rows[0]!.id;
+    await service.recordActivity(roomId, outsider);
+    expect((await app.inject({ url: `/api/v1/rooms/${roomId}`, headers: { cookie: (await login('carol')).cookie } })).statusCode).toBe(404);
+    // An authorized visit renews without changing business revision.
+    expect((await app.inject({ url: `/api/v1/rooms/${roomId}`, headers: { cookie: b.cookie } })).json().data.roomRevision).toBe(5);
+    expect(await service.closeIdleRooms()).toEqual([]);
+    await expire();
+    // A concurrent member renewal holds the same row lock; cleanup skips it.
+    const renewal = await db.connect();
+    try {
+      await renewal.query('BEGIN');
+      await renewal.query('UPDATE rooms SET last_activity_at=clock_timestamp() WHERE id=$1', [roomId]);
+      expect(await service.closeIdleRooms()).toEqual([]);
+      await renewal.query('COMMIT');
+      expect(await service.closeIdleRooms()).toEqual([]);
+    } finally { await renewal.query('ROLLBACK'); renewal.release(); }
+    await expire();
+    // Listing the lobby/member rooms must not renew an abandoned room.
+    await app.inject({ url: '/api/v1/rooms', headers: { cookie: a.cookie } });
+    await db.query(`CREATE FUNCTION fail_idle_close() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.status='closed' THEN RAISE EXCEPTION 'test rollback'; END IF; RETURN NEW; END $$`);
+    await db.query('CREATE TRIGGER fail_idle_close BEFORE UPDATE ON rooms FOR EACH ROW EXECUTE FUNCTION fail_idle_close()');
+    try {
+      await expect(service.closeIdleRooms()).rejects.toThrow('test rollback');
+      expect((await db.query('SELECT status FROM matches WHERE id=$1', [matchId])).rows[0].status).toBe('active');
+      expect(notified).toEqual([]);
+    } finally {
+      await db.query('DROP TRIGGER fail_idle_close ON rooms');
+      await db.query('DROP FUNCTION fail_idle_close()');
+    }
+    expect(await service.closeIdleRooms()).toEqual([roomId]);
+    expect(await service.closeIdleRooms()).toEqual([]);
+    expect(notified).toEqual([roomId]);
+    expect((await service.snapshot(roomId, outsider).catch(() => null))).toBeNull();
+    expect((await db.query('SELECT status,room_revision FROM rooms WHERE id=$1', [roomId])).rows[0]).toMatchObject({ status: 'closed', room_revision: 6 });
+    expect((await db.query('SELECT status FROM matches WHERE id=$1', [matchId])).rows[0].status).toBe('aborted');
+    expect((await db.query('SELECT * FROM match_participants WHERE match_id=$1', [matchId])).rowCount).toBe(2);
+    expect((await db.query('SELECT * FROM room_invites WHERE room_id=$1', [roomId])).rowCount).toBe(0);
+    expect((await app.inject({ url: '/api/v1/rooms/lobby?status=waiting', headers: { cookie: a.cookie } })).json().data.items).toEqual([]);
+    expect((await write('POST', '/api/v1/rooms', a, { requestId: 'after-idle', name: '新桌', gameId: 'demo.counter-room', version: '1.0.0', options: { targetScore: 3 }, seatCount: 2 })).statusCode).toBe(200);
+    const waiting = (await db.query<{ id: string }>("SELECT id FROM rooms WHERE status='waiting'")).rows[0]!.id;
+    await db.query("UPDATE rooms SET last_activity_at=now()-interval '31 minutes' WHERE id=$1", [waiting]);
+    expect(await service.closeIdleRooms()).toEqual([waiting]);
+  });
   it('persists only the signed-in profile and rejects unsafe or forged updates', async () => {
     const a = await login('alice'), b = await login('bob');
     const input = { displayName: '新昵称', avatar: 'cat', bio: '周末一起玩桌游' };

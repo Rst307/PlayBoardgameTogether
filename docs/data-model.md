@@ -1,5 +1,9 @@
 # 数据模型
 
+## 房间活动时间（2026-10-04）
+
+028 新增 rooms.last_activity_at（timestamptz，NOT NULL，默认 now()）与未关闭房间的部分索引。历史行以迁移时间初始化，认证成员访问及健康订阅续期，不计入业务 revision。超时关闭保留成员、固定对局参与者、State 和动作记录，未结束 match 原子标记 aborted；不物理删除房间或历史。
+
 ## 对局显示名称（2026-10-04）
 
 新增 027_match_player_names.sql，为 match_participants 添加可空 display_name；开局在原事务中固定真人/AI 显示名称，AI 名称不依赖后续房间座位。真人投影优先读取固定 account_id 对应账户的当前昵称。迁移补齐旧真人名称，旧 AI 仅在房间仍绑定该局时安全补齐；无法恢复的历史 AI 使用带编号的 AI 名称，不猜测新房间占用者。规则状态、RNG 与版本锁不变。

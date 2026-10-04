@@ -1,5 +1,9 @@
 # 架构
 
+## 无人房间生命周期（2026-10-04）
+
+RoomService 拥有持久活动续期和有界超时关闭事务；app 在认证房间/active 对局读取、健康 WS 订阅时调用续期，大厅、内部广播和 AI 行动不续期。app 装配每分钟单飞扫描，服务关闭时停止计时器并等待在途清理再关闭数据库；WS 控制帧心跳清理半开连接。沿用 room → match 锁序与提交后 room changed 通知，不增加运行单元或游戏规则分支。028 活动时间跨重启保存，presence 仍为单实例，不宣称多副本实时协调。
+
 ## 常驻聊天与导航外壳（2026-10-04）
 
 App 统一装配独立 ChatDock、NavigationTools 与左下角辅助导航；ChatDock 从 SocialProvider 获取当前频道/会话/收起状态，按需加载 PublicChatPage，公共名片与私聊继续使用 DirectChat 和原类型化传输。隐藏频道通过 visible 停止消息同步及已读，未展开不挂载正文，退出会话清理挂载内容。NavigationTools 独立管理浮层关闭与监听清理；shell-social.css 在主题后限定外壳样式，覆盖游戏 header 与侧栏冲突。没有新增服务端边界、运行单元或身份路径。

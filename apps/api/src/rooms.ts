@@ -35,6 +35,35 @@ export class RoomService {
   constructor(private db:Database, private registry:GameRegistry, private config:ApiConfig) {}
   onChanged(listener:(roomId:string)=>void){ this.listeners.add(listener); return ()=>this.listeners.delete(listener); }
   private changed(roomId:string){ for(const listener of this.listeners) listener(roomId); }
+  // Only authenticated member visits/healthy subscriptions renew this lease.
+  // Lobby listing and AI actions intentionally do not keep abandoned rooms alive.
+  async recordActivity(roomId: string, accountId: string) {
+    await this.db.query(`UPDATE rooms r SET last_activity_at=clock_timestamp()
+      WHERE r.id=$1 AND r.status<>'closed'
+        AND r.last_activity_at < clock_timestamp() - interval '30 seconds'
+        AND EXISTS (SELECT 1 FROM room_members m WHERE m.room_id=r.id AND m.account_id=$2)`,
+    [roomId, accountId]);
+  }
+
+  async closeIdleRooms() {
+    const closed = await this.transaction(async client => {
+      // The predicate is checked under the room lock, including concurrent renewals.
+      const rooms = await client.query<{ id: string; active_match_id: string | null }>(`
+        SELECT id,active_match_id FROM rooms
+        WHERE status<>'closed' AND last_activity_at < clock_timestamp() - interval '30 minutes'
+        ORDER BY last_activity_at,id LIMIT 100 FOR UPDATE SKIP LOCKED`);
+      for (const room of rooms.rows) {
+        if (room.active_match_id) await client.query(
+          "UPDATE matches SET status='aborted' WHERE id=$1 AND status='active'", [room.active_match_id]);
+        await client.query(`UPDATE rooms SET status='closed',closed_at=clock_timestamp(),
+          room_revision=room_revision+1 WHERE id=$1`, [room.id]);
+        await client.query('DELETE FROM room_invites WHERE room_id=$1', [room.id]);
+      }
+      return rooms.rows.map(room => room.id);
+    });
+    for (const roomId of closed) this.changed(roomId);
+    return closed;
+  }
   private async transaction<T>(fn:(client:Client)=>Promise<T>){ const client=await this.db.connect(); try{await client.query('BEGIN');const value=await fn(client);await client.query('COMMIT');return value;}catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();} }
   private async lockRequest(client:Client,accountId:string,operation:string,id:string){ await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',[`request:${accountId}:${operation}:${id}`]); }
   private async receipt(client:Client, accountId:string, operation:string, requestIdValue:string, body:unknown){ await client.query('DELETE FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at<=now()',[accountId,operation,requestIdValue]); const hash=fingerprint(body); const found=await client.query<{request_hash:string;result_ref:any;room_id:string|null}>('SELECT request_hash,result_ref,room_id FROM command_receipts WHERE account_id=$1 AND operation=$2 AND request_id=$3 AND expires_at>now()', [accountId,operation,requestIdValue]); if(!found.rowCount)return null; if (found.rows[0]!.request_hash !== hash) {
