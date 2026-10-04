@@ -12,7 +12,7 @@ const webRequire = createRequire(new URL('../../apps/web/package.json', import.m
 const { buildSync } = createRequire(webRequire.resolve('vite'))('esbuild');
 
 test('sandbox desktop completes a QuickJS game and restores the authoritative board', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.1.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.2.zip'));
   const game = (await PackageRuntime.create()).extension(parsed.server);
   const rng = new DeterministicRng(7);
   let state = game.setup({ seats: ['a', 'b'], options: {}, rng }).state;
@@ -32,7 +32,11 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
     state = game.applyAction(state, { kind: 'seat', seatId, controllerEpoch: 0 }, action, rng).state;
     await publish();
   });
-  const stylesheet = await readFile(new URL('../../apps/web/src/styles/usability.css', import.meta.url), 'utf8');
+  const entry = await readFile(new URL('../../apps/web/src/main.tsx', import.meta.url), 'utf8');
+  const styles = [...entry.matchAll(/import '\.\/(styles\/[^']+\.css)'/g)];
+  const stylesheet = (await Promise.all(styles.map(match =>
+    readFile(new URL('../../apps/web/src/' + match[1], import.meta.url), 'utf8'),
+  ))).join('\n');
   const fixture = buildSync({
     stdin: { contents: `
       import React from 'react';
@@ -40,7 +44,7 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
       import { PackageBoard } from './src/games/PackageBoard.tsx';
       const root = createRoot(document.getElementById('root'));
       const render = (view, busy = false) => root.render(<PackageBoard
-        id="online.gomoku" version="1.0.1" view={view} busy={busy} events={[]}
+        id="online.gomoku" version="1.0.2" view={view} busy={busy} events={[]}
         onAction={action => window.acceptAction(action)} />);
       addEventListener('message', event => {
         if (event.data?.type === 'fixture:view') render(event.data.view, event.data.busy);
@@ -58,9 +62,10 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
       });
     } else {
       await route.fulfill({ contentType: 'text/html', body: `<!doctype html>
-        <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
         <style>${stylesheet}</style>
-        <body style="margin:0;background:#23262c"><div id="root"></div>
+        <body style="margin:0;background:#23262c;color:white">
+        <div class="match-page"><header style="height:160px;padding:16px"><h1>五子棋对局</h1><p>实时同步 · 你的座位 1</p></header><div id="root"></div></div>
         <script id="initial-view" type="application/json">${JSON.stringify(view())}</script>
         <script>${fixture}</script></body></html>` });
     }
@@ -68,16 +73,23 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
   await page.goto('http://gomoku.test/');
   const frame = page.frameLocator('iframe');
   await expect(frame.getByRole('status')).toHaveText('轮到你落子');
+  // A full-page screenshot hid this regression: the board must fit the visible viewport.
+  const visibleBottom = page.viewportSize()!.height;
+  const initialBoard = (await frame.locator('#board').boundingBox())!;
+  const initialConfirm = (await frame.getByRole('button', { name: '确认落子' }).boundingBox())!;
+  expect(initialBoard.y + initialBoard.height).toBeLessThanOrEqual(visibleBottom);
+  expect(initialConfirm.y + initialConfirm.height).toBeLessThanOrEqual(visibleBottom);
   const childFrame = page.frames().find(item => item.url().endsWith('/desktop'))!;
   const fits = () => childFrame.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1);
   await expect.poll(fits).toBe(true);
   const boardWidth = (await frame.locator('#board').boundingBox())!.width;
-  expect(boardWidth).toBeGreaterThan(info.project.name === 'mobile' ? 270 : 900);
+  expect(boardWidth).toBeGreaterThan(info.project.name === 'mobile' ? 270 : 350);
   const originalHeight = (await page.locator('iframe').boundingBox())!.height;
-  await frame.getByText('玩法说明', { exact: true }).click();
-  await expect.poll(async () => (await page.locator('iframe').boundingBox())!.height).toBeGreaterThan(originalHeight);
+  await frame.getByRole('button', { name: '玩法说明', exact: true }).click();
+  await expect(frame.getByRole('dialog', { name: '玩法说明' })).toBeVisible();
+  expect((await page.locator('iframe').boundingBox())!.height).toBe(originalHeight);
   await expect.poll(fits).toBe(true);
-  await frame.getByText('玩法说明', { exact: true }).click();
+  await frame.getByRole('button', { name: '关闭说明' }).click();
   await expect.poll(async () => (await page.locator('iframe').boundingBox())!.height).toBe(originalHeight);
   // Untrusted parent messages and invalid child dimensions must not resize the container.
   await page.evaluate(() => window.postMessage({ type: 'boardgame:resize', height: 4096 }, '*'));
@@ -130,7 +142,7 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
   expect(received).toHaveLength(9);
   await expect(frame.locator('.stone.win')).toHaveCount(5);
   await expect(frame.getByRole('button', { name: '确认落子' })).toBeDisabled();
-  await page.screenshot({ path: info.outputPath('gomoku-finished.png'), fullPage: true });
+  await page.screenshot({ path: info.outputPath('gomoku-finished.png') });
   expect(await page.frames().find(item => item.url().endsWith('/desktop'))!.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   state = game.setup({ seats: ['a', 'b'], options: {}, rng }).state;
@@ -139,10 +151,26 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(frame.getByText('已选择 I8')).toBeVisible();
-  await page.screenshot({ path: info.outputPath('gomoku-selection.png'), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 740 });
+  await page.screenshot({ path: info.outputPath('gomoku-selection.png') });
+  await page.setViewportSize({ width: 390, height: 600 });
   const resizedChild = page.frames().find(item => item.url().endsWith('/desktop'))!;
   await expect.poll(() => resizedChild.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
   expect(await resizedChild.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const resizedBoard = (await frame.locator('#board').boundingBox())!;
+  const resizedConfirm = (await frame.getByRole('button', { name: '确认落子' }).boundingBox())!;
+  expect(resizedBoard.y + resizedBoard.height).toBeLessThanOrEqual(600);
+  expect(resizedConfirm.y + resizedConfirm.height).toBeLessThanOrEqual(600);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Old hosts ignore the optional fit hint: a fixed 560px frame must still show every row.
+  await page.route('http://gomoku.test/legacy', route => route.fulfill({
+    contentType: 'text/html', body: '<body style="margin:0"><iframe sandbox="allow-scripts" src="/desktop" style="width:100%;height:560px;border:0"></iframe></body>',
+  }));
+  await page.goto('http://gomoku.test/legacy');
+  const legacy = page.frameLocator('iframe');
+  await expect(legacy.locator('#board .point')).toHaveCount(225);
+  const legacyChild = page.frames().find(item => item.url().endsWith('/desktop'))!;
+  expect(await legacyChild.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+  const legacyConfirm = (await legacy.getByRole('button', { name: '确认落子' }).boundingBox())!;
+  expect(legacyConfirm.y + legacyConfirm.height).toBeLessThanOrEqual(560);
   expect(errors).toEqual([]);
 });

@@ -5,7 +5,30 @@ export function PackageBoard({ id, version, view, busy, events, onAction }: {
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState<number>();
-  useEffect(() => setHeight(undefined), [id, version]);
+  const [fitViewport, setFitViewport] = useState(false);
+  const fitting = useRef(false);
+  useEffect(() => {
+    fitting.current = false;
+    setFitViewport(false);
+    setHeight(undefined);
+  }, [id, version]);
+  useEffect(() => {
+    if (!fitViewport) return;
+    const resize = () => {
+      const element = frame.current;
+      if (!element) return;
+      const top = Math.max(0, element.getBoundingClientRect().top + window.scrollY);
+      setHeight(Math.max(180, Math.min(4096, Math.floor(window.innerHeight - top - 16))));
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(document.body);
+    window.addEventListener('resize', resize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resize);
+    };
+  }, [fitViewport, id, version]);
   const latest = useRef({ view, busy, events, onAction });
   latest.current = { view, busy, events, onAction };
   const publish = () => {
@@ -20,7 +43,12 @@ export function PackageBoard({ id, version, view, busy, events, onAction }: {
       if ('type' in data && data.type === 'boardgame:resize' && 'height' in data &&
         typeof data.height === 'number' && Number.isFinite(data.height) &&
         data.height >= 320 && data.height <= 4096) {
-        setHeight(Math.ceil(data.height));
+        if ('fit' in data && data.fit === 'viewport') {
+          fitting.current = true;
+          setFitViewport(true);
+        } else if (!fitting.current) {
+          setHeight(Math.ceil(data.height));
+        }
       }
       if ('type' in data && data.type === 'boardgame:action' && 'action' in data && !latest.current.busy) {
         try {

@@ -9,13 +9,13 @@
 *{box-sizing:border-box}body{margin:0;background:#23262c;color:var(--white);font:15px/1.5 system-ui,sans-serif}
 main {
   width: 100%;
-  max-width: 1000px;
+  max-width: min(1000px, calc(100dvh - 120px));
   margin: auto;
-  padding: 20px 12px;
+  padding: 10px 12px;
 }
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-h1{font:600 27px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size:17px;margin:12px 0 4px}#identity,#last{color:#b6bcc6;font-size:13px}
-#board{position:relative;display:grid;grid-template-columns:repeat(15,1fr);aspect-ratio:1;background:var(--wood);border:16px solid var(--wood);margin:18px 0 12px;border-radius:4px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font:600 23px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size:15px;margin:0}#identity,#last{color:#b6bcc6;font-size:12px}
+#board{position:relative;display:grid;grid-template-columns:repeat(15,1fr);aspect-ratio:1;background:var(--wood);border:16px solid var(--wood);margin:8px 0;border-radius:4px}
 .point{position:relative;border:0;padding:0;min-width:0;background:transparent;aspect-ratio:1;cursor:pointer;color:var(--line)}
 .point:before{content:"";position:absolute;inset:0;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat,linear-gradient(var(--line),var(--line)) center/1px 100% no-repeat}
 .point[data-x="0"]:before{left:50%;background-position:left center,left center}.point[data-x="14"]:before{right:50%;background-position:right center,right center}
@@ -29,40 +29,35 @@ h1{font:600 27px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
 #confirm{border:0;border-radius:7px;background:var(--blue);color:white;font:600 15px system-ui;padding:12px 20px;cursor:pointer;white-space:nowrap}
 #confirm:disabled{background:#414752;color:#b6bcc6;cursor:default}#confirm:focus-visible{outline:2px solid white;outline-offset:3px}
-#selection{font-size:14px}details{border-top:1px solid #444a53;margin-top:18px;padding-top:12px;color:#b6bcc6;font-size:13px}summary{cursor:pointer}details p{max-width:58ch}
-@media(max-width:400px){main{padding:12px 8px}h1{font-size:23px}#status{font-size:15px}#board{border-width:12px;margin-top:14px}.stone.win{outline-width:2px}#confirm{padding:12px 14px}}
+#selection{font-size:14px}
+.rules-toggle { border:0; background:transparent; color:#b6bcc6; cursor:pointer; padding:4px 0; font:13px system-ui; }
+dialog { width:min(90vw,540px); max-height:85dvh; border:1px solid #444a53; border-radius:8px; background:#23262c; color:var(--white); padding:20px; }
+dialog::backdrop { background:#0009; }
+dialog h2 { margin-top:0; }
+dialog p { font-size:14px; }
+dialog button { min-height:44px; padding:8px 20px; }
+@media(max-width:400px){main{padding:8px}#board{border-width:12px}.stone.win{outline-width:2px}#confirm{padding:12px 14px}}
 </style>
 </head>
 <body>
 <main>
-<header><h1>五子棋</h1><span id="identity">等待局面</span></header>
-<p id="status" role="status" aria-live="polite">正在载入棋盘…</p>
+<header><h1>五子棋</h1><p id="status" role="status" aria-live="polite">正在载入棋盘…</p><span id="identity">等待局面</span></header>
 <div id="last">黑先白后 · 连成五子获胜</div>
 <div id="board" role="group" aria-label="五子棋棋盘"></div>
-<div class="toolbar"><span id="selection" aria-live="polite">选择一个空交叉点</span><button id="confirm" disabled>确认落子</button></div>
-<details><summary>玩法说明</summary><p>双方轮流落子，横、竖、斜线连续五子或更多获胜。15×15 棋盘，无禁手，满盘无人获胜为和棋。点击空点选择，再确认落子；蓝点标记最后一手。</p><p>棋盘从左到右为 A–O，从上到下为 1–15。键盘用方向键移动、空格或回车选点，然后确认落子。</p></details>
+<div class="toolbar"><div><div id="selection" aria-live="polite">选择一个空交叉点</div><button class="rules-toggle" type="button" aria-haspopup="dialog">玩法说明</button></div><button id="confirm" disabled>确认落子</button></div>
 </main>
+<dialog aria-labelledby="rules-title">
+<h2 id="rules-title">玩法说明</h2>
+<p>双方轮流落子，横、竖、斜线连续五子或更多获胜。15×15 棋盘，无禁手，满盘无人获胜为和棋。点击空点选择，再确认落子；蓝点标记最后一手。</p>
+<p>棋盘从左到右为 A–O，从上到下为 1–15。键盘用方向键移动、空格或回车选点，然后确认落子。</p>
+<button type="button">关闭说明</button>
+</dialog>
 <script>
 let view = null, busy = false, pending = false, selected = null, focusIndex = 112;
 const board = document.getElementById('board'), confirm = document.getElementById('confirm');
-// Measure content rather than the iframe viewport so it can shrink as well as grow.
-const content = document.querySelector('main');
-let resizeFrame = 0, lastHeight = 0;
-const reportHeight = () => {
-  cancelAnimationFrame(resizeFrame);
-  resizeFrame = requestAnimationFrame(() => {
-    const height = Math.max(320, Math.ceil(content.getBoundingClientRect().height));
-    if (height === lastHeight) return;
-    lastHeight = height;
-    parent.postMessage({ type: 'boardgame:resize', height }, '*');
-  });
-};
-const contentObserver = new ResizeObserver(reportHeight);
-contentObserver.observe(content);
-window.addEventListener('pagehide', () => {
-  contentObserver.disconnect();
-  cancelAnimationFrame(resizeFrame);
-});
+const rules = document.querySelector('dialog');
+document.querySelector('.rules-toggle').addEventListener('click', () => rules.showModal());
+rules.querySelector('button').addEventListener('click', () => rules.close());
 const coord = (x, y) => String.fromCharCode(65 + x) + (y + 1);
 const canPlay = () => view && !view.finished && view.you !== null && view.you === view.currentSeat && !busy && !pending;
 const points = [];
@@ -147,7 +142,8 @@ window.addEventListener('message', event => {
   render();
 });
 parent.postMessage({ type: 'boardgame:ready' }, '*');
-reportHeight();
+// The board also fits a legacy fixed-height iframe when the host ignores this hint.
+parent.postMessage({ type: 'boardgame:resize', height: 560, fit: 'viewport' }, '*');
 </script>
 </body>
 </html>

@@ -7,6 +7,7 @@ export default defineConfig({
   use: { trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { viewport: { width: 1100, height: 950 } } },
+    { name: 'short-desktop', use: { viewport: { width: 1440, height: 720 } } },
     { name: 'mobile', use: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } },
   ],
 });

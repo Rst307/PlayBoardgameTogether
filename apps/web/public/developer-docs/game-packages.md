@@ -53,11 +53,15 @@ parent.postMessage({type:'boardgame:ready'}, '*');
 parent.postMessage({type:'boardgame:action', action:{type:'your-action'}}, '*');
 // 可选：内容尺寸变化后报告实际高度，消除 iframe 内部滚动。
 parent.postMessage({type:'boardgame:resize', height:900}, '*');
+// 或：让宿主按屏幕剩余空间设置高度；桌面 CSS 必须自行适配该高度。
+parent.postMessage({type:'boardgame:resize', height:560, fit:'viewport'}, '*');
 ```
 
 父页面只接受当前 iframe 的消息，动作最大 8 KiB，并继续交给原 match 命令链路做身份、控制权、revision、去重和规则校验。'*' 仅用于向不透明来源 iframe/父页面传递本人 View，不广播到其他窗口。桌面无跨局权限；卸载清理监听器。历史版本桌面始终可读取以恢复下架版本旧局，其 HTML 是公开程序，不能包含秘密或凭据。
 
 可选 `boardgame:resize` 只接受有限数字 height，范围 320–4096 CSS px，向上取整后设置桌面高度；非法值或其他来源忽略。旧包不发消息时保留 560px 最小高度与原滚动行为。建议用 ResizeObserver 测量内容根节点（而非 iframe 视口或至少等于视口的 scrollHeight），仅在高度变化时发送，避免反馈循环；卸载时清理观察器和动画帧。消息只控制展示尺寸，不授予动作权限。
+
+2026-10-04 新增可选 `fit:'viewport'`：通过同一来源/height 检查后，由宿主根据 iframe 页面位置、窗口高度及 16px 底部留白计算高度（180–4096px），之后忽略该桌面的内容高度请求。宿主观察页面尺寸与窗口 resize，卸载时清理；切换版本重置模式。桌面须使用自己的 iframe 视口高度限制棋盘，并预留状态与操作区，不能把 `overflow:hidden` 当作完整展示。旧宿主忽略 fit 时仍按 height 提示设为 560px；旧包未声明 fit 保持内容高度模式。该可选字段不改变 HTTP/WS、正式动作或权限。
 
 ## 安装 API 与版本
 

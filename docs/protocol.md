@@ -1,5 +1,9 @@
 # 协议
 
+## 在线桌面适配可见区域（2026-10-04）
+
+`boardgame:resize` 新增可选 `fit:'viewport'`，仍验证当前 contentWindow 和合法 height（320–4096 有限数字）。声明后宿主按 iframe 文档位置计算视口剩余高度，预留底部 16px，限定 180–4096px；后续内容高度消息不再改变该模式。window resize 与页面尺寸变化重新计算，切换包版本恢复默认。桌面自身按 iframe 高度约束棋盘与操作区，旧平台忽略 fit 时可继续使用 height 提示。只影响布局，无 HTTP/WS schema 或权限变更。
+
 ## 在线桌面高度消息（2026-10-04）
 
 客户端 iframe 桥新增可选 `{type:'boardgame:resize',height:number}`，只接受当前 iframe contentWindow，height 必须为 320–4096 的有限数字，向上取整设置窗口高度。未声明的旧包继续使用 560px 最小高度；切换游戏/版本恢复默认尺寸。该消息只控制布局，不改变 HTTP/WS DTO、正式动作、身份或权限。内容端应观察内容根节点、去重尺寸并在卸载时清理；完整示例见 [在线包](../apps/web/public/developer-docs/game-packages.md)。

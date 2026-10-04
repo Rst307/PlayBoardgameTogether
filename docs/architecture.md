@@ -1,5 +1,9 @@
 # 架构
 
+## 五子棋可见区域修复（2026-10-04）
+
+本轮修正下方 1.0.1 内容增高方案：五子棋 1.0.2 使用 iframe 视口高度约束内容宽度，同时预留状态栏和落子确认；不再从内容测量并报告高度，避免自动增高把棋盘推到屏幕外。规则通过原生 dialog 按需展示。PackageBoard 接受通用可选 fit:viewport 后，测量 iframe 文档位置并使用窗口剩余高度，监听 body ResizeObserver 和窗口 resize，卸载清理，切换包重置。没有按 gameId 分支；原内容高度模式和旧包继续兼容。旧宿主固定 560px 也完整显示新版棋盘。规则、HTTP/WS、数据库与旧局锁定版本不变。
+
 ## 在线桌面自适应高度（2026-10-04）
 
 Web PackageBoard 在原 sandbox 消息监听中接收当前 iframe 的有界 boardgame:resize，使用组件状态设置高度，切换 id/version 清理尺寸并重建 iframe；旧包不发消息时保留原 560px 最小高度。五子棋 1.0.1 在内容 main 上使用 ResizeObserver，仅尺寸变化时发送，pagehide 断开观察器并取消动画帧；宽度上限 1000px，手机仍按可用宽度。平台没有按游戏 ID 分支；不改变规则、服务端包生命周期、HTTP/WS、数据库或旧局精确版本。

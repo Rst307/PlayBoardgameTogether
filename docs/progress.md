@@ -1,5 +1,17 @@
 # 开发进度
 
+## 五子棋无需滚动完整展示（2026-10-04）
+
+用户再次截图显示半盘与内部滚动；上轮只扩内容、测试使用 fullPage 截图，未验证核心棋盘在视口内，不能视作达到无需滚动要求。本轮先加入棋盘/确认按钮视口断言，运行 pnpm exec playwright test --config playwright.gomoku-ui.config.ts --project desktop --output .data/gomoku-viewport-repro，旧版失败：950px 屏幕的棋盘底部为 1107.45px。
+
+编码前重新做 UX 自检：核心为看清完整棋盘并选点确认，紧凑状态→棋盘→确认，规则移到按需弹窗，平台辅助工具保持次要。1.0.2 棋盘宽度受 iframe 视口高度限制，为状态与确认留空间，不隐藏溢出或删除格子。通用 PackageBoard 接收可选 fit:viewport，按页面位置使用视口剩余高度，页面尺寸与 window resize 时重算并清理监听；原内容模式不变，无游戏 ID 分支。旧平台不支持 fit 也能在原固定 560px 容器中完整显示新版棋盘。只提升包 manifest 版本，规则、内容/资源版本、HTTP/WS、数据库与旧局精确版本保持。
+
+本轮实际验证：node scripts/package-gomoku.mjs 生成 dist/game-packages/gomoku-1.0.2.zip（7203 字节）；pnpm exec playwright test --config playwright.gomoku-ui.config.ts --output .data/gomoku-viewport-final（桌面/720px 矮屏/320px 手机 3/3，无 skip）通过。测试使用真实 React 容器、完整平台 CSS 加载顺序、真实 QuickJS 与身份化 View，并模拟 160px 顶部占用；验证棋盘和确认按钮底部不超过视口、无内部滚动、页面未滚动、规则弹窗、390×600 变窄/变矮及固定 560px 旧宿主，保留完整胜利、busy、键盘、刷新、隔离/非法消息断言。只截取 viewport，已检查桌面/手机截图。首轮弹窗文案重复使旧文本定位失败，修正为角色定位；尺寸断言保留。pnpm typecheck、pnpm lint（20 个边界目录）、pnpm test tests/unit/gomoku-package.test.ts（10/10，无 skip）、pnpm build（生产 bundle/API runtime/隔离规则/AI worker）全部通过。
+
+文档补齐后 pnpm --filter @boardgame/web build 通过，重新生成公开桥接指南；git diff --check 通过。
+
+边界：没有执行数据库集成、完整 MatchPage/房间 E2E、管理员 HTTP 安装或线上部署；不会覆盖已安装的不可变 1.0.0/1.0.1 桌面。下一步管理员上传审核 1.0.2 并开始新局，更新平台 Web 后利用可用屏幕高度。源码/测试/文档提交，ZIP 和截图保持忽略；历史 1.0.1 记录保留但由本段明确修正。
+
 ## 五子棋棋盘尺寸与窗口修复（2026-10-04）
 
 截图与代码确认桌面内容宽度只有 680px，而真实 PackageBoard 仅有 560px 最小高度，棋盘/确认区超过窗口产生内部滚动。编码前完成 UX 自检：核心任务保持选点/确认，状态→棋盘→确认为主层级，规则折叠、托管/声音继续辅助显示。1.0.1 内容宽度上限提高到 1000px，15×15 格数与落子规则不变。main ResizeObserver 去重报告内容高度；通用 PackageBoard 验证来源与 320–4096 有限高度，旧包保持默认布局，切换版本重置尺寸。没有修改服务端动作、数据库或旧局版本。
