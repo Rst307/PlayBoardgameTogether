@@ -48,19 +48,20 @@ export function GamePackageUpload({ onInstalled }: { onInstalled: () => void }) 
       if (alive.current) setBusy(false);
     }
   }
-  return <section className="panel admin-guidance">
-    <h2>发布桌游</h2>
-    <p>上传后自动识别新游戏或版本更新，经管理员审核确认后发布。更新会替换大厅旧版本。</p>
+  return <section className="admin-package-upload" aria-label="上传游戏">
     <div className="admin-actions">
       <button onClick={() => { setError(''); setOpen(true); }}>上传游戏 ZIP</button>
-      <a href="/api/v1/game-packages/example.zip" download>下载可玩示例 ZIP</a>
-      <a href="/developers/game-packages">查看打包说明</a>
     </div>
     {notice && <p role="status">{notice}</p>}
     <dialog ref={dialog} className="package-upload-dialog" onCancel={event => {
       if (busy) event.preventDefault(); else setOpen(false);
     }} aria-labelledby="package-upload-title">
       <h2 id="package-upload-title">上传并审核游戏 ZIP</h2>
+      <p>上传后识别新游戏或版本更新，经审核确认后发布。</p>
+      <div className="admin-actions">
+        <a href="/api/v1/game-packages/example.zip" download>下载可玩示例 ZIP</a>
+        <a href="/developers/game-packages">查看打包说明</a>
+      </div>
       <p>包含 game.json、server.js、client.html，最多 5 MiB；解压后最多 2 MiB。普通源码仓库 ZIP 需要先按说明打包。</p>
       <label>游戏 ZIP 文件<input type="file" accept=".zip,application/zip" disabled={busy}
         onChange={event => { setFile(event.target.files?.[0]); request.current = undefined; setReview(undefined); setError(''); }} /></label>

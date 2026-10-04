@@ -27,6 +27,7 @@ test('administrator installs ZIP and players complete a real iframe game', async
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: '已安装并上架' })).toBeVisible();
   await page.reload();
+  await page.getByRole('button', { name: '夺分赛 online.score-race', exact: false }).click();
   await expect(page.getByRole('article', { name: '夺分赛 1.0.0', exact: true })).toContainText('已上架');
   await page.goto('/');
   await page.locator('a.game-card[href="/games/online.score-race/1.0.0"]').click();

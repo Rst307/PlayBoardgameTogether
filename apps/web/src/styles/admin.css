@@ -192,6 +192,55 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+.admin-game-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.admin-game-list li + li {
+  border-top: 1px solid var(--line);
+}
+.admin-workspace .admin-game-list button.admin-game-choice.secondary {
+  /* The shared theme forces button styles with !important; list rows need a scoped override. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between !important;
+  gap: 16px;
+  width: 100%;
+  padding: 18px 12px !important;
+  text-align: left !important;
+  color: var(--text);
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  box-shadow: none;
+}
+.admin-workspace .admin-game-list button.admin-game-choice.secondary:hover {
+  background: var(--panel-raised) !important;
+  color: var(--text) !important;
+}
+.admin-game-choice > span:first-child {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-game-choice > span:last-child {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.admin-game-choice strong { font-size: 18px; }
+.admin-game-choice small { color: var(--muted); }
+.admin-game-heading {
+  display: block;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.admin-game-heading h2 { margin: 0; }
+.admin-game-heading p { margin-bottom: 0; overflow-wrap: anywhere; }
+.admin-game-toolbar { margin-top: -8px; }
 .admin-update-progress {
   list-style: none;
   padding: 0;

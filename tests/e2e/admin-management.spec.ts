@@ -55,6 +55,8 @@ test('administrator downlists and relists a game without breaking catalog readin
   await expect(page.locator('a.game-card[href="/games/color-match/1.0.0"]')).toBeVisible();
   const initialGames = await page.locator('a.game-card').count();
   await page.goto('/admin/catalog');
+  await expect(page.getByRole('article')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Color Match color-match', exact: false }).click();
   const record = page.getByRole('article', {
     name: 'Color Match 1.0.0',
     exact: true,
@@ -71,6 +73,7 @@ test('administrator downlists and relists a game without breaking catalog readin
     page.locator('a.game-card[href="/games/color-match/1.0.0"]'),
   ).toHaveCount(0);
   await page.goto('/admin/catalog');
+  await page.getByRole('button', { name: 'Color Match color-match', exact: false }).click();
   await record.getByRole('button', { name: '上架版本' }).click();
   await expect(record).toContainText('已上架');
   await page.screenshot({

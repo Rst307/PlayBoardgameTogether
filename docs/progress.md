@@ -1,5 +1,18 @@
 # 开发进度
 
+## 游戏管理先选游戏再看版本（2026-10-04）
+
+`/admin/catalog` 从全部版本平铺改为两步：先按游戏 ID 合并成名称/ID 可筛选的游戏列表，选择后只展示该游戏的精确安装版本及上下架操作。返回保留筛选并恢复列表按钮焦点，手动刷新保留所选游戏；规则/资源缺失版本仍可见且不能上架。版本说明默认折叠，上传示例和打包指南进入既有 ZIP 审核弹窗，展示/资源管理保留后台导航入口，移除重复快捷按钮及版本行里的游戏 ID。编码前完成页面目标、信息层级和用户流程设计，最终查看桌面与手机截图；针对全局强制按钮样式使用局部覆盖，使游戏选择呈现为低权重列表行。API、权限、revision、去重、上传审核和数据库行为不变。
+
+本轮实际验证：
+
+- `pnpm typecheck` 通过；最终 UI 调整后 `pnpm --filter @boardgame/web typecheck` 通过。`pnpm lint` 通过，包含 20 个源目录依赖边界；沙箱内 tsx 的 Windows 用户信息读取报 ENOMEM，沙箱外原检查通过。
+- `pnpm test tests/unit/admin-protocol.test.ts tests/unit/game-packages.test.ts`：6/6 通过，无 skip。
+- `pnpm build` 通过，包含生产 bundle/API runtime 检查；最终 Web 修改后 `pnpm --filter @boardgame/web build` 及 `node scripts/check-production-bundle.mjs` 通过。
+- `pnpm exec playwright test --config playwright.packages-ui.config.ts --output .data/admin-games-final`：桌面/手机 4/4 通过，无 skip；验证游戏合并、选择前隐藏版本、只显示当前游戏版本、上下架请求参数、刷新/返回保留选择与筛选、焦点、无搜索结果、不可用版本、列表布局、上传审核与冲突后重审。该预览使用模拟 API，不代替真实数据库验收。原 5374 端口被占用，包管理 UI 检查改用独立 5381 端口。截图保持在忽略的 `.data`。
+- `pnpm test:e2e tests/e2e/admin-management.spec.ts tests/e2e/game-packages.spec.ts` 经独立测试库保护确认使用 `boardgame_test`，在迁移准备阶段因 `Applied migration changed: 015_game_presentations.sql` 阻塞，真实上下架/ZIP 安装 E2E 未执行；未修改迁移历史或重置数据库。后续需先核对测试库迁移校验和差异，再运行这两个 E2E 文件。
+- 本轮文件 `git diff --check` 通过。工作区已有并持续变化的聊天/导航改动保留，不纳入本轮提交；未运行数据库集成或公网部署。
+
 ## 花砖物语与璀璨宝石玩家名称（2026-10-04）
 
 两款正式桌面的玩家区、等待/先手提示、璀璨宝石公开行动记录和结算显示玩家昵称，本人附加「（你）」，AI 使用开局名称；32 字长昵称可换行，桌面/320px 手机无横向溢出。沿用页面布局与主要操作，不增加区域或按钮。MatchView.players 只投影固定参与者的 seatId、seatIndex、displayName、occupantKind；真人使用当前昵称，AI 使用参与者保存的名称，后续房间换人/换 AI 不污染旧局。新增迁移 027，在原开局事务保存名称；历史 AI 仅在仍绑定原局的房间安全补齐，无法恢复时显示 AI 编号。

@@ -9,12 +9,18 @@ function Games() {
   const requestId = useAdminRequestId();
   const [games, setGames] = useState<AdminGame[]>();
   const [filter, setFilter] = useState('');
+  const [selectedId, setSelectedId] = useState<string>();
+  const selectionHeading = useRef<HTMLHeadingElement>(null);
+  const gameButtons = useRef(new Map<string, HTMLButtonElement>());
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const alive = useRef(false);
   const lock = useRef(false);
+  useEffect(() => {
+    if (selectedId) selectionHeading.current?.focus();
+  }, [selectedId]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -78,35 +84,51 @@ function Games() {
       if (alive.current) setBusy(false);
     }
   }
-  const visible = games?.filter((game) =>
-    `${game.name} ${game.id} ${game.version}`
+  const grouped = new Map<string, [AdminGame, ...AdminGame[]]>();
+  for (const game of games ?? []) {
+    const versions = grouped.get(game.id);
+    if (versions) versions.push(game);
+    else grouped.set(game.id, [game]);
+  }
+  const selected = selectedId ? grouped.get(selectedId) : undefined;
+  const visible = [...grouped.values()].filter(([game]) =>
+    `${game.name} ${game.id}`
       .toLowerCase()
       .includes(filter.trim().toLowerCase()),
   );
   return (
     <>
       <GamePackageUpload onInstalled={() => setAttempt(value => value + 1)} />
-      <section className="panel admin-guidance">
-        <h2>按版本管理上架状态</h2>
-        <p>
-          下架隐藏大厅入口并阻止新建、开局；进行中的对局保留原规则与资源。重新上架后等待房间可继续开局。
-        </p>
-        <details>
-          <summary>如何加入新游戏或发布更新</summary>
+      <div className="admin-actions admin-game-toolbar">
+        {selectedId && (
+          <button className="secondary" disabled={busy} onClick={() => {
+            const previousId = selectedId;
+            setSelectedId(undefined);
+            setError('');
+            setNotice('');
+            requestAnimationFrame(() => gameButtons.current.get(previousId)?.focus());
+          }}>← 返回游戏列表</button>
+        )}
+        <button className="secondary" disabled={busy} onClick={() => setAttempt(value => value + 1)}>
+          刷新游戏
+        </button>
+      </div>
+      {!selectedId && <label className="admin-filter">
+        筛选游戏
+        <input value={filter} onChange={event => setFilter(event.target.value)} placeholder="名称或游戏 ID" />
+      </label>}
+      {selected && <header className="admin-game-heading">
+        <h2 ref={selectionHeading} tabIndex={-1}>{selected[0].name}</h2>
+        <p className="muted">{selectedId} · {selected.length} 个安装版本</p>
+      </header>}
+      {selectedId && <details className="admin-guidance">
+          <summary>版本管理说明</summary>
+          <p>下架隐藏大厅入口并阻止新建、开局；进行中的对局保留原规则与资源。重新上架后等待房间可继续开局。</p>
           <p>
             在线格式游戏包可从上方直接上传安装。普通源码项目由维护者审查、部署并同步；新版本使用新版本号，旧版本需继续保留以恢复已有对局。
           </p>
           <a href="/developers/add-game">查看游戏接入指南</a>
-        </details>
-      </section>
-      <label className="admin-filter">
-        筛选游戏
-        <input
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="名称、游戏 ID 或版本"
-        />
-      </label>
+      </details>}
       {error && (
         <p className="error-notice" role="alert">
           {error}
@@ -114,20 +136,29 @@ function Games() {
       )}
       {notice && <p role="status">{notice}</p>}
       {!games ? (
-        error ? (
-          <button
-            className="secondary"
-            onClick={() => setAttempt((value) => value + 1)}
-          >
-            刷新游戏
-          </button>
-        ) : (
-          <PageFeedback title="正在加载安装版本…" loading />
-        )
+        !error && <PageFeedback title="正在加载游戏…" loading />
       ) : (
         <>
-          <div className="admin-records">
-            {visible?.map((game) => (
+          {!selectedId ? (
+            <ul className="admin-game-list" aria-label="选择游戏">
+              {visible.map(versions => (
+                <li key={versions[0].id}>
+                  <button className="secondary admin-game-choice" ref={element => {
+                    if (element) gameButtons.current.set(versions[0].id, element);
+                    else gameButtons.current.delete(versions[0].id);
+                  }} onClick={() => {
+                    setSelectedId(versions[0].id);
+                    setError('');
+                    setNotice('');
+                  }}>
+                    <span><strong>{versions[0].name}</strong><small>{versions[0].id}</small></span>
+                    <span className="muted">{versions.length} 个版本 <span aria-hidden="true">→</span></span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : <div className="admin-records" aria-label="游戏版本">
+            {selected?.map((game) => (
               <article
                 className="panel admin-record"
                 key={`${game.id}@${game.version}`}
@@ -135,12 +166,9 @@ function Games() {
               >
                 <div>
                   <h2>
-                    {game.name} <small>{game.version}</small>
+                    版本 <small>{game.version}</small>
                   </h2>
-                  <p className="muted">
-                    {game.id}
-                    {game.developmentOnly ? ' · 仅开发环境' : ''}
-                  </p>
+                  {game.developmentOnly && <p className="muted">仅开发环境</p>}
                   <p>
                     {game.available
                       ? '规则与资源已加载'
@@ -161,27 +189,13 @@ function Games() {
                 </div>
               </article>
             ))}
-          </div>
-          {visible?.length === 0 && (
-            <p className="panel">
-              没有匹配的安装版本。新游戏部署并同步后将在这里显示。
+          </div>}
+          {(!selectedId && visible.length === 0) && (
+            <p>
+              {games.length === 0 ? '暂无安装游戏，可上传游戏 ZIP 或部署并同步游戏。' : '没有匹配的游戏，请尝试其他名称或游戏 ID。'}
             </p>
           )}
-          <div className="admin-actions">
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => setAttempt((value) => value + 1)}
-            >
-              刷新游戏
-            </button>
-            <a className="button secondary" href="/admin/games">
-              编辑展示图片
-            </a>
-            <a className="button secondary" href="/admin/assets">
-              管理游戏资源
-            </a>
-          </div>
+          {selectedId && !selected && <p>此游戏已不在安装列表中，请返回选择其他游戏。</p>}
         </>
       )}
     </>
@@ -192,7 +206,7 @@ export function AdminGamesPage() {
     <AdminLayout
       path="/admin/catalog"
       title="游戏管理"
-      description="查看已安装游戏，按精确版本上架与下架。"
+      description="先选择游戏，再查看和管理它的版本。"
     >
       <Games />
     </AdminLayout>
