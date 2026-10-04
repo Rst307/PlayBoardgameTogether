@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
+import { installUpdateDrain } from '../../apps/api/src/update-drain.js';
 import WebSocket from 'ws';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createApp } from '../../apps/api/src/app.js';
@@ -18,6 +20,8 @@ type Session = { cookie: string; csrf: string };
 describe.skipIf(!url)('Color Match formal action flow', () => {
   let db: Database;
   let app: Awaited<ReturnType<typeof createApp>>;
+  const send = vi.fn();
+  const updateIpc = Object.assign(new EventEmitter(), { send });
   beforeAll(async () => {
     db = createDatabase(url!);
     app = await createApp({ config: {
@@ -25,6 +29,7 @@ describe.skipIf(!url)('Color Match formal action flow', () => {
       DATABASE_URL: url!, WEB_ORIGIN: origin, ENABLE_DEV_LAB: false,
       LOG_LEVEL: 'error', PRESENCE_GRACE_MS: 100,
     }, db, registry: createRegistry(false) });
+    installUpdateDrain(app, updateIpc);
   });
   afterAll(async () => { await app.close(); });
   beforeEach(async () => {
@@ -71,6 +76,39 @@ describe.skipIf(!url)('Color Match formal action flow', () => {
     expect(launched.statusCode).toBe(200);
     return { alice, bob, carol, sessions, roomId, matchId: launched.json().data.matchId as string };
   }
+  it('updates with an active match and restores sessions, private views, RNG and command receipts', async () => {
+    const { alice, bob, matchId } = await start();
+    const endpoint = `/api/v1/matches/${matchId}`;
+    const command = { requestId: 'update-recovery-command', expectedRevision: 0, action: { type: 'draw_card' } };
+    const response = await write(`${endpoint}/actions`, alice, command);
+    expect(response.statusCode).toBe(200);
+    const before = await db.query('SELECT state,rng_state,revision,status FROM matches WHERE id=$1', [matchId]);
+    expect(before.rows[0].status).toBe('active');
+    const aliceView = (await read(`${endpoint}/view`, alice)).json().data;
+    const bobView = (await read(`${endpoint}/view`, bob)).json().data;
+    send.mockClear();
+    updateIpc.emit('message', 'update.drain');
+    await vi.waitFor(() => expect(send).toHaveBeenLastCalledWith({ type: 'update.drained', idle: true }));
+    expect((await read(`${endpoint}/view`, alice)).statusCode).toBe(503);
+    await app.close();
+    db = createDatabase(url!);
+    app = await createApp({ config: {
+      NODE_ENV: 'test', API_HOST: '127.0.0.1', API_PORT: 3001,
+      DATABASE_URL: url!, WEB_ORIGIN: origin, ENABLE_DEV_LAB: false,
+      LOG_LEVEL: 'error', PRESENCE_GRACE_MS: 100,
+    }, db, registry: createRegistry(false) });
+    installUpdateDrain(app, updateIpc);
+    expect((await read(`${endpoint}/view`, alice)).json().data).toEqual(aliceView);
+    expect((await read(`${endpoint}/view`, bob)).json().data).toEqual(bobView);
+    const retry = await write(`${endpoint}/actions`, alice, command);
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json().data).toEqual({ ...response.json().data, events: [] });
+    expect((await db.query('SELECT count(*)::int AS count FROM match_actions WHERE match_id=$1', [matchId])).rows[0].count).toBe(1);
+    expect((await db.query('SELECT state,rng_state,revision,status FROM matches WHERE id=$1', [matchId])).rows).toEqual(before.rows);
+    expect((await write(`${endpoint}/actions`, bob, {
+      requestId: 'after-update', expectedRevision: 1, action: { type: 'draw_card' },
+    })).statusCode).toBe(200);
+  });
 
   it('isolates private views, rejects forged actions, serializes concurrent requests and reaches a persisted win', async () => {
     const { alice, bob, carol, roomId, matchId } = await start();

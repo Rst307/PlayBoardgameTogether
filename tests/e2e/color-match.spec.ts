@@ -62,7 +62,13 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     await expect(a.getByLabel('游戏选项（JSON）')).toHaveValue('{}');
     await a.getByLabel('房间名').fill('Color Match 验收');
     await a.getByRole('button', { name: '创建并生成邀请码' }).click();
-    await expect(a.getByText(/color-match@1.0.0/)).toBeVisible();
+    await expect(a.getByRole('heading', { name: 'Color Match 验收', exact: true })).toBeVisible();
+    await expect(a.locator('.room-heading')).toContainText('Color Match');
+    await a.getByText('房间设置', { exact: true }).click();
+    await expect(a.getByText('游戏版本：1.0.0', { exact: true })).toBeVisible();
+    await a.getByText('房间设置', { exact: true }).click();
+    if (!await a.locator('.invite-box strong').isVisible()) await a.getByText('邀请朋友', { exact: true }).click();
+    await expect(a.locator('.invite-box strong')).toBeVisible();
     const invite = await a.locator('.invite-box strong').textContent();
     expect(invite).toBeTruthy();
     await openInviteJoin(b); await b.getByLabel('12 位邀请码').fill(invite!);

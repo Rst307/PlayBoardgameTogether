@@ -1,7 +1,7 @@
 import { loadConfig } from './config.js'; import { createDatabase } from './db/index.js'; import { createRegistry } from './registry/index.js'; import { createApp } from './app.js';
 import { installUpdateDrain } from './update-drain.js';
 const config = loadConfig(); const registry = createRegistry(config.NODE_ENV === 'development'); const db = createDatabase(config.DATABASE_URL); const app = await createApp({ config, db, registry });
-installUpdateDrain(app, db);
+installUpdateDrain(app);
 try {
   await app.listen({ host: config.API_HOST, port: config.API_PORT });
   process.send?.('update.ready');

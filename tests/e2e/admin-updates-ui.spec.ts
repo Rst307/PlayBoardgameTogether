@@ -25,7 +25,8 @@ test('administrator can request an update and distinguish waiting, maintenance a
   await expect(page.getByRole('button', { name: '更新处理中…' })).toBeDisabled();
   expect(commands).toBe(1);
   state.phase = 'waiting';
-  await expect(page.getByRole('status')).toContainText('等待请求静默');
+  await expect(page.getByRole('status')).toContainText('等待已接收的请求完成');
+  await expect(page.getByText(/等待在途请求最多 30 秒/)).toBeVisible();
   await expect(page.getByRole('button', { name: '等待安全切换' })).toBeDisabled();
   const progress = page.getByRole('list', { name: '更新步骤' });
   await expect(progress.getByText('安装依赖并构建')).toBeVisible();

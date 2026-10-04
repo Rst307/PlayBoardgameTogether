@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import type { Database } from './db/index.js';
+import { setTimeout as delay } from 'node:timers/promises';
+import type { WebSocket } from 'ws';
 
 /** Local parent-process IPC only; no network administration endpoint. */
 type UpdateIpc = {
@@ -7,8 +8,9 @@ type UpdateIpc = {
   off(event: 'message', listener: (message: unknown) => void): unknown;
   send?: (message: { type: string; idle: boolean }) => unknown;
 };
-export function installUpdateDrain(app: FastifyInstance, db: Database, ipc: UpdateIpc = process) {
+export function installUpdateDrain(app: FastifyInstance, ipc: UpdateIpc = process, timeoutMs = 30_000) {
   let draining = false;
+  let generation = 0;
   let activeRequests = 0;
   const admitted = new WeakSet<object>();
   app.addHook('onRequest', async (request, reply) => {
@@ -28,25 +30,36 @@ export function installUpdateDrain(app: FastifyInstance, db: Database, ipc: Upda
   app.addHook('onResponse', async request => {
     if (admitted.delete(request)) activeRequests--;
   });
-  let checking = false;
+  // A handshake admitted just before the gate may finish after it is closed.
+  const disconnect = (socket: WebSocket) => {
+    if (!draining) return;
+    socket.close(1012, 'service restart');
+    const timer = setTimeout(() => socket.terminate(), 1000);
+    timer.unref();
+    socket.once('close', () => clearTimeout(timer));
+  };
+  app.websocketServer.on('connection', disconnect);
   const handler = async (message: unknown) => {
-    if (message === 'update.resume') { draining = false; return; }
-    if (message !== 'update.drain' || checking) return;
-    checking = true;
+    if (message === 'update.resume') { generation++; draining = false; return; }
+    if (message !== 'update.drain' || draining) return;
+    const attempt = ++generation;
     draining = true;
-    try {
-      // Gate before inspection: a new start/action cannot race the idle check.
-      const result = await db.query<{ busy: boolean }>(
-        "SELECT EXISTS(SELECT 1 FROM matches WHERE status='active') AS busy",
-      );
-      const idle = result.rows[0]?.busy === false && activeRequests === 0 && app.websocketServer.clients.size === 0;
-      if (!idle) draining = false;
-      ipc.send?.({ type: 'update.drained', idle });
-    } catch {
-      draining = false;
-      ipc.send?.({ type: 'update.drained', idle: false });
-    } finally { checking = false; }
+    const deadline = Date.now() + timeoutMs;
+    // Matches and their command receipts remain in PostgreSQL. WS carries only
+    // subscriptions/views; actions use HTTP and must finish before shutdown.
+    for (const socket of app.websocketServer.clients) disconnect(socket);
+    while (activeRequests > 0 && Date.now() < deadline && attempt === generation) {
+      await delay(Math.min(20, Math.max(1, deadline - Date.now())));
+    }
+    if (attempt !== generation) return;
+    const idle = activeRequests === 0;
+    if (!idle) draining = false;
+    ipc.send?.({ type: 'update.drained', idle });
   };
   ipc.on('message', handler);
-  app.addHook('onClose', async () => { ipc.off('message', handler); });
+  app.addHook('onClose', async () => {
+    generation++;
+    ipc.off('message', handler);
+    app.websocketServer.off('connection', disconnect);
+  });
 }
