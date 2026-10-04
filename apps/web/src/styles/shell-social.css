@@ -103,3 +103,7 @@
   .desktop-shell .nav-tools > div { inset: 100% 0 auto auto; }
   .desktop-shell .nav-tools summary { padding: 8px 10px !important; }
 }
+@media (max-width: 700px) {
+  .desktop-shell .nav-tools { position: static; }
+  .desktop-shell .nav-tools > div { inset: 100% 16px auto auto; }
+}
