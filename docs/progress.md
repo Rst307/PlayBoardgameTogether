@@ -1,5 +1,19 @@
 # 开发进度
 
+## 修复服务更新无限等待（2026-10-04）
+
+旧策略要求连续 60 秒静默、零 WS 和零 active matches；常驻页面、5 秒社交轮询和未结束旧局都可阻止已构建版本切换。本轮候选构建后直接暂停公共新请求，API 通过原本地 IPC 通知 WS 1012 并关闭（包括闸门前晚完成握手，未响应连接一秒后终止），等待已接收 HTTP 请求最多 30 秒。超时恢复服务并报告 failed，监督 IPC 有 35 秒上限与过期世代取消；保留原候选以供重试。未结束对局不再作为阻塞条件，不结束对局、不改 State/RNG/回执/座位/控制权。沿用原优雅关闭 AI、迁移保护、候选就绪和失败恢复，没有新增数据库迁移或协议字段。后台文案说明真实排空期限与短暂重连，保持单一主操作和原四步列表。README、管理员指南、协议、在线更新、架构与 ADR-006 同步。
+
+本轮实际验证：
+
+- 修复前 `pnpm test tests/unit/update-drain.test.ts -t 'persistent WebSocket'` 失败：真实 WS 保持连接时 idle 始终为 false；修复后相关 19 项单测通过，后续增加晚完成握手回归后 `pnpm test tests/unit` 全部 32 文件/150 项通过，无 skip。
+- `pnpm typecheck`、`pnpm lint`、`pnpm build` 通过，包括 20 个源目录依赖边界和生产 bundle/API runtime、隔离 ZIP 规则与 AI worker 检查。最后测试修改后的定向 ESLint 与 git diff --check 通过。
+- `pnpm test:integration` 使用进程级 TEST_DATABASE_URL 指向新建独立 boardgame_update_drain_20261004，原脚本准备、迁移、同步、媒体种子后 22 文件/148 项执行，无 skip。首次 147/148 通过：新用例错误地要求重复请求重放事件；按既有协议改为事件为空并验证动作只保存一次。随后同库 `pnpm test tests/integration/color-match.test.ts` 18/18 通过，覆盖进行中对局排空重启、双方私密 View、session、State/RNG/revision 与回执不变、后续动作可继续，以及原回滚/冲突/版本/恢复用例。未重复无改动的其他模块。
+- `pnpm exec playwright test --config playwright.updates-ui.config.ts --output .data/update-drain-ui` 桌面/手机 4/4 通过，无 skip，已实际查看桌面与 320px 手机截图，无横向溢出。此专项使用合法公开 DTO 模拟阶段，不代替真实安装切换验收。
+- 真实账户 `pnpm test:e2e tests/e2e/color-match.spec.ts tests/e2e/admin-navigation.spec.ts --output .data/update-drain-e2e` 管理导航桌面/手机 2/2 通过；Color Match 两端停在旧版房间文案选择器。按当前展开「房间设置」查看精确版本、展开邀请码的真实交互修正测试入口，保留全部后续对局、未知结果、双标签冲突、离线/重连、旧快照和胜利断言。随后同库 `pnpm test:e2e tests/e2e/color-match.spec.ts --output .data/update-drain-e2e-recovery` 桌面/手机 2/2 通过，无 skip；定向 ESLint 通过。未改房间页面或规则以适配测试。
+
+上线边界：本地没有运行中的生产监督进程；历史记录中有 bg.rst307.cn，但没有可用的服务器连接/启动配置，用户也不清楚启动方式。未操作线上服务器、未清理对局或开发库、未覆盖 .env。运行中的旧父脚本不能热替换，current.json 可能仍选择旧 API；首次生效必须在维护窗口由实际部署流程选择已构建新版 API 并重启新版监督脚本，仅推送或仅刷新网页不足。含不兼容规则/协议/迁移仍须维护；30 秒仅是排空上限，不是完整更新耗时承诺。下一步完成服务器首次部署和真实远程安装/切换验收。
+
 ## 服务更新阶段可见性修复（2026-10-04）
 
 针对后台「更新处理中」无法辨认进度的问题，保留独立页面和单一检测操作，将真实阶段置于版本信息前，用四步列表展示检测、安装构建、安全等待、切换验证。等待时前两步标为已完成，按钮显示「等待安全切换」，明确构建完成但尚未切换及后续检测周期重试。未修改更新器、安全排空、协议或 API；现有接口没有具体阻塞项、安装构建内部进度或完成百分比，页面如实说明。失败与已是最新版不推断步骤，未启用仍禁用操作。在线更新指南同步。

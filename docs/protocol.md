@@ -4,6 +4,8 @@
 
 GET `/api/v1/admin/updates` 返回严格 `adminUpdateStatusSchema`：enabled、branch、currentSha、candidateSha、lastCheckedAt、phase。phase 为 unavailable/disabled/idle/checking/building/current/waiting/maintenance/applying/updated/failed；提交为完整 SHA 或 null，不包含环境、日志、凭据或文件路径。仅管理员可读，响应 no-store。
 
+本轮 waiting 表示等待已接收请求完成，最多 30 秒；不再等待 active matches、常驻连接或连续静默。排空超时转 failed，恢复接收请求；切换维护期间新 HTTP 请求收到 Retry-After: 3 的 503，WS 使用 1012 服务重启码后沿用既有重连与快照恢复。DTO 字段、动作事务和回执语义保持。
+
 POST `/api/v1/admin/updates/check` 严格接收 `{requestId: UUID}`，验证 session、管理员、Origin、CSRF 后经本地 IPC 触发既有监督流程，返回 202 和同一状态 DTO；表示受理而非更新成功。拒绝额外执行参数。进程内最近 256 个受理 ID 去重；同时进行的触发合并，重启或淘汰后可再次检查。没有监督进程或配置停用时返回 unavailable/disabled，旧监督进程/IPC 超时返回 SERVICE_UNAVAILABLE。没有数据库、对局或规则协议变更。
 
 ## 账号注册（2026-10-03）

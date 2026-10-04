@@ -60,7 +60,6 @@ async function main() {
   let closed = false;
   let switching = false;
   let busy = false;
-  let lastActivity = Date.now();
   let timer;
   let updates;
   const env = { ...process.env, NODE_ENV: 'production', ENABLE_DEV_LAB: 'false',
@@ -68,10 +67,9 @@ async function main() {
   const apiPort = Number(env.API_PORT || 3001);
   const port = Number(env.UPDATE_PORT || 8080);
   const interval = Number(env.UPDATE_INTERVAL_MS || 300000);
-  const quiet = Number(env.UPDATE_QUIET_MS || 60000);
   if (![port, apiPort].every(n => Number.isInteger(n) && n > 0 && n <= 65535) || port === apiPort ||
-      !Number.isFinite(interval) || interval < 10000 || !Number.isFinite(quiet) || quiet < 1000) {
-    await lock.close(); await unlink(lockPath); throw new Error('Invalid update port/interval/quiet configuration');
+      !Number.isFinite(interval) || interval < 10000) {
+    await lock.close(); await unlink(lockPath); throw new Error('Invalid update port/interval configuration');
   }
   const log = (event, sha) => console.log(`[online-update] ${event}${sha ? ` ${sha.slice(0, 12)}` : ''}`);
   async function command(executable, args, cwd = root, timeout = 600000) {
@@ -149,11 +147,11 @@ async function main() {
     throw new Error('API readiness timeout');
   }
   async function drain() {
-    if (Date.now() - lastActivity < quiet || !child?.connected) return false;
+    if (!child?.connected) throw new Error('API update channel unavailable');
     switching = true;
     const target = child;
     const idle = await new Promise(done => {
-      const timeoutId = setTimeout(() => finish(false), 3000);
+      const timeoutId = setTimeout(() => finish(false), 35000);
       const listener = message => {
         if (message?.type === 'update.drained') finish(message.idle === true);
       };
@@ -161,7 +159,11 @@ async function main() {
       target.on('message', listener);
       target.send('update.drain', error => { if (error) finish(false); });
     });
-    if (!idle) { switching = false; if (target.connected) target.send('update.resume'); }
+    if (!idle) {
+      switching = false;
+      if (target.connected) target.send('update.resume');
+      throw new Error('In-flight requests did not drain within the update deadline');
+    }
     return idle;
   }
   const statePath = resolve(stateRoot, 'current.json');
@@ -195,8 +197,6 @@ async function main() {
     const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
     server = createServer(async (req, res) => {
       if (req.url?.startsWith('/api/') || req.url?.startsWith('/health/')) {
-        // Viewing update progress must not indefinitely postpone its own quiet window.
-        if (!(req.method === 'GET' && req.url?.split('?')[0] === '/api/v1/admin/updates')) lastActivity = Date.now();
         if (switching || !child || child.exitCode !== null || child.signalCode !== null) {
           res.writeHead(503, { 'retry-after': '3', 'cache-control': 'no-store' }); res.end(); return;
         }
@@ -232,7 +232,6 @@ async function main() {
     });
     const tunnels = new Set();
     server.on('upgrade', (req, socket, head) => {
-      lastActivity = Date.now();
       if (switching || !child?.connected || !req.url?.startsWith('/api/')) { socket.destroy(); return; }
       const upstream = httpRequest({ hostname: '127.0.0.1', port: apiPort, path: req.url, headers: req.headers });
       upstream.on('upgrade', (reply, peer, data) => {

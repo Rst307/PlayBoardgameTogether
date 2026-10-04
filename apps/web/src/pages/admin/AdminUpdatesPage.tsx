@@ -11,9 +11,9 @@ const messages: Record<AdminUpdateStatus['phase'], string> = {
   checking: '正在检测发布分支…',
   building: '发现新版本，正在后台安装依赖并构建…',
   current: '当前已是最新版本。',
-  waiting: '新版已准备，等待请求静默且没有进行中的对局和实时连接后自动更新。',
+  waiting: '新版已准备，正在暂停新请求并等待已接收的请求完成，随后自动切换。',
   maintenance: '新版包含数据库迁移，需要维护者确认兼容性并备份后安排更新。',
-  applying: '正在切换版本，服务可能短暂不可用。',
+  applying: '正在切换版本，服务暂时不可用；对局进度保留，连接恢复后继续。',
   updated: '新版本已更新成功。已打开的页面可手动刷新以使用新版界面。',
   failed: '更新未完成，请稍后重试；维护者可检查更新日志和服务就绪状态。',
 };
@@ -102,7 +102,7 @@ function UpdatePanel() {
       {status && <UpdateProgress phase={status.phase} />}
       {status?.phase === 'waiting' && <div className="admin-update-waiting">
         <p>构建已完成，尚未切换版本。</p>
-        <p className="muted">更新器会在后续检测周期重试。进行中的对局、实时连接或持续请求都可能延后切换；当前接口尚未提供具体阻塞项。此页每 3 秒刷新状态，查看进度不会延长请求静默等待。</p>
+        <p className="muted">等待在途请求最多 30 秒，超时会恢复服务并报告失败。未结束对局和常驻连接不会阻塞更新；切换时连接会短暂断开，对局进度保留。</p>
       </div>}
       <dl className="admin-update-details">
         <div><dt>发布分支</dt><dd>{status?.branch ?? '—'}</dd></div>
@@ -114,7 +114,7 @@ function UpdatePanel() {
       <Button onClick={() => { void check(); }} disabled={!status?.enabled || sending || working.has(status.phase)}>
         {sending ? '正在提交…' : status?.phase === 'waiting' ? '等待安全切换' : status && working.has(status.phase) ? '更新处理中…' : '立即检测并更新'}
       </Button>
-      <p className="muted">检测已合并到发布分支的代码。更新不会强制中断对局或自动刷新玩家页面。</p>
+      <p className="muted">检测已合并到发布分支的代码。更新会短暂重连，不结束对局或自动刷新玩家页面。新版更新器首次启用需要维护者重启托管进程。</p>
     </section>
   );
 }
