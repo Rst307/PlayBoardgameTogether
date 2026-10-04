@@ -61,7 +61,7 @@ function AppShell({ path }: { path: string }) {
           </Suspense>
         </PageBoundary>
       </main>
-      <footer>桌游平台 · 和朋友继续这场对局</footer>
+      <footer>桌游平台 v{__APP_VERSION__} · 和朋友继续这场对局</footer>
     </div>
     <ChatDock />
   </div>;
