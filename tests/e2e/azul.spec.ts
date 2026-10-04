@@ -83,9 +83,8 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
     }
   }
   expect(observedAnimation).toBe(true); expect(recovered).toBe(true);
-  await expect(page.getByRole('region', { name: '花砖物语结算' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '花砖物语结算' })).toBeVisible({ timeout: 60_000 });
   expect((await snapshot()).status).toBe('finished');
-  await expect(table.locator('.az-finale-wait')).toHaveCount(0, { timeout: 180_000 });
   await expect.poll(async () => (await sounds()).some(duration => Math.abs(duration - 1.25) < 0.02)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.emulateMedia({ reducedMotion: 'reduce' });

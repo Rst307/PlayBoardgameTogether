@@ -57,17 +57,17 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
   await myBoard.locator('.az-flying-tile').evaluate(element => {
     const animation = element.getAnimations()[0]!;
     animation.pause();
-    animation.currentTime = 150;
+    animation.currentTime = 80;
   });
   await page.screenshot({ path: info.outputPath('azul-tutorial-flight.png'), fullPage: true });
-  await page.clock.runFor(300);
+  await page.clock.runFor(160);
   await expect(myBoard.locator('.az-flying-tile')).toHaveCount(0);
   await expect(myBoard.locator('.az-wall-cell').nth(12).locator('.az-ghost')).toHaveCount(0);
   await expect(myBoard.locator('.az-pattern').nth(2).locator('.az-slot > .az-tile:not(.az-ghost)')).toHaveCount(0);
-  await page.clock.resume();
   await expect(myBoard.locator('.az-score-float')).toHaveText('+3');
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('3');
-  await expect(myBoard.locator('.az-score-float')).toHaveText('+3 +3');
+  await page.clock.runFor(180);
+  await expect(myBoard.locator('.az-score-float')).toHaveText('+6');
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6');
   await expect(page.locator('.az-impact-dock, .az-reward-space')).toHaveCount(0);
   expect(await myBoard.locator('.az-score-float').evaluate(element => ({
@@ -75,10 +75,15 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
     animation: getComputedStyle(element).animationName,
     pointerEvents: getComputedStyle(element).pointerEvents,
   }))).toEqual({ position: 'absolute', animation: 'az-score-float', pointerEvents: 'none' });
-  await expect.poll(() => myBoard.locator('.az-score-float').evaluate(element =>
-    Number(getComputedStyle(element).opacity))).toBeGreaterThan(0.9);
+  await myBoard.locator('.az-score-float').evaluate(element => {
+    const animation = element.getAnimations()[0]!;
+    animation.pause();
+    animation.currentTime = 100;
+  });
   await page.screenshot({ path: info.outputPath('azul-tutorial-cross.png'), fullPage: true });
-  await expect(myBoard.locator('.az-score-float')).toHaveCount(0, { timeout: 4000 });
+  await page.clock.runFor(400);
+  await expect(myBoard.locator('.az-score-float')).toHaveCount(0);
+  await page.clock.resume();
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('6');
   await page.getByRole('button', { name: '重试本步', exact: true }).click();
   await expect(page.locator('.az-score-float')).toHaveCount(0);
@@ -95,11 +100,11 @@ test('guest learns Azul on desktop and mobile without live match writes', async 
   await expect(myBoard.locator('.az-floor .az-tile')).toHaveCount(3);
   await expect(myBoard.locator('.az-floor .az-first')).toHaveCount(1);
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('1');
-  await page.clock.runFor(300);
+  await page.clock.runFor(160);
   await expect(myBoard.getByLabel('你得分', { exact: true })).toContainText('0');
   await expect(myBoard.locator('.az-floor .az-tile')).toHaveCount(3);
   await page.screenshot({ path: info.outputPath('azul-tutorial-floor.png'), fullPage: true });
-  await page.clock.runFor(1400);
+  await page.clock.runFor(400);
   await expect(myBoard.locator('.az-floor .az-tile, .az-floor .az-first')).toHaveCount(0);
   await page.clock.resume();
   await advance();

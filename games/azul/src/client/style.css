@@ -413,7 +413,7 @@
   white-space: nowrap;
 }
 .az-table .az-score-pop{
-  animation:az-number .45s cubic-bezier(.2,.9,.3,1) both
+  animation:az-number .22s cubic-bezier(.2,.9,.3,1) both
 }
 .az-table .az-landing>.az-tile{
   animation:az-land .3s cubic-bezier(.12,.8,.25,1) both;
@@ -425,7 +425,7 @@
   border-radius:4px;
   pointer-events:none;
   z-index:3;
-  animation:az-link .8s both;
+  animation:az-link .28s both;
   animation-delay:var(--link-delay)
 }
 .az-table .az-score-burst{
@@ -441,7 +441,7 @@
   font-size:11px;
   color:#ffe19a;
   font-style:normal;
-  animation:az-spark .7s both;
+  animation:az-spark .36s both;
   --x:-24px;
   --y:-27px
 }
@@ -521,7 +521,7 @@
   border-radius:12px;
   margin-top:18px;
   background:#223b48;
-  animation:az-finale .8s both
+  animation:az-finale .3s both
 }
 .az-table .az-finale small{
   color:#ddbd75;
@@ -540,9 +540,6 @@
   justify-content:center;
   flex-wrap:wrap;
   font-size:13px
-}
-.az-table .az-finale-wait{
-  animation:none
 }
 .az-table .az-breakdown{
   margin-top:16px;
@@ -582,8 +579,32 @@
   animation: az-score-float var(--float-life) both;
 }
 .az-table .az-score-float.az-penalty { color: #f1b3a9; }
+.az-table .az-score-float.az-combo-strong {
+  font-size: clamp(36px, 4vw, 48px);
+  color: #ffe08b;
+  --combo-scale: 1.8;
+}
+.az-table .az-score-float.az-combo-mega {
+  font-size: clamp(44px, 5vw, 60px);
+  color: #fff6d5;
+  text-shadow: 0 2px 2px #06131d, 0 0 8px #06131d, 0 0 24px #ffbf47;
+  --combo-scale: 2;
+}
+.az-table .az-player.az-combo-strong,
+.az-table .az-player.az-combo-mega {
+  border-color: #ffe08b;
+}
+.az-table .az-combo-strong .az-score-pop,
+.az-table .az-combo-mega .az-score-pop {
+  animation: az-combo-number .22s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes az-combo-number {
+  0% { transform: scale(1.55); color: #ffe08b; }
+  55% { transform: scale(.92); }
+  100% { transform: scale(1); }
+}
 @keyframes az-score-float {
-  0% { opacity: 0; transform: translate(-50%, 10px) scale(1.5); }
+  0% { opacity: 1; transform: translate(-50%, 10px) scale(var(--combo-scale, 1.5)); }
   12% { opacity: 1; transform: translate(-50%, -6px) scale(.9); }
   24% { opacity: 1; transform: translate(-50%, -12px) scale(1.14); }
   40% { opacity: 1; transform: translate(-50%, -8px) scale(1); }

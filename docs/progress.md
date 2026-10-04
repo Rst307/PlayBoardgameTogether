@@ -1,5 +1,22 @@
 # 开发进度
 
+## 花砖终局闪帧修复与快节奏 combo（2026-10-04）
+
+先核对桌面目标、常驻/折叠功能与操作路径：保留选砖、选行、确认单一流程，最近一轮明细继续折叠，不增加计分面板或按钮。真实 AzulBoard 浏览器复现确认 HTTP 终局 View 先到时先显示 53 分，live 事件到达后退回 10 分慢慢结算。客户端现在用公开 lastRound 与此前公开 View 保留起始分数、待铺墙砖和图案行，等待真实事件后连续推进；获胜名单与最终总分在全部动画完成后显示。等待最多 700ms，缺失事件直接收敛到权威快照，迟到同轮事件不再倒放；初次打开已结束对局、刷新不补播。
+
+落砖 300→160ms，分段加分 800→180ms，收尾 600→220ms，单项 1.7→0.56 秒，交叉 2.5→0.74 秒。墙边浮动数字由并排列算式改为单个累计值「+3→+6」「+7→+14→+21」；单次增量至少 6 分在 60ms 内快速滚动，累计 6/10 分分级增强字号、弹跳与金色光效。负分不触发正向 combo，读屏仍获得准确值；减少动态效果隐藏移动/飘字，每项 60ms 推进。终局期间显示「最后一轮 · 正在结算」，不提示继续选砖。规则、权威 State、动作事务、协议、音频资源与已锁版本均未变更；所有新增计时器卸载清理。操作指南同步到 games/azul.md。
+
+实际验证：
+
+- 修改前 `pnpm exec playwright test --config playwright.azul-ui.config.ts --project desktop --output .data/azul-scoring-red` 失败：期望 `10分`，实际 `53分`，确定捕获本次快照抢先闪帧。
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；最后状态文案修改后花砖包 typecheck 与本轮 TS/TSX 专项 ESLint 通过。
+- `pnpm test tests/unit/azul-scoring-presentation.test.ts tests/unit/azul-tutorial.test.ts tests/unit/azul.test.ts`：3 文件、23 项通过，无 skip，覆盖横竖分步合计、终局奖励、地板最低零分、6/10 分档位、教程与真实规则对照及完整 2–4 人规则对局。
+- `pnpm build` 通过，包含生产 bundle/API runtime、隔离 ZIP 规则及 AI worker 检查；最后终局文案调整后花砖包和 Web build 通过。
+- `pnpm exec playwright test --config playwright.azul-ui.config.ts --output .data/azul-scoring-verified`：最终桌面/手机 10/10 通过，无 skip。独立配置用真实 React 桌面与真实规则生成的公开投影测试，不配置或清理数据库；涵盖 HTTP 先到、延迟 live、丢失/迟到事件恢复、重复事件、初次已结束快照/刷新、高分滚动、减少动态效果和桌面/手机布局。实际查看桌面/手机高分截图，生成产物仅留忽略目录 .data。此前新增数字滚动测试在冻结时钟下未推进子组件计时器，修正观察时点后最终十项通过，未削弱数值断言。
+- 原 `pnpm test:e2e tests/e2e/azul.spec.ts tests/e2e/azul-tutorial.spec.ts` 在独立 boardgame_test 的资源准备阶段失败：`Built-in bytes differ from saved hash; restore original backup`，未进入浏览器，不记为通过。`node .data/run-azul-feedback-e2e.mjs` 派生独立 `boardgame_azul_feedback_test` 后复用原 test:e2e 的准备/迁移/同步/资源/E2E 流程：桌面/手机 4/4 通过（2.7 分钟），无 skip，完成真人与脚本 AI 整局、实时计分音效、终局胜利音效、刷新不重播、完整八步教程、飞砖/交叉/地板/终局反馈与布局检查。实际查看真实平台计分截图。没有修改 .env、删除旧资源或重置开发/原测试库。
+
+本轮仅修改客户端表现，不运行无关服务端集成或全量业务矩阵；保留其他正在进行的后台更新/上传游戏工作区改动，仅提交花砖代码、测试与说明。
+
 ## 在线上传识别新游戏与审核更新（2026-10-04）
 
 按 manifest.id 而非名称识别游戏，现有上传弹窗采用选文件 → 检查 → 人工审核发布两步；检查展示新游戏/已有游戏更新/已安装、精确 ID 和版本。检查不持久化、不改变目录。更新审核后在原安装事务中锁定旧版本行、校验目录版本/启停 revision 摘要、上架新版并下架同 ID 旧版本，大厅只显示新版。并发状态变化要求重新检查；失败原子回滚，重复成功先返回回执。同版本不同内容仍要求提升版本；相同包重传不重新上架。进行中及历史对局继续按旧精确规则和桌面恢复，等待中的旧版本房间不能开局，审核界面明确提示。没有新数据库迁移，管理员承担来源/规则/私密投影的人工审核。

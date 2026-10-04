@@ -5,11 +5,25 @@ import {
   type AzulAction, type AzulView, type Color, type ScoreStep,
 } from '../shared/index.js';
 import './style.css';
-import { impactScore, scoreImpacts, scoreTiming, settlementFloors } from './scoring.js';
+import { comboPoints, comboTier, impactScore, scoreImpacts, scoreTiming, settlementFloors } from './scoring.js';
 import { TileFlight } from './TileFlight.js';
 
 function Tile({ color, ghost = false }: { color: Color; ghost?: boolean }) {
   return <span className={`az-tile az-${color}${ghost ? ' az-ghost' : ''}`} aria-hidden="true"><span>{symbols[color]}</span></span>;
+}
+
+function ComboNumber({ from, points }: { from: number; points: number }) {
+  const delta = points - from;
+  const rolling = delta >= 6;
+  const [shown, setShown] = useState(rolling ? from + Math.ceil(delta / 3) : points);
+  useLayoutEffect(() => {
+    if (!rolling) return;
+    const timers = [2, 3].map(part => window.setTimeout(() => {
+      setShown(from + Math.ceil(delta * part / 3));
+    }, (part - 1) * 30));
+    return () => timers.forEach(timer => window.clearTimeout(timer));
+  }, [from, delta, rolling]);
+  return <>{shown >= 0 ? '+' : '−'}{Math.abs(shown)}</>;
 }
 type Beat = ScoreStep & {
   key: string;
@@ -27,6 +41,8 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   const [pending, setPending] = useState<Beat[]>([]);
   const [impactProgress, setImpactProgress] = useState({ key: '', count: 0 });
   const [finishEvent, setFinishEvent] = useState<string | null>(null);
+  const [resolvedRound, setResolvedRound] = useState(0);
+  const expiredRound = useRef(0);
   const audioRef = useRef(audio);
   useLayoutEffect(() => { audioRef.current = audio; }, [audio]);
   const seen = useRef(new Set<string>());
@@ -58,6 +74,9 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
       const parsed = scoreEventSchema.safeParse(raw);
       if (!parsed.success || seen.current.has(parsed.data.eventId)) continue;
       seen.current.add(parsed.data.eventId);
+      // Once recovery has shown the authoritative result, late events must not rewind it.
+      if (parsed.data.round <= expiredRound.current) continue;
+      setResolvedRound(old => Math.max(old, parsed.data.round));
       const before = roundViews.current.get(parsed.data.round);
       const floors = before ? settlementFloors(before, lastDraft) : {};
       parsed.data.steps.forEach((step, index) => fresh.push({
@@ -76,6 +95,18 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
     if (view.phase === 'drafting') roundViews.current.set(view.round, view);
     if (roundViews.current.size > 2) roundViews.current.delete(roundViews.current.keys().next().value!);
   }, [view]);
+  const settlementRound = view.phase === 'finished' ? view.round : view.round - 1;
+  const beforeSettlement = roundViews.current.get(settlementRound);
+  const awaitingEvents = view.lastRound.length > 0 && settlementRound > resolvedRound && !!beforeSettlement;
+  useEffect(() => {
+    if (!awaitingEvents) return;
+    // A lost live delivery still converges to the snapshot; never invent audio or replay it.
+    const timer = window.setTimeout(() => {
+      expiredRound.current = Math.max(expiredRound.current, settlementRound);
+      setResolvedRound(old => Math.max(old, settlementRound));
+    }, scoreTiming.eventWait);
+    return () => window.clearTimeout(timer);
+  }, [awaitingEvents, settlementRound]);
   useLayoutEffect(() => {
     if (beat || !pending.length) return;
     setBeat(pending[0]!);
@@ -104,10 +135,16 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   const impacts = beat ? scoreImpacts(beat) : [];
   const revealed = beat && impactProgress.key === beat.key ? impactProgress.count : 0;
   const hit = impacts[revealed - 1];
+  const heldBeats: Beat[] = awaitingEvents ? view.lastRound.map((step, index) => ({
+    ...step, key: `waiting:${settlementRound}:${index}`, eventId: '', round: settlementRound,
+    floor: step.kind === 'floor' ? beforeSettlement?.players[step.seatId]?.floor : undefined,
+  })) : [];
+  const allBeats = [...(beat ? [beat, ...pending] : pending), ...heldBeats];
   const displayScore = (id: string) => beat?.seatId === id ? impactScore(beat, impacts, revealed)
-    : pending.find(step => step.seatId === id)?.from ?? view.players[id]!.score;
-  const floatingScore = impacts.slice(0, revealed)
-    .map(part => `${part.points >= 0 ? '+' : '−'}${Math.abs(part.points)}`).join(' ');
+    : allBeats.find(step => step.seatId === id)?.from ?? view.players[id]!.score;
+  const combo = comboPoints(impacts, revealed);
+  const tier = comboTier(combo);
+  const floatingScore = `${combo >= 0 ? '+' : '−'}${Math.abs(combo)}`;
   function pick(source: number, color: Color) {
     if (!canAct) return;
     setSelection(old => old?.source === source && old.color === color ? null : { source, color });
@@ -124,13 +161,12 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
       </button>;
     });
   }
-  const allBeats = beat ? [beat, ...pending] : pending;
   return <section className="az-table" aria-label="花砖物语游戏桌" onKeyDown={event => {
     if (event.key === 'Escape') { setSelection(null); setRow(null); }
   }}>
     <header className="az-heading"><div><small>AZUL · 彩墙工坊</small><h2>花砖物语</h2></div><div className="az-round">第 <b>{view.round}</b> 轮<span>{view.bagCount} 块待抽</span></div></header>
-    <div className="az-turn" role="status">{view.phase === 'finished' ? '工坊完工' : myTurn ? '轮到你 · 选一组花砖，再选图案行' : `等待${seatName(view.currentSeatId)}选砖`}
-      {allBeats.length > 0 && <span>铺墙结算中 · 可继续查看与选砖</span>}</div>
+    <div className="az-turn" role="status">{view.phase === 'finished' ? allBeats.length ? '最后一轮 · 正在结算' : '工坊完工' : myTurn ? '轮到你 · 选一组花砖，再选图案行' : `等待${seatName(view.currentSeatId)}选砖`}
+      {allBeats.length > 0 && <span>{view.phase === 'finished' ? '铺墙与终局奖励' : '铺墙结算中 · 可继续查看与选砖'}</span>}</div>
     <section className="az-supply" aria-label="花砖供应区">
       <div className="az-factories">{view.factories.map((tiles, index) => <div className={`az-factory${!tiles.length ? ' az-empty' : ''}`} key={index}>
         <span className="az-factory-number">{index + 1}</span><div>{offer(tiles, index)}</div>{!tiles.length && <small>已取空</small>}
@@ -145,7 +181,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
       const flying = active?.kind === 'tile' && (impactProgress.key !== active.key || revealed === 0);
       const hidden = allBeats.filter(step => step.seatId === id && step.kind === 'tile' && step.key !== active?.key);
       const floor = allBeats.find(step => step.seatId === id && step.kind === 'floor')?.floor ?? player.floor;
-      return <section key={id} className={`az-player${own ? ' az-own' : ''}${active ? ' az-scoring' : ''}`} aria-label={`${seatName(id)}的花砖板`}>
+      return <section key={id} className={`az-player${own ? ' az-own' : ''}${active ? ' az-scoring' : ''}${active && revealed > 0 ? ` az-combo-${tier}` : ''}`} aria-label={`${seatName(id)}的花砖板`}>
         <header><div><strong>{own ? '你的工坊' : seatName(id)}</strong>{view.currentSeatId === id && view.phase !== 'finished' && <small>正在选砖</small>}</div>
           <div className="az-score" aria-label={`${seatName(id)}得分`}><b key={active ? `${active.key}:${revealed}` : 'steady'} className={active && revealed > 0 ? 'az-score-pop' : ''}>{displayScore(id)}</b><span>分</span></div></header>
         <div className="az-mosaic"><div className="az-patterns"><small>图案行</small>{player.lines.map((line, r) => {
@@ -176,16 +212,16 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
           const preview = own && row === r && selection && wallColumn(r, selection.color) === c;
           const visible = filled && !future && !(scoring && flying);
           return <div key={`${r}:${c}:${scoring ? active.key : ''}`} className={`az-wall-cell${linked ? ' az-linked' : ''}${scoring && !flying ? ' az-landing' : ''}${preview ? ' az-destination' : ''}`}
-            style={{ '--link-delay': `${(hit?.cells.findIndex(cell => cell.row === r && cell.col === c) ?? 0) * 85}ms` } as CSSProperties}
+            style={{ '--link-delay': `${(hit?.cells.findIndex(cell => cell.row === r && cell.col === c) ?? 0) * 20}ms` } as CSSProperties}
             aria-label={`${names[color]} 第${r + 1}行第${c + 1}列 ${visible ? '已铺' : '空位'}`}>
             <Tile color={color} ghost={!visible} />
             {linked && <span className="az-link-flash" key={`${active.key}:${revealed}:glow`} />}
             {scoring && !flying && <span className="az-score-burst" key={`${active.key}:${revealed}`}><i>✦</i><i>✧</i><i>◆</i><i>✦</i></span>}
           </div>;
         }))}</div>
-          {active && revealed > 0 && <span key={`${active.key}:${revealed}`} className={`az-score-float${active.kind === 'floor' ? ' az-penalty' : ''}`}
+          {active && revealed > 0 && <span key={`${active.key}:${revealed}`} className={`az-score-float az-combo-${tier}${active.kind === 'floor' ? ' az-penalty' : ''}`}
             aria-hidden="true" style={{ '--float-life': `${revealed === impacts.length ? scoreTiming.impact + scoreTiming.hold : scoreTiming.impact}ms` } as CSSProperties}>
-            {floatingScore}
+            <ComboNumber from={comboPoints(impacts, revealed - 1)} points={combo} />
           </span>}
         </div></div>
         {flying && active.color && <TileFlight key={active.key} row={active.row} col={active.col} color={active.color} />}
@@ -204,7 +240,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
         if (selection && row !== null && valid) onAction({ type: 'draft', ...selection, row });
       }}>{busy ? '正在放砖…' : '确认选砖'}</button>
     </section>}
-    {view.outcome.status === 'finished' && <section className={`az-finale${allBeats.length ? ' az-finale-wait' : ''}`} aria-label="花砖物语结算">
+    {view.outcome.status === 'finished' && !allBeats.length && <section className="az-finale" aria-label="花砖物语结算">
       <small>最后一砖 · 工坊完工</small><h3>{view.outcome.winners.map(seatName).join('、')}获胜</h3>
       <div>{view.seats.map(id => <span key={id}>{seatName(id)} <b>{view.players[id]!.score}</b> 分</span>)}</div>
     </section>}
