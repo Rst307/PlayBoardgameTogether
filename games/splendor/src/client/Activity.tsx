@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from '@boardgame/game-sdk/presentation';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { cards, nobles } from '../shared/catalog.js';
@@ -13,7 +14,7 @@ const eventSchema = z.discriminatedUnion('type', [
 const labels = { take: '拿取了宝石', buy: '购买了发展卡', reserve: '预留了一张市场卡',
   reserve_deck: '盲抽预留了一张卡', return: '退回了一枚代币', noble: '选择了贵族', pass: '无可用行动，跳过回合' };
 
-export function Activity({ events, view }: { events: unknown[]; view: SplendorView }) {
+export function Activity({ events, view, playerNames }: { events: unknown[]; view: SplendorView; playerNames?: PlayerNames | undefined }) {
   const parsed = events.flatMap(raw => {
     const result = eventSchema.safeParse(raw);
     return result.success ? [result.data] : [];
@@ -26,7 +27,7 @@ export function Activity({ events, view }: { events: unknown[]; view: SplendorVi
     const timer = setTimeout(() => setDismissed(last.eventId), 5000);
     return () => clearTimeout(timer);
   }, [last?.eventId]);
-  const seatName = (seat: string) => seat === view.viewingSeatId ? '你' : '座位 ' + (view.seats.indexOf(seat) + 1);
+  const seatName = (seat: string) => playerLabel(seat, view.seats, view.viewingSeatId, playerNames, '座位');
   const card = last?.type === 'turn.played' && last.action === 'buy' ? cards.find(item => item.id === last.cardId) : undefined;
   const describe = (event: z.infer<typeof eventSchema>) => {
     if (event.type === 'match.finished') return '本局结束';

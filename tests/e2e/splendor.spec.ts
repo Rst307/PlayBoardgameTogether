@@ -20,6 +20,8 @@ test('璀璨宝石：真人与脚本AI完成整局、私密预留刷新保留、
   await page.getByRole('button', { name: '开始游戏' }).click();
   await expect(page.getByRole('heading', { name: '璀璨宝石', exact: true, level: 2 })).toBeVisible();
   const table = page.getByRole('region', { name: '璀璨宝石游戏桌' });
+  await expect(table.locator('.sp-player').first()).toContainText('玩家 D（你）的商会');
+  await expect(table.locator('.sp-player').nth(1)).toContainText('电脑 2的商会');
   expect(await table.locator('header').first().evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await expect(page.getByRole('group', { name: '拿取方式' })).toHaveCount(0);
   if (testInfo.project.name === 'desktop') {
@@ -109,10 +111,10 @@ test('璀璨宝石：真人与脚本AI完成整局、私密预留刷新保留、
     if (view.phase === 'finished') break;
     const bought = view.players[view.seats[1]!]!.purchased.length;
     if (bought > opponentBuys) {
-      await expect(page.getByRole('region', { name: '公开行动记录' })).toContainText('座位 2购买了发展卡');
+      await expect(page.getByRole('region', { name: '公开行动记录' })).toContainText('电脑 2购买了发展卡');
       if (!sawOpponentBuy) {
         const reveal = table.locator('.sp-action-reveal');
-        await expect(reveal).toContainText('座位 2购买了发展卡');
+        await expect(reveal).toContainText('电脑 2购买了发展卡');
         await expect.poll(() => reveal.evaluate(element => getComputedStyle(element).opacity)).toBe('1');
         expect(await reveal.evaluate(element => {
           const bounds = element.getBoundingClientRect();

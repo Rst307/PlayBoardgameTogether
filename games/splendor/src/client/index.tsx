@@ -1,3 +1,4 @@
+import { playerLabel, type PlayerNames } from '@boardgame/game-sdk/presentation';
 import { AssetContext, Gem, Visual, inks } from './visuals.js';
 import { selectGem } from './interaction.js';
 import { Activity } from './Activity.js';
@@ -65,10 +66,10 @@ function NobleTile({ noble, index, eligible, busy, onSelect }: {
     {eligible && <b className="sp-arrival">选择到访</b>}
   </button>;
 }
-export function SplendorBoard(props: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void; assets?: AssetResolverPort | undefined; events?: unknown[] }) {
+export function SplendorBoard(props: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void; assets?: AssetResolverPort | undefined; playerNames?: PlayerNames | undefined; events?: unknown[] }) {
   return <AssetContext.Provider value={props.assets}><SplendorTable {...props} /></AssetContext.Provider>;
 }
-function SplendorTable({ view, busy, onAction, events = [] }: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void; events?: unknown[] }) {
+function SplendorTable({ view, busy, onAction, events = [], playerNames }: { view: SplendorView; busy: boolean; onAction: (action: SplendorAction) => void; playerNames?: PlayerNames | undefined; events?: unknown[] }) {
   const [hint, setHint] = useState('');
   const [chosenColors, setChosenColors] = useState<Color[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -77,7 +78,7 @@ function SplendorTable({ view, busy, onAction, events = [] }: { view: SplendorVi
   const mine = view.players[view.viewingSeatId]!;
   const myTurn = view.currentSeatId === view.viewingSeatId && view.phase !== 'finished';
   const active = myTurn && view.phase === 'action' && !busy;
-  const seatName = (seat: string) => seat === view.viewingSeatId ? '你' : '座位 ' + (view.seats.indexOf(seat) + 1);
+  const seatName = (seat: string) => playerLabel(seat, view.seats, view.viewingSeatId, playerNames, '座位');
   const selected = [...view.market.flat(), ...view.myReserved].find(card => card.id === selectedId);
   const defaultPayment = selected ? paymentFor(selected, mine.bonuses, mine.tokens) : null;
   const payment = { ...(defaultPayment ?? emptyTokens()) };
@@ -206,7 +207,7 @@ function SplendorTable({ view, busy, onAction, events = [] }: { view: SplendorVi
         </article>;
       })}
     </section>
-    <Activity events={events} view={view} />
+    <Activity events={events} view={view} playerNames={playerNames} />
     </aside></div>
     {view.outcome.status === 'finished' && <section className="sp-result" aria-live="polite">
       <h3>最终结算</h3><p>{view.outcome.winners.map(seatName).join('、')}获胜{view.outcome.winners.length > 1 ? ' · 共享胜利' : ''}</p>

@@ -1,5 +1,9 @@
 # 数据模型
 
+## 对局显示名称（2026-10-04）
+
+新增 027_match_player_names.sql，为 match_participants 添加可空 display_name；开局在原事务中固定真人/AI 显示名称，AI 名称不依赖后续房间座位。真人投影优先读取固定 account_id 对应账户的当前昵称。迁移补齐旧真人名称，旧 AI 仅在房间仍绑定该局时安全补齐；无法恢复的历史 AI 使用带编号的 AI 名称，不猜测新房间占用者。规则状态、RNG 与版本锁不变。
+
 ## 公共消息（2026-10-04）
 
 迁移 `026_public_chat.sql` 新增 `public_messages`：UUID 主键、唯一 bigint identity sequence、sender_id（accounts 外键，删除账户级联）、text（数据库长度 1–2000）、created_at（服务端时钟）。索引 sender_id/created_at 用于频控与容量计数，sequence 唯一索引用于最新/历史/增量分页。正文为纯文本，经典表情保存文字快捷码，不保存图片、外部 URL 或资料副本。与私聊表、水位分离。

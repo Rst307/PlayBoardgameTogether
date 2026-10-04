@@ -1,5 +1,9 @@
 # 架构
 
+## 对局玩家名称展示（2026-10-04）
+
+MatchService 从固定 match_participants 与账户读取公开 players 元数据，经原认证 HTTP/WS 快照发送。MatchPage 将 seatId→displayName 映射作为 GameBoard 第七个可选参数，Web registry 装配到花砖物语和璀璨宝石；平台不解析游戏 State，不从当前房间座位推断旧局身份。game-sdk/presentation 独立客户端工具提供名称与本人标记，未修改被规则摘要覆盖的 SDK 核心。迁移 027 和 RoomService 原开局事务保存参与者名称。
+
 ## 公共聊天（2026-10-04）
 
 原 social/service 与 routes 增加认证公共消息读写，迁移 026 的 public_messages 与 direct_messages 分离；复用同一社交锁、活跃身份重验、请求摘要回执及事务，成功去重先于公共频控。protocol/social.ts 提供公共消息及分页 DTO，client-sdk 边界解析 unknown。好友申请增加可选 expectedAccountId 防止名片中的可变好友 ID 复用导致目标改变，不新增身份或关系系统。

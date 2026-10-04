@@ -42,6 +42,13 @@ describe.skipIf(!url)('stage 5 script AI and delegation',()=>{
     },(view:any)=>view.status==='finished');
     expect(ended.revision).toBeGreaterThan(1);
     expect(ended.view.phase).toBe('finished');
+    expect(ended.players.map((player: { displayName: string }) => player.displayName)).toEqual(['Alice', '电脑 2']);
+    await db.query("UPDATE seats SET bot_name='新电脑' WHERE id=$1", [botSeat.seatId]);
+    const recoveredNames = (await read(`/api/v1/matches/${matchId}/view`, alice)).json().data.players;
+    expect(recoveredNames[1]).toEqual({
+      seatId: botSeat.seatId, seatIndex: 1, displayName: '电脑 2', occupantKind: 'bot',
+    });
+
     const tasks=await db.query<{count:string;duplicates:string}>(`SELECT count(*)::text AS count,(count(*)-count(DISTINCT (match_id,seat_id,source_revision,controller_epoch,decision_key)))::text AS duplicates FROM ai_tasks WHERE match_id=$1`,[matchId]);expect(Number(tasks.rows[0]!.count)).toBeGreaterThan(1);expect(tasks.rows[0]!.duplicates).toBe('0');
     expect(JSON.stringify(ended)).not.toContain('proposed_action');
     const room=(await read(`/api/v1/rooms/${roomId}`,alice)).json().data;

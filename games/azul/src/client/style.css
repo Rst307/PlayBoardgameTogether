@@ -252,6 +252,7 @@
   margin-bottom:14px
 }
 .az-table .az-player header strong{
+  overflow-wrap:anywhere;
   font-size:15px
 }
 .az-table .az-player header small{
@@ -260,6 +261,7 @@
   color:#b7d7e1
 }
 .az-table .az-score{
+  flex-shrink:0;
   display:flex;
   align-items:baseline;
   gap:5px;

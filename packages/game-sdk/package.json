@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./presentation": {
+      "production": "./dist/presentation.js",
+      "default": "./src/presentation.ts"
+    },
     ".": {
       "production": "./dist/index.js",
       "default": "./src/index.ts"

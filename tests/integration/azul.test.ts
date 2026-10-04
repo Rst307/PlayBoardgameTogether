@@ -60,6 +60,24 @@ describe.skipIf(!url)('Azul formal action flow', () => {
     expect(launched.statusCode).toBe(200);
     return { sessions, roomId, matchId: launched.json().data.matchId as string };
   }
+  it('projects names from fixed match participants, including after room seats change', async () => {
+    const { sessions, matchId, roomId } = await start();
+    const endpoint = '/api/v1/matches/' + matchId + '/view';
+    const initial = (await read(endpoint, sessions[0]!)).json().data;
+    expect(initial.players.map((player: { displayName: string }) => player.displayName)).toEqual(['garden_a', 'garden_b']);
+    expect(initial.players.map((player: { seatId: string }) => player.seatId)).toEqual(initial.view.seats);
+    expect(initial.players[0]).toEqual({
+      seatId: initial.view.seats[0], seatIndex: 0, displayName: 'garden_a', occupantKind: 'human',
+    });
+    expect((await read(endpoint, sessions[2]!)).statusCode).toBe(404);
+    await db.query("UPDATE accounts SET display_name='花砖好友' WHERE id=(SELECT account_id FROM match_participants WHERE match_id=$1 AND seat_index=1)", [matchId]);
+    await db.query('UPDATE seats SET owner_account_id=NULL,ready=false WHERE room_id=$1 AND seat_index=1', [roomId]);
+    const restored = (await read(endpoint, sessions[1]!)).json().data;
+    expect(restored.players[1].displayName).toBe('花砖好友');
+    expect(restored.players.map((player: { seatId: string }) => player.seatId)).toEqual(initial.view.seats);
+    expect(restored.view.viewingSeatId).toBe(initial.view.seats[1]);
+  });
+
   it('enforces actor, deduplication, conflicts, rollback, hidden bag and persisted recovery', async () => {
     const { sessions, matchId } = await start();
     const endpoint = '/api/v1/matches/' + matchId;

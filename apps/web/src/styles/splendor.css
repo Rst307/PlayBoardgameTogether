@@ -618,11 +618,14 @@
 }
 
 .sp-player header h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   font-size: 12px;
 }
 
 .sp-player header strong {
+  flex-shrink: 0;
   color: #e8ce92;
   font-size: 23px;
 }

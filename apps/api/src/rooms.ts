@@ -328,7 +328,7 @@ export class RoomService {
       const ext=this.registry.get(room.game_id,room.game_version);
       if(!ext||ext.manifest.developmentOnly)throw new AppError('GAME_VERSION_UNAVAILABLE','Game version unavailable',422);
       await this.assertInstalled(c,room.game_id,room.game_version);
-      const seats=await c.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_policy_id:string|null;bot_policy_version:string|null;bot_model_profile_id:string|null;ready:boolean;status:string|null}>('SELECT s.id,s.seat_index,s.owner_account_id,s.occupant_kind,s.bot_policy_id,s.bot_policy_version,s.bot_model_profile_id,s.ready,a.status FROM seats s LEFT JOIN accounts a ON a.id=s.owner_account_id WHERE s.room_id=$1 ORDER BY s.seat_index FOR UPDATE OF s',[roomId]);
+      const seats=await c.query<{id:string;seat_index:number;owner_account_id:string|null;occupant_kind:'human'|'bot';bot_policy_id:string|null;bot_policy_version:string|null;bot_model_profile_id:string|null;ready:boolean;status:string|null;display_name:string|null}>('SELECT s.id,s.seat_index,s.owner_account_id,s.occupant_kind,s.bot_policy_id,s.bot_policy_version,s.bot_model_profile_id,s.ready,a.status,COALESCE(a.display_name,s.bot_name) AS display_name FROM seats s LEFT JOIN accounts a ON a.id=s.owner_account_id WHERE s.room_id=$1 ORDER BY s.seat_index FOR UPDATE OF s',[roomId]);
       const members=await c.query<{count:string}>('SELECT count(*) FROM room_members WHERE room_id=$1',[roomId]);
       if(seats.rows.length!==room.seat_count||seats.rows.some(s=>s.occupant_kind==='human'?(!s.owner_account_id||!s.ready||s.status!=='active'):!['basic-v1','model'].includes(s.bot_policy_id??''))||Number(members.rows[0]!.count)!==seats.rows.filter(s=>s.occupant_kind==='human').length)throw new AppError('NOT_ALL_READY','Every human must be seated and ready and every bot must have an available policy',409);
       if (seats.rows.some(seat => seat.occupant_kind === 'bot') && !ext.getDecisionContext) {
@@ -355,6 +355,8 @@ export class RoomService {
         }
         else if(seat.occupant_kind==='bot')await c.query("INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type,policy_id,policy_version,policy_hash) VALUES($1,$2,NULL,$3,'bot','script',$4,$5,$6)",[matchId,seat.id,seat.seat_index,seat.bot_policy_id,seat.bot_policy_version,sha(`${room.game_id}:${seat.bot_policy_id}:${seat.bot_policy_version}`)]);
         else await c.query("INSERT INTO match_participants(match_id,seat_id,account_id,seat_index,occupant_kind,controller_type) VALUES($1,$2,$3,$4,'human','human')",[matchId,seat.id,seat.owner_account_id,seat.seat_index]);
+        await c.query('UPDATE match_participants SET display_name=$3 WHERE match_id=$1 AND seat_id=$2',
+          [matchId, seat.id, seat.display_name]);
       }
       await c.query("UPDATE rooms SET status='in_game',active_match_id=$1,room_revision=room_revision+1 WHERE id=$2",[matchId,roomId]);
       await c.query('DELETE FROM room_invites WHERE room_id=$1',[roomId]);

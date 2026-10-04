@@ -1,5 +1,24 @@
 # 开发进度
 
+## 花砖物语与璀璨宝石玩家名称（2026-10-04）
+
+两款正式桌面的玩家区、等待/先手提示、璀璨宝石公开行动记录和结算显示玩家昵称，本人附加「（你）」，AI 使用开局名称；32 字长昵称可换行，桌面/320px 手机无横向溢出。沿用页面布局与主要操作，不增加区域或按钮。MatchView.players 只投影固定参与者的 seatId、seatIndex、displayName、occupantKind；真人使用当前昵称，AI 使用参与者保存的名称，后续房间换人/换 AI 不污染旧局。新增迁移 027，在原开局事务保存名称；历史 AI 仅在仍绑定原局的房间安全补齐，无法恢复时显示 AI 编号。
+
+GameBoard 第七个可选参数传递公开名称映射，game-sdk/presentation 独立于被规则摘要覆盖的核心；游戏 State、规则版本、RNG、动作授权与私密信息投影不变。匿名教程、图包预览和旧 API 未提供名称时保留原标签。协议、数据模型、架构、SDK 及公开开发者指南已同步；在线 ZIP 桥尚未接入名称参数。
+
+本轮实际验证：
+
+- `pnpm typecheck`、`pnpm lint`（20 个边界目录）通过；最终 E2E 定位修改另执行定向 ESLint 通过。沙箱内 tsx 系统用户读取及 pnpm 可执行定位受限，批准后原命令通过。
+- `pnpm test tests/unit`：33 文件/160 项通过。拆到独立 presentation 入口后，`pnpm test tests/unit/developer-publication.test.ts` 4/4 通过，公开 SDK 白名单覆盖新入口。
+- `pnpm build` 通过，包含生产 bundle、API runtime、隔离 ZIP 与 AI worker 检查；公开文档补齐后 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm exec playwright test --config playwright.player-names.config.ts --output .data/player-names-ui-final`：桌面/320px 手机 4/4，无 skip；真实 registry 与 React 桌面验证名称、本人标记、等待、公开行动、结算、改名、匿名回退及无溢出，已查看四张截图。初轮合成结算数据遗漏 scores/原因不符 schema，修正测试数据后通过。
+- `pnpm test:integration`：22 文件/157 项，156 项首次通过；新增名称测试最初误用不存在的 username 列，改为固定 participant account_id 查询后，`pnpm exec vitest run tests/integration/azul.test.ts -t projects` 1/1 通过（其余 4 项为过滤未执行，已在前轮通过）。覆盖改昵称、房间座位变化、非参与者禁止读取，以及 AI 名称在房间后续更改后仍固定；未重复已通过的其他 156 项。
+- 原独立测试库因 026 历史校验和不一致被保护脚本阻止；保留原库与迁移，改用进程级独立 `boardgame_names_20261004`，由原脚本检查隔离、建库、迁移、同步、种子。未覆盖 .env 或重置开发库。
+
+- `pnpm test:e2e tests/e2e/azul.spec.ts tests/e2e/splendor.spec.ts --output .data/player-names-e2e`：2/4 通过，无 skip。花砖物语桌面/手机完成真人与 AI 整局、名称、动画与刷新恢复。璀璨宝石两端玩家名称断言通过，手机公开 AI 购买记录名称也通过，但桌面市场底部 933.95px 超过 768px 视口，手机购买提示浮层的视口/导航避让断言失败；保留原断言，未将完整璀璨宝石 E2E 计为通过。这两处布局限制需要后续独立修复。
+
+部署需运行 `pnpm db:migrate` 应用 027 并加载新版 API/Web；本轮未部署线上服务。截图及生成产物只在忽略的 .data/dist，不提交。
+
 ## 平台版本 0.2.0（2026-10-04）
 
 根目录 package.json 平台版本从 0.1.0 提升到 0.2.0；Vite 在开发与生产构建时读取同一版本并注入页脚，显示「桌游平台 v0.2.0」。README 记录本次版本包含五子棋更新、公共聊天、头像加好友及聊天表情；游戏包与 SDK 独立版本保持原值。本轮不改变协议或数据库行为。

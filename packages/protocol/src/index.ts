@@ -130,6 +130,10 @@ export const controllerCommandSchema = z.object({
 }).strict();
 
 export const matchViewSchema = z.object({
+  players: z.array(z.object({
+    seatId: z.string(), seatIndex: z.number().int().nonnegative(),
+    displayName: z.string(), occupantKind: z.enum(['human', 'bot']),
+  }).strict()).optional(),
   assetBinding: assetBindingSchema.nullable().optional(),
   cues: z.array(presentationCueSchema).max(128).optional(),
   matchId: z.string().uuid(), roomId: z.string().uuid(),

@@ -1,5 +1,9 @@
 # 游戏 SDK
 
+## 可选玩家显示名称
+
+平台 Web 注册的 GameBoard 第七个可选参数 playerNames 是 seatId→displayName 的公开名称映射，不属于游戏 State 或规则 View。@boardgame/game-sdk/presentation 导出 PlayerNames 与 playerLabel(seatId, seats, viewingSeatId, names?, fallback?)；有名称时本人附加「（你）」，未传名称时本人为「你」、其他为编号标签。昵称不提供动作权限，教程可不传。当前花砖物语与璀璨宝石已接入，在线 ZIP 消息桥尚未增加该参数。
+
 包：@boardgame/game-sdk，当前版本 0.1.0。入口为根包、/assets、/multi-action、/tutorial。浏览器只引用公开类型和资源端口，游戏完整 State 留在 server 入口。
 
 ## 可选交互教程

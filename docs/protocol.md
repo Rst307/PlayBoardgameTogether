@@ -1,5 +1,9 @@
 # 协议
 
+## 对局玩家名称（2026-10-04）
+
+身份化 MatchView 新增可选 players 数组，每项只包含 seatId、seatIndex、displayName、occupantKind（human/bot）。HTTP 读取与 WS 快照沿用同一投影；只有固定对局参与者可以读取，不包含登录名、账号 UUID、模型配置或凭据。旧服务端未提供时客户端保留匿名标签。此元数据独立于游戏 View/State，不参与动作身份授权。
+
 ## 公共聊天（2026-10-04）
 
 GET `/api/v1/social/public/messages` 使用原 socialPageQuerySchema，before/after 为互斥 UUID，最新/更早 30 项按正序返回，after 为正序连续补取；nextCursor 为继续分页的 UUID 或 null。共享 publicMessagePageSchema 的消息包含 id、sequence（十进制字符串）、senderId、text、createdAt 及 sender（socialPerson：id/friendId/displayName/avatar）。需活跃 session，no-store；私聊游标不能跨到公共消息。

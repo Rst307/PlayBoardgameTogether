@@ -28,6 +28,8 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
   await page.getByRole('button', { name: '开始游戏' }).click();
   const table = page.getByRole('region', { name: '花砖物语游戏桌' });
   await expect(table).toBeVisible();
+  await expect(table.locator('.az-player').first()).toContainText('玩家 D（你）');
+  await expect(table.locator('.az-player').nth(1)).toContainText('电脑 2');
   await page.getByText('声音设置', { exact: true }).click();
   await page.getByRole('button', { name: '启用声音 / 测试声音' }).click();
   await expect(page.getByText('声音已启用，只播放新的实时事件。', { exact: true })).toBeVisible();
@@ -67,7 +69,7 @@ test('花砖物语：真人与AI整局、实时计分动画、刷新不重播、
     if (!action) throw new Error('Missing legal human action');
     await page.getByRole('button', { name: `${action.source < 0 ? '中央' : `工厂 ${action.source + 1}`} ${names[action.color]} ${(action.source < 0 ? view.center : view.factories[action.source]!).filter(c => c === action.color).length}块`, exact: true }).click();
     if (action.row < 0) await page.getByRole('button', { name: '全部放地板', exact: true }).click();
-    else await page.getByRole('button', { name: new RegExp(`^你图案行 ${action.row + 1} `) }).click();
+    else await page.getByRole('button', { name: new RegExp(`^玩家 D（你）图案行 ${action.row + 1} `) }).click();
     await expect(page.getByRole('button', { name: '确认选砖', exact: true })).toBeEnabled();
     if (move === 0) {
       await page.getByRole('button', { name: '取消选择', exact: true }).click();

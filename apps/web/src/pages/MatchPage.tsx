@@ -19,7 +19,8 @@ function GameSurface({ render, data, disabled, events, act, resolver, audio }: {
   act: (action: unknown) => void; resolver: AssetResolver | undefined;
   audio?: PresentationAudioPort;
 }) {
-  return render(data.view, disabled, events, act, resolver, audio);
+  const playerNames = Object.fromEntries((data.players ?? []).map(player => [player.seatId, player.displayName]));
+  return render(data.view, disabled, events, act, resolver, audio, playerNames);
 }
 
 type Pending = { accountId: string; matchId: string; requestId: string; expectedRevision: number; expectedControllerEpoch:number; action: unknown; attempts: number };

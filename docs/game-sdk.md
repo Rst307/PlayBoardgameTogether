@@ -1,5 +1,9 @@
 # 游戏扩展 SDK
 
+## 可选玩家名称（2026-10-04）
+
+Web GameBoard 第七个可选参数 playerNames 为公开 seatId→displayName 映射，来自身份化 MatchView.players，独立于规则 View。扩展可用 @boardgame/game-sdk/presentation 的 PlayerNames 与 playerLabel 显示昵称，本人附加「（你）」；未提供名称时保留匿名标签，教程和图包预览不需要账户。花砖物语及璀璨宝石在玩家区、等待/先手提示、公开行动与结算中消费此参数。规则身份仍来自服务端 session 和固定 participant，名称不能授权动作。
+
 ## 在线 ZIP 适配（2026-10-03）
 
 管理员可在线安装 boardgame-package-v1，自包含 server.js 声明 game 并实现现有同步 JSON GameExtension，client.html 通过 iframe 消息桥收取本人 View 并提交动作。规则契约、确定性 RNG、投影和正式事务继续复用；不接受 Node.js imports/require 或普通源码 ZIP。v1 可选 getDecisionContext 接入基础脚本/模型 AI，可选 game.json.presentation 内嵌 PNG 展示图；不装配平台图包/音效或教程；完整限制与可玩模板见 [在线游戏 ZIP](../apps/web/public/developer-docs/game-packages.md)。

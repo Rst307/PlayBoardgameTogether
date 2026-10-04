@@ -90,13 +90,20 @@ export class MatchService {
     } catch {
       throw new AppError('RECOVERY_BLOCKED', 'Saved match state cannot be restored', 503);
     }
-    const controllers=await this.db.query<ParticipantRow>('SELECT seat_index,controller_type,controller_epoch,controller_version,ai_status,ai_status_version,ai_error_code,policy_id,policy_version,policy_hash,seat_id FROM match_participants WHERE match_id=$1 ORDER BY seat_index',[matchId]);
+    const controllers = await this.db.query<ParticipantRow & { display_name: string | null; occupant_kind: 'human' | 'bot' }>(
+      `SELECT p.*, COALESCE(a.display_name, p.display_name) AS display_name
+       FROM match_participants p LEFT JOIN accounts a ON a.id=p.account_id
+       WHERE p.match_id=$1 ORDER BY p.seat_index`, [matchId]);
     return {
       matchId, roomId: row.room_id, gameId: row.game_id, gameVersion: row.game_version,
       assetBinding: row.asset_version_id ? {versionId:row.asset_version_id,manifestHash:row.asset_manifest_hash!,contractVersion:row.asset_contract_version!} : null,
       revision: row.revision, status: row.status, seatIndex: row.seat_index,
       controller:{type:row.controller_type,controllerEpoch:row.controller_epoch,controllerVersion:row.controller_version,policyId:row.policy_id,profileId:(row as any).model_profile_id??null},
       aiStatus:{status:row.ai_status,version:row.ai_status_version,safeErrorCode:row.ai_error_code},
+      players: controllers.rows.map(item => ({
+        seatId: item.seat_id, seatIndex: item.seat_index, occupantKind: item.occupant_kind,
+        displayName: item.display_name ?? `AI ${item.seat_index + 1}`,
+      })),
       controllers:controllers.rows.map(item=>({seatIndex:item.seat_index,type:item.controller_type,controllerEpoch:item.controller_epoch,controllerVersion:item.controller_version,aiStatus:item.ai_status,aiStatusVersion:item.ai_status_version,safeErrorCode:item.ai_error_code})),view,
       delivery: 'snapshot' as const,
     };

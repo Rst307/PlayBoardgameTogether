@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { playerLabel, type PlayerNames } from '@boardgame/game-sdk/presentation';
 import type { PresentationAudioPort } from '@boardgame/game-sdk/assets';
 import {
   colors, names, symbols, floorPenalties, scoreEventSchema, wallColor, wallColumn,
@@ -31,9 +32,9 @@ type Beat = ScoreStep & {
   round: number;
   floor?: AzulView['players'][string]['floor'] | undefined;
 };
-export function AzulBoard({ view, busy, events = [], onAction, audio }: {
+export function AzulBoard({ view, busy, events = [], onAction, audio, playerNames }: {
   view: AzulView; busy: boolean; events?: unknown[]; onAction: (action: AzulAction) => void;
-  audio?: PresentationAudioPort | undefined;
+  audio?: PresentationAudioPort | undefined; playerNames?: PlayerNames | undefined;
 }) {
   const [selection, setSelection] = useState<{ source: number; color: Color } | null>(null);
   const [row, setRow] = useState<number | null>(null);
@@ -54,7 +55,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
   const valid = selection && row !== null && view.legalActions.some(a => a.source === selection.source && a.color === selection.color && a.row === row);
   const legalRow = (r: number) => !!selection && view.legalActions.some(a => a.source === selection.source && a.color === selection.color && a.row === r);
   const order = [view.viewingSeatId, ...view.seats.filter(id => id !== view.viewingSeatId)];
-  const seatName = (id: string) => id === view.viewingSeatId ? '你' : `玩家 ${view.seats.indexOf(id) + 1}`;
+  const seatName = (id: string) => playerLabel(id, view.seats, view.viewingSeatId, playerNames);
 
   useEffect(() => { setSelection(null); setRow(null); }, [view.round, view.currentSeatId, busy]);
   useLayoutEffect(() => {
@@ -182,7 +183,7 @@ export function AzulBoard({ view, busy, events = [], onAction, audio }: {
       const hidden = allBeats.filter(step => step.seatId === id && step.kind === 'tile' && step.key !== active?.key);
       const floor = allBeats.find(step => step.seatId === id && step.kind === 'floor')?.floor ?? player.floor;
       return <section key={id} className={`az-player${own ? ' az-own' : ''}${active ? ' az-scoring' : ''}${active && revealed > 0 ? ` az-combo-${tier}` : ''}`} aria-label={`${seatName(id)}的花砖板`}>
-        <header><div><strong>{own ? '你的工坊' : seatName(id)}</strong>{view.currentSeatId === id && view.phase !== 'finished' && <small>正在选砖</small>}</div>
+        <header><div><strong>{own && !playerNames?.[id] ? '你的工坊' : seatName(id)}</strong>{view.currentSeatId === id && view.phase !== 'finished' && <small>正在选砖</small>}</div>
           <div className="az-score" aria-label={`${seatName(id)}得分`}><b key={active ? `${active.key}:${revealed}` : 'steady'} className={active && revealed > 0 ? 'az-score-pop' : ''}>{displayScore(id)}</b><span>分</span></div></header>
         <div className="az-mosaic"><div className="az-patterns"><small>图案行</small>{player.lines.map((line, r) => {
           const waiting = allBeats.find(step => step.seatId === id && step.kind === 'tile' && step.row === r
