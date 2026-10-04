@@ -1,5 +1,9 @@
 # 桌游平台
 
+## 五子棋 ZIP（2026-10-04）
+
+新增双人 15×15 自由五子棋上传包，黑棋先手，连续五子或更多获胜，无禁手，支持基础脚本 AI。运行 node scripts/package-gomoku.mjs 生成 dist/game-packages/gomoku-1.0.0.zip，管理员在游戏管理上传、检查并审核上架，再从大厅创建双人房间。手机与桌面先选点再确认，带坐标、最后落子和获胜连线。源码、玩法及验证边界见 [五子棋上传包](game-packages/gomoku/README.md)。
+
 ## Linux 一键公网部署（2026-10-03）
 
 准备 Node.js 22、pnpm 11.15.1、Docker Compose v2 和 systemd 用户服务，域名解析并开放 80/443 后，在仓库根目录执行 `bash deploy.sh`。首次询问域名，自动生成独立生产密钥、构建、迁移、同步游戏/资源并启动 HTTPS 网站；后续运行同一命令更新，迁移前停服备份。执行 `bash deploy.sh admin` 设置首位管理员，`status` / `logs` / `backup` / `stop` 管理运行。开发 `.env` 和数据库保留，API 不挂载 Docker socket。前提、恢复边界和实际未验证项见 [部署指南](docs/deployment.md)。

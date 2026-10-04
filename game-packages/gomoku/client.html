@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>五子棋</title>
+<style>
+:root{color-scheme:dark;--wood:#d8b47a;--line:#705a3b;--black:#202329;--white:#f5f6f8;--blue:#3478c8}
+*{box-sizing:border-box}body{margin:0;background:#23262c;color:var(--white);font:15px/1.5 system-ui,sans-serif}
+main{max-width:680px;margin:auto;padding:20px 12px}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font:600 27px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size:17px;margin:12px 0 4px}#identity,#last{color:#b6bcc6;font-size:13px}
+#board{position:relative;display:grid;grid-template-columns:repeat(15,1fr);aspect-ratio:1;background:var(--wood);border:16px solid var(--wood);margin:18px 0 12px;border-radius:4px}
+.point{position:relative;border:0;padding:0;min-width:0;background:transparent;aspect-ratio:1;cursor:pointer;color:var(--line)}
+.point:before{content:"";position:absolute;inset:0;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat,linear-gradient(var(--line),var(--line)) center/1px 100% no-repeat}
+.point[data-x="0"]:before{left:50%;background-position:left center,left center}.point[data-x="14"]:before{right:50%;background-position:right center,right center}
+.point[data-y="0"]:after,.point[data-y="14"]:after{content:none}
+.axis{position:absolute;color:var(--line);font:9px/1 system-ui;pointer-events:none}.axis.x{top:-12px;left:0;width:100%;text-align:center}.axis.y{left:-13px;top:calc(50% - 4px);width:11px;text-align:center}.point:disabled{cursor:default}.point:focus-visible{outline:2px solid var(--blue);outline-offset:-2px;z-index:2}
+.stone{position:absolute;inset:8%;border-radius:50%;background:var(--black);box-shadow:0 2px 3px #0005;z-index:1}
+.stone.white{background:var(--white);border:1px solid #b9bec6}.stone.last:after{content:"";position:absolute;width:25%;height:25%;border-radius:50%;background:var(--blue);left:37.5%;top:37.5%}
+.stone.win{outline:3px solid var(--blue);outline-offset:1px}
+.point.selected .stone{opacity:.55;outline:2px solid var(--blue);outline-offset:2px}
+.star{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--line);left:calc(50% - 2.5px);top:calc(50% - 2.5px)}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+#confirm{border:0;border-radius:7px;background:var(--blue);color:white;font:600 15px system-ui;padding:12px 20px;cursor:pointer;white-space:nowrap}
+#confirm:disabled{background:#414752;color:#b6bcc6;cursor:default}#confirm:focus-visible{outline:2px solid white;outline-offset:3px}
+#selection{font-size:14px}details{border-top:1px solid #444a53;margin-top:18px;padding-top:12px;color:#b6bcc6;font-size:13px}summary{cursor:pointer}details p{max-width:58ch}
+@media(max-width:400px){main{padding:12px 8px}h1{font-size:23px}#status{font-size:15px}#board{border-width:12px;margin-top:14px}.stone.win{outline-width:2px}#confirm{padding:12px 14px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>五子棋</h1><span id="identity">等待局面</span></header>
+<p id="status" role="status" aria-live="polite">正在载入棋盘…</p>
+<div id="last">黑先白后 · 连成五子获胜</div>
+<div id="board" role="group" aria-label="五子棋棋盘"></div>
+<div class="toolbar"><span id="selection" aria-live="polite">选择一个空交叉点</span><button id="confirm" disabled>确认落子</button></div>
+<details><summary>玩法说明</summary><p>双方轮流落子，横、竖、斜线连续五子或更多获胜。15×15 棋盘，无禁手，满盘无人获胜为和棋。点击空点选择，再确认落子；蓝点标记最后一手。</p><p>棋盘从左到右为 A–O，从上到下为 1–15。键盘用方向键移动、空格或回车选点，然后确认落子。</p></details>
+</main>
+<script>
+let view = null, busy = false, pending = false, selected = null, focusIndex = 112;
+const board = document.getElementById('board'), confirm = document.getElementById('confirm');
+const coord = (x, y) => String.fromCharCode(65 + x) + (y + 1);
+const canPlay = () => view && !view.finished && view.you !== null && view.you === view.currentSeat && !busy && !pending;
+const points = [];
+for (let y = 0; y < 15; y++) {
+  for (let x = 0; x < 15; x++) {
+    const point = document.createElement('button');
+    point.className = 'point';
+    point.dataset.x = x;
+    point.dataset.y = y;
+    point.type = 'button';
+    point.addEventListener('click', () => {
+      if (!canPlay() || view.board[y * 15 + x]) return;
+      selected = { x, y };
+      focusIndex = y * 15 + x;
+      render();
+    });
+    point.addEventListener('keydown', event => {
+      const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -15, ArrowDown: 15 };
+      if (!(event.key in steps)) return;
+      event.preventDefault();
+      const next = y * 15 + x + steps[event.key];
+      if (next < 0 || next >= 225 || ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && Math.floor(next / 15) !== y)) return;
+      focusIndex = next;
+      points.forEach((cell, index) => { cell.tabIndex = index === next ? 0 : -1; });
+      points[next].focus();
+    });
+    points.push(point);
+    board.append(point);
+  }
+}
+function render() {
+  if (!view) return;
+  const color = view.players.find(player => player.seatId === view.you)?.color;
+  document.getElementById('identity').textContent = color ? '你执' + (color === 1 ? '黑' : '白') : '公开棋盘';
+  document.getElementById('status').textContent = view.finished
+    ? (view.winner ? (view.winner === view.you ? '你获胜了' : (view.players.find(player => player.seatId === view.winner)?.color === 1 ? '黑棋获胜' : '白棋获胜')) : '满盘和棋')
+    : (pending || busy ? '正在处理落子…' : (view.you === view.currentSeat ? '轮到你落子' : '等待' + (view.moveCount % 2 === 0 ? '黑棋' : '白棋') + '落子'));
+  document.getElementById('last').textContent = view.last ? '第 ' + view.moveCount + ' 手 · 最后落子 ' + coord(view.last.x, view.last.y) : '黑先白后 · 连成五子获胜';
+  points.forEach((point, index) => {
+    const x = index % 15, y = Math.floor(index / 15), stone = view.board[index];
+    const chosen = selected?.x === x && selected?.y === y;
+    point.className = 'point' + (chosen ? ' selected' : '');
+    point.tabIndex = index === focusIndex ? 0 : -1;
+    point.setAttribute('aria-disabled', String(!canPlay() || !!stone));
+    point.setAttribute('aria-pressed', String(chosen));
+    point.setAttribute('aria-label', coord(x, y) + ' ' + (stone === 1 ? '黑棋' : stone === 2 ? '白棋' : '空位'));
+    point.replaceChildren();
+    if (y === 0) {
+      const label = document.createElement('span'); label.className = 'axis x'; label.textContent = String.fromCharCode(65 + x); label.setAttribute('aria-hidden', 'true'); point.append(label);
+    }
+    if (x === 0) {
+      const label = document.createElement('span'); label.className = 'axis y'; label.textContent = y + 1; label.setAttribute('aria-hidden', 'true'); point.append(label);
+    }
+    if (stone || chosen) {
+      const disc = document.createElement('span');
+      disc.className = 'stone' + ((stone || color) === 2 ? ' white' : '');
+      if (view.last?.x === x && view.last?.y === y) disc.classList.add('last');
+      if (view.winningLine.some(cell => cell[0] === x && cell[1] === y)) disc.classList.add('win');
+      point.append(disc);
+    } else if ([3, 7, 11].includes(x) && [3, 7, 11].includes(y) && (x === y || x + y === 14)) {
+      const star = document.createElement('span'); star.className = 'star'; point.append(star);
+    }
+  });
+  document.getElementById('selection').textContent = selected ? '已选择 ' + coord(selected.x, selected.y) : (view.finished ? '本局已结束' : '选择一个空交叉点');
+  confirm.disabled = !canPlay() || !selected;
+}
+confirm.addEventListener('click', () => {
+  if (!canPlay() || !selected || view.board[selected.y * 15 + selected.x]) return;
+  const action = { type: 'place', x: selected.x, y: selected.y };
+  pending = true;
+  selected = null;
+  render();
+  parent.postMessage({ type: 'boardgame:action', action }, '*');
+});
+window.addEventListener('message', event => {
+  if (event.source !== parent || event.data?.type !== 'boardgame:view') return;
+  const next = event.data.view;
+  if (!next || next.size !== 15 || !Array.isArray(next.board) || next.board.length !== 225) return;
+  if (!view || next.moveCount !== view.moveCount || next.currentSeat !== view.currentSeat || next.you !== view.you) selected = null;
+  view = next; busy = !!event.data.busy; pending = false;
+  if (selected && (!canPlay() || view.board[selected.y * 15 + selected.x])) selected = null;
+  render();
+});
+parent.postMessage({ type: 'boardgame:ready' }, '*');
+</script>
+</body>
+</html>

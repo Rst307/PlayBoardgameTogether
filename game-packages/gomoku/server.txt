@@ -1,0 +1,149 @@
+const SIZE = 15;
+const DIRECTIONS = [[1, 0], [0, 1], [1, 1], [1, -1]];
+function object(value, keys) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+}
+function position(x, y) {
+  return Number.isInteger(x) && Number.isInteger(y) && x >= 0 && x < SIZE && y >= 0 && y < SIZE;
+}
+function line(board, x, y, color) {
+  for (const [dx, dy] of DIRECTIONS) {
+    const cells = [[x, y]];
+    for (const sign of [-1, 1]) {
+      for (let step = 1; step < SIZE; step++) {
+        const nx = x + sign * dx * step, ny = y + sign * dy * step;
+        if (!position(nx, ny) || board[ny * SIZE + nx] !== color) break;
+        cells.push([nx, ny]);
+      }
+    }
+    if (cells.length >= 5) return cells;
+  }
+  return [];
+}
+function analyze(state) {
+  if (!object(state, ['seats', 'moves']) || !Array.isArray(state.seats) || state.seats.length !== 2
+    || !state.seats.every(seat => typeof seat === 'string' && seat.length > 0)
+    || state.seats[0] === state.seats[1] || !Array.isArray(state.moves) || state.moves.length > SIZE * SIZE) {
+    throw new Error('Invalid save');
+  }
+  const board = Array(SIZE * SIZE).fill(0);
+  let winningLine = [], winner = null;
+  for (const [index, move] of state.moves.entries()) {
+    if (winner !== null || !object(move, ['x', 'y']) || !position(move.x, move.y)
+      || board[move.y * SIZE + move.x]) throw new Error('Invalid move history');
+    const color = index % 2 + 1;
+    board[move.y * SIZE + move.x] = color;
+    winningLine = line(board, move.x, move.y, color);
+    if (winningLine.length) winner = state.seats[index % 2];
+  }
+  return { board, winner, winningLine, finished: winner !== null || state.moves.length === SIZE * SIZE };
+}
+function candidates(state, snapshot) {
+  if (snapshot.finished) return [];
+  const color = state.moves.length % 2 + 1, opponent = 3 - color;
+  const scored = [];
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      if (snapshot.board[y * SIZE + x]) continue;
+      let score = 14 - Math.abs(x - 7) - Math.abs(y - 7);
+      for (const stone of [color, opponent]) {
+        snapshot.board[y * SIZE + x] = stone;
+        if (line(snapshot.board, x, y, stone).length) score += stone === color ? 1000000 : 100000;
+        snapshot.board[y * SIZE + x] = 0;
+        for (const [dx, dy] of DIRECTIONS) {
+          let count = 1, open = 0;
+          for (const sign of [-1, 1]) {
+            let nx = x + dx * sign, ny = y + dy * sign;
+            while (position(nx, ny) && snapshot.board[ny * SIZE + nx] === stone) {
+              count++;
+              nx += dx * sign;
+              ny += dy * sign;
+            }
+            if (position(nx, ny) && snapshot.board[ny * SIZE + nx] === 0) open++;
+          }
+          score += count * count * count * open * (stone === color ? 3 : 2);
+        }
+      }
+      scored.push({ action: { type: 'place', x, y }, score });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score || a.action.y - b.action.y || a.action.x - b.action.x);
+  return scored.map(item => item.action);
+}
+const game = {
+  manifest: {
+    id: 'online.gomoku', version: '1.0.0', contentVersion: '1.0.0', sdkRange: '^0.1.0',
+    name: '五子棋', description: '双人自由五子棋：15×15 棋盘，黑先白后，连成五子或更多获胜，无禁手。支持基础脚本 AI。',
+    players: { min: 2, max: 2 }, mode: 'rules-driven', capabilities: ['turn-based', 'spatial'],
+    defaultAssetPack: { id: 'online.gomoku.default', version: '1.0.0' }, developmentOnly: false
+  },
+  validateOptions(value) {
+    if (!object(value, [])) throw new Error('No options');
+    return {};
+  },
+  parseAction(value) {
+    if (!object(value, ['type', 'x', 'y']) || value.type !== 'place' || !position(value.x, value.y)) {
+      throw new Error('Invalid placement');
+    }
+    return { type: 'place', x: value.x, y: value.y };
+  },
+  setup({ seats, options }) {
+    this.validateOptions(options);
+    const state = { seats: [...seats], moves: [] };
+    analyze(state);
+    return { state, events: [] };
+  },
+  getView(state, viewer) {
+    const snapshot = analyze(state);
+    const you = viewer.kind === 'seat' && state.seats.includes(viewer.seatId) ? viewer.seatId : null;
+    const currentSeat = snapshot.finished ? null : state.seats[state.moves.length % 2];
+    return {
+      size: SIZE, board: snapshot.board, players: state.seats.map((seatId, index) => ({ seatId, color: index + 1 })),
+      you, currentSeat, moveCount: state.moves.length, last: state.moves[state.moves.length - 1] || null,
+      winner: snapshot.winner, finished: snapshot.finished, winningLine: snapshot.winningLine,
+      actions: you === currentSeat && you !== null ? candidates(state, snapshot) : []
+    };
+  },
+  getActionSpec(state, viewer) {
+    return { actions: this.getView(state, viewer).actions };
+  },
+  validateAction(state, actor, action) {
+    const move = this.parseAction(action), snapshot = analyze(state);
+    if (snapshot.finished || actor.kind !== 'seat' || actor.seatId !== state.seats[state.moves.length % 2]
+      || snapshot.board[move.y * SIZE + move.x]) throw new Error('Placement not allowed');
+  },
+  applyAction(state, actor, action) {
+    this.validateAction(state, actor, action);
+    const move = this.parseAction(action);
+    const next = { seats: [...state.seats], moves: [...state.moves, { x: move.x, y: move.y }] };
+    const snapshot = analyze(next);
+    const events = [{ type: 'stone.placed', seatId: actor.seatId, x: move.x, y: move.y, color: next.moves.length % 2 ? 1 : 2 }];
+    if (snapshot.finished) events.push({ type: 'game.finished', winners: snapshot.winner ? [snapshot.winner] : [] });
+    return { state: next, events };
+  },
+  projectEvents(events) {
+    return events.map(event => event.type === 'stone.placed'
+      ? { type: event.type, seatId: event.seatId, x: event.x, y: event.y, color: event.color }
+      : { type: 'game.finished', winners: [...event.winners] });
+  },
+  getOutcome(state) {
+    const snapshot = analyze(state);
+    return snapshot.finished ? { status: 'finished', winners: snapshot.winner ? [snapshot.winner] : [] } : { status: 'ongoing' };
+  },
+  serialize(state) {
+    analyze(state);
+    return { seats: [...state.seats], moves: state.moves.map(move => ({ ...move })) };
+  },
+  deserialize(value) {
+    analyze(value);
+    return this.serialize(value);
+  },
+  getFallbackAction(view) {
+    return view.actions[0] || null;
+  },
+  getDecisionContext(state, viewer) {
+    const view = this.getView(state, viewer);
+    return view.actions.length ? { decisionKey: 'move:' + view.moveCount, legalActions: view.actions } : null;
+  }
+};
