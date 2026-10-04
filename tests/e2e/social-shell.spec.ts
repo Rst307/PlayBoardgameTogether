@@ -130,6 +130,41 @@ test('profile keeps editing, ID settings and history behind task entrances', asy
 });
 
 
+test('friend directory heading fits its panel without a global header background', async ({ page }, info) => {
+  await fixture(page);
+  await page.goto('/friends');
+  const heading = page.locator('.social-section-heading');
+  await expect(heading).toBeVisible();
+  for (const theme of ['dark', 'light']) {
+    await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await heading.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        const panel = element.closest('.social-directory')!.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          padding: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+          contained: box.left >= panel.left && box.right <= panel.right,
+          childrenContained: [...element.children].every(child => {
+            const childBox = child.getBoundingClientRect();
+            return childBox.left >= box.left && childBox.right <= box.right
+              && childBox.top >= box.top && childBox.bottom <= box.bottom;
+          }),
+          overflow: document.documentElement.scrollWidth > innerWidth,
+        };
+      });
+      expect(layout.background).toBe('rgba(0, 0, 0, 0)');
+      expect(layout.padding).toBe(0);
+      expect(layout.contained).toBe(true);
+      expect(layout.childrenContained).toBe(true);
+      expect(layout.overflow).toBe(false);
+      await page.screenshot({ path: info.outputPath(`friends-heading-${theme}-${width}.png`), fullPage: true });
+    }
+  }
+});
+
 test('friend avatars reflect the selected profile avatar', async ({ page }) => {
   const state = await fixture(page);
   await page.goto('/friends');

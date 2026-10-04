@@ -1,5 +1,11 @@
 # 开发进度
 
+## 好友列表标题栏布局修复（2026-10-04）
+
+复现好友页标题栏误继承 base.css 全局 header 的导航栏留白、固定高度和半透明白色背景，导致灰色横条与文字挤压。仅在 social-section-heading 明确设置自动高度、局部留白、透明背景和弹性换行，保留页面入口、私聊和更多菜单。新增实际生产页面回归测试，检查明暗主题及 320/390/768/1440px 下背景、水平留白、标题及链接边界和页面横向溢出。
+
+本轮实际验证：修复前 `pnpm exec playwright test --config playwright.social-ui.config.ts -g 'friend directory heading' --project desktop` 失败，背景实际为 rgba(255,255,255,0.86)。修复后 `pnpm --filter @boardgame/web build`、`pnpm typecheck`、`pnpm lint` 通过；`pnpm exec playwright test --config playwright.social-ui.config.ts --output .data/friends-heading-verified` 桌面/手机 12/12 通过，无 skip，已实际查看 1440px 桌面和 320px 手机截图。专项测试使用公开 HTTP DTO 测试数据，不连接或清理数据库；未运行数据库集成、真实账户 E2E 或公网部署。已有手机社交导航纵排问题不在本次标题栏修复范围内，仍保留前次记录的限制。
+
 ## 项目分支合并到 main（2026-10-04）
 
 按用户要求，将 codex/admin-online-update 的剩余提交及已有 AGENTS.md、README.md、architecture.md 文档修改合入最新 origin/main。codex/splendor 与 codex/admin-update-button 已包含在远程 main，无需重复移入。保留全部提交历史、双方开发进度及管理员更新说明，解决 README/progress 文档冲突；其他工作树无未提交改动，没有纳入 .env、凭据、测试资源或构建产物。

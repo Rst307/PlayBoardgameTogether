@@ -71,12 +71,16 @@
 
 /* Header Sections */
 .social-section-heading {
+  /* A section header must not inherit the site navigation's size or surface. */
+  height: auto;
+  padding: 0 0 12px;
+  background: transparent;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
-  padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
 
