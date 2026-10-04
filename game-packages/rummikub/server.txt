@@ -1,6 +1,17 @@
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function layoutShape(value) {
+  return Array.isArray(value) && value.length <= 106
+    && value.every(row => Array.isArray(row) && row.length >= 1 && row.length <= 106 && row.every(tileId));
+}
+function checkLayout(state, layout) {
+  if (layout === null) return;
+  if (!layoutShape(layout)) throw new Error('Invalid public layout');
+  const before = state.table.flat(), after = layout.flat();
+  if (after.length !== before.length || new Set(after).size !== after.length
+    || !after.every(id => before.includes(id))) throw new Error('只能展示原有公共牌，不能公开或拿走手牌');
+}
 function analyze(state) {
-  if (!exact(state, ['seats', 'hands', 'pool', 'table', 'opened', 'turn', 'passes', 'move'])
+  if (!exact(state, ['seats', 'hands', 'pool', 'table', 'opened', 'turn', 'passes', 'move', 'publicLayout', 'layoutSeq'])
     || !Array.isArray(state.seats) || state.seats.length < 2 || state.seats.length > 4
     || !state.seats.every(s => typeof s === 'string' && s.length > 0 && s.length <= 128)
     || new Set(state.seats).size !== state.seats.length
@@ -11,6 +22,7 @@ function analyze(state) {
     || !state.opened.every(b => typeof b === 'boolean')
     || !Number.isInteger(state.turn) || state.turn < 0 || state.turn >= state.seats.length
     || !Number.isSafeInteger(state.move) || state.move < 0
+    || !Number.isSafeInteger(state.layoutSeq) || state.layoutSeq < 0
     || !Number.isInteger(state.passes) || state.passes < 0 || state.passes > state.seats.length
     || (state.pool.length > 0 && state.passes !== 0) || tableProblem(state.table)) throw new Error('Invalid save');
   const ids = [...state.hands.flat(), ...state.pool, ...state.table.flat()];
@@ -21,6 +33,8 @@ function analyze(state) {
   const blocked = state.pool.length === 0 && state.passes === state.seats.length;
   const penalties = state.hands.map(h => h.reduce((sum, id) => sum + (tile(id).joker ? 30 : tile(id).number), 0));
   const finished = empty >= 0 || blocked;
+  checkLayout(state, state.publicLayout);
+  if (state.publicLayout !== null && (finished || !state.opened[state.turn])) throw new Error('Invalid layout owner');
   const lowest = Math.min(...penalties);
   const winners = !finished ? [] : empty >= 0 ? [state.seats[empty]]
     : state.seats.filter((s, i) => penalties[i] === lowest);
@@ -116,7 +130,7 @@ function suggestions(view) {
 }
 const game = {
   manifest: {
-    id: 'online.rummikub', version: '1.0.2', contentVersion: '1.0.0', name: '拉密', sdkRange: '^0.1.0',
+    id: 'online.rummikub', version: '1.0.3', contentVersion: '1.1.0', name: '拉密', sdkRange: '^0.1.0',
     description: '2–4 人经典数字牌桌：30 分破冰、普通百搭与自由重组。支持基础 AI。',
     players: { min: 2, max: 4 }, mode: 'rules-driven', capabilities: ['private-view', 'turn-based'],
     defaultAssetPack: { id: 'online.rummikub.default', version: '1.0.0' }, developmentOnly: false
@@ -127,6 +141,10 @@ const game = {
   },
   parseAction(value) {
     if (exact(value, ['type']) && value.type === 'draw') return { type: 'draw' };
+    if (exact(value, ['type', 'layout']) && value.type === 'arrange_public'
+      && (value.layout === null || layoutShape(value.layout))) {
+      return { type: 'arrange_public', layout: clone(value.layout) };
+    }
     if (!exact(value, ['type', 'table']) || value.type !== 'play' || !Array.isArray(value.table)
       || value.table.length > 35 || !value.table.every(row => Array.isArray(row)
         && row.length >= 3 && row.length <= 13 && row.every(tileId))) throw new Error('Invalid action');
@@ -141,7 +159,8 @@ const game = {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     const state = { seats: [...seats], hands: seats.map(() => pool.splice(0, 14)), pool, table: [],
-      opened: seats.map(() => false), turn: rng.nextInt(0, seats.length), passes: 0, move: 0 };
+      opened: seats.map(() => false), turn: rng.nextInt(0, seats.length), passes: 0, move: 0,
+      publicLayout: null, layoutSeq: 0 };
     analyze(state);
     return { state, events: [] };
   },
@@ -153,6 +172,7 @@ const game = {
       you, currentSeat: outcome.finished ? null : state.seats[state.turn],
       players: state.seats.map((seatId, i) => ({ seatId, count: state.hands[i].length, opened: state.opened[i], score: outcome.scores ? outcome.scores[i] : null })),
       hand: index < 0 ? [] : state.hands[index].map(tile), table: clone(state.table),
+      publicLayout: clone(state.publicLayout), layoutSeq: state.layoutSeq,
       poolCount: state.pool.length, opened: index >= 0 && state.opened[index],
       canAct: !outcome.finished && index === state.turn, move: state.move,
       finished: outcome.finished, winners: outcome.winners, blocked: outcome.blocked
@@ -161,17 +181,27 @@ const game = {
   },
   getActionSpec(state, viewer) {
     const view = this.getView(state, viewer);
-    return { actions: view.suggestions, description: 'play 提交全部桌面组合；draw 摸一张并结束回合，牌堆空时跳过。' };
+    return { actions: view.suggestions, description: 'play 确认全部组合；draw 摸牌并结束回合；arrange_public 仅同步已公开牌的整理布局，不结束回合。' };
   },
   validateAction(state, actor, action) {
     const parsed = this.parseAction(action), outcome = analyze(state);
     if (outcome.finished || actor.kind !== 'seat' || actor.seatId !== state.seats[state.turn]) throw new Error('Not your turn');
+    if (parsed.type === 'arrange_public') {
+      if (!state.opened[state.turn]) throw new Error('首次出牌前不能整理公共牌');
+      checkLayout(state, parsed.layout);
+    }
     if (parsed.type === 'play') checkPlay(state, state.turn, parsed.table);
   },
   applyAction(state, actor, action) {
     this.validateAction(state, actor, action);
     const parsed = this.parseAction(action), next = clone(state), index = next.turn;
     const events = [];
+    if (parsed.type === 'arrange_public') {
+      next.publicLayout = parsed.layout;
+      next.layoutSeq++;
+      return { state: next, events: [{ type: 'table.arranged', seatId: actor.seatId, layoutSeq: next.layoutSeq }] };
+    }
+    next.publicLayout = null;
     if (parsed.type === 'draw') {
       if (next.pool.length) {
         next.hands[index].push(next.pool.pop());
@@ -199,6 +229,7 @@ const game = {
     return events.map(event => event.type === 'game.finished'
       ? { type: event.type, winners: [...event.winners] }
       : event.type === 'tiles.played' ? { type: event.type, seatId: event.seatId, count: event.count }
+      : event.type === 'table.arranged' ? { type: event.type, seatId: event.seatId, layoutSeq: event.layoutSeq }
       : { type: event.type, seatId: event.seatId });
   },
   getOutcome(state) {

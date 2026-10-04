@@ -6,10 +6,11 @@ import { PackageRuntime } from '../../apps/api/src/registry/package-runtime.js';
 import { readGamePackage } from '../../apps/api/src/catalog/game-package.js';
 
 type State = { seats: string[]; hands: number[][]; pool: number[]; table: number[][];
-  opened: boolean[]; turn: number; passes: number; move: number };
-type Action = { type: 'draw' } | { type: 'play'; table: number[][] };
+  opened: boolean[]; turn: number; passes: number; move: number; publicLayout: number[][] | null; layoutSeq: number };
+type Action = { type: 'draw' } | { type: 'play'; table: number[][] } | { type: 'arrange_public'; layout: number[][] | null };
 type View = { you: string | null; hand: { id: number }[]; table: number[][]; suggestions: Action[];
-  canAct: boolean; finished: boolean; players: { seatId: string; score: number | null }[] };
+  canAct: boolean; finished: boolean; publicLayout: number[][] | null; layoutSeq: number;
+  players: { seatId: string; score: number | null }[] };
 let game: GameExtension<State, Record<string, never>, Action, View, unknown, unknown>;
 const actor = (seatId = 'a') => ({ kind: 'seat' as const, seatId, controllerEpoch: 0 });
 const viewer = (seatId = 'a') => ({ kind: 'seat' as const, seatId });
@@ -23,7 +24,8 @@ function arranged(hand: number[], table: number[][] = [], opened = true, emptyPo
   const used = new Set([...hand, ...table.flat()]);
   const rest = Array.from({ length: 106 }, (_, i) => i).filter(n => !used.has(n));
   const state: State = { seats: ['a', 'b'], hands: [hand, emptyPool ? rest : rest.splice(0, 14)],
-    pool: emptyPool ? [] : rest, table, opened: [opened, false], turn: 0, passes: 0, move: 5 };
+    pool: emptyPool ? [] : rest, table, opened: [opened, false], turn: 0, passes: 0, move: 5,
+    publicLayout: null, layoutSeq: 0 };
   return game.deserialize(state);
 }
 const play = (state: State, table: number[][]) => game.applyAction(state, actor(), { type: 'play', table }, new DeterministicRng(9));
@@ -107,6 +109,44 @@ describe('Rummikub in the real isolated package runtime', () => {
     for (const seat of ['b', 'intruder']) expect(() => game.applyAction(state, actor(seat), { type: 'draw' }, rng)).toThrow();
     for (const action of [{ type: 'draw', seatId: 'a' }, { type: 'play', table: [[1, 2, 106]] }, { type: 'play', table: 'bad' }]) expect(() => game.parseAction(action)).toThrow();
   });
+  it('shares unfinished public rearrangements without changing rules, secrets or RNG', () => {
+    const row = run(0, 1, 6), state = arranged([id(0, 4, 1), id(1, 4), id(2, 4)], [row]);
+    const before = structuredClone(state), rng = new DeterministicRng(9), random = rng.snapshot();
+    const layout = [row.slice(0, 2), row.slice(2)];
+    const result = game.applyAction(state, actor(), { type: 'arrange_public', layout }, rng);
+    expect(result.state).toEqual({ ...before, publicLayout: layout, layoutSeq: 1 });
+    expect(state).toEqual(before); expect(rng.snapshot()).toEqual(random);
+    for (const who of [viewer(), viewer('b'), { kind: 'spectator' as const }]) {
+      expect(game.getView(result.state, who).publicLayout).toEqual(layout);
+      expect(game.getView(result.state, who).table).toEqual([row]);
+      expect(game.projectEvents(result.events, who)).toEqual([{ type: 'table.arranged', seatId: 'a', layoutSeq: 1 }]);
+    }
+    expect(game.deserialize(game.serialize(result.state))).toEqual(result.state);
+    expect(game.getDecisionContext!(result.state, viewer())).toEqual(game.getDecisionContext!(before, viewer()));
+    const confirmed = play(result.state, [row.slice(0, 3), [id(0, 4, 1), ...row.slice(4)], [id(0, 4), id(1, 4), id(2, 4)]]).state;
+    expect(confirmed.publicLayout).toBeNull(); expect(confirmed.hands[0]).toEqual([]);
+  });
+  it('rejects private tiles, omissions, duplicates and unauthorized public arrangements', () => {
+    const row = run(0, 5), state = arranged([id(0, 8)], [row]);
+    const rng = new DeterministicRng(9), before = structuredClone(state), random = rng.snapshot();
+    for (const layout of [[...row, id(0, 8)], [row[0]!, row[0]!, row[2]!], row.slice(1), run(3, 1)].map(row => [row])) {
+      expect(() => game.applyAction(state, actor(), { type: 'arrange_public', layout }, rng)).toThrow();
+    }
+    for (const seat of ['b', 'intruder']) expect(() => game.applyAction(state, actor(seat), { type: 'arrange_public', layout: [row] }, rng)).toThrow();
+    expect(() => game.applyAction(arranged([id(0, 8)], [row], false), actor(), { type: 'arrange_public', layout: null }, rng)).toThrow();
+    expect(() => game.parseAction({ type: 'arrange_public', layout: [[]] })).toThrow();
+    expect(() => game.deserialize({ ...state, publicLayout: [[...row, id(0, 8)]] })).toThrow();
+    expect(state).toEqual(before); expect(rng.snapshot()).toEqual(random);
+  });
+  it('synchronizes reset and clears public previews when drawing ends the turn', () => {
+    const state = arranged([id(0, 8)], [run(0, 5)]), rng = new DeterministicRng(9);
+    const preview = game.applyAction(state, actor(), { type: 'arrange_public', layout: state.table.flat().map(id => [id]) }, rng).state;
+    const reset = game.applyAction(preview, actor(), { type: 'arrange_public', layout: null }, rng).state;
+    expect(reset).toEqual({ ...state, layoutSeq: 2 });
+    const drawn = game.applyAction(preview, actor(), { type: 'draw' }, rng).state;
+    expect(drawn.publicLayout).toBeNull(); expect(drawn.table).toEqual(state.table);
+    expect(drawn.turn).toBe(1); expect(drawn.hands[0]).toHaveLength(2);
+  });
   it('scores empty-rack wins and exhausted-pool endings with joker penalties', () => {
     const state = arranged(run(0, 10), [run(1, 1)]);
     const result = play(state, [...state.table, run(0, 10)]).state;
@@ -121,7 +161,7 @@ describe('Rummikub in the real isolated package runtime', () => {
     expect(game.getView(blocked, viewer()).players.map(p => p.score!).reduce((a, b) => a + b, 0)).toBe(0);
     const table = Array.from({ length: 8 }, (_, i) => run(Math.floor(i / 2), 1, 13).map(n => n + i % 2));
     let tied = game.deserialize({ seats: ['a', 'b'], hands: [[104], [105]], pool: [], table,
-      opened: [true, true], turn: 0, passes: 0, move: 20 });
+      opened: [true, true], turn: 0, passes: 0, move: 20, publicLayout: null, layoutSeq: 0 });
     tied = game.applyAction(tied, actor(), { type: 'draw' }, new DeterministicRng(1)).state;
     tied = game.applyAction(tied, actor('b'), { type: 'draw' }, new DeterministicRng(1)).state;
     expect(game.getOutcome(tied)).toEqual({ status: 'finished', winners: ['a', 'b'] });

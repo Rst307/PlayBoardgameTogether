@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import WebSocket from 'ws';
+import { matchSnapshotMessageSchema } from '../../packages/protocol/src/index.js';
 import { createApp } from '../../apps/api/src/app.js';
 import { createDatabase, type Database } from '../../apps/api/src/db/index.js';
 import { createRegistry } from '../../apps/api/src/registry/index.js';
@@ -33,16 +35,16 @@ afterAll(async () => {
   if (app) await app.close();
 });
 it('installs the real artwork ZIP, persists atomic/private/deduplicated turns, restarts and completes a replayable match', async () => {
-  const zip = await readFile('dist/game-packages/rummikub-1.0.2.zip');
+  const zip = await readFile('dist/game-packages/rummikub-1.0.3.zip');
   const uploadHeaders = { ...admin, 'content-type': 'application/zip' };
   const reviewed = await app.inject({ method: 'POST', url: '/api/v1/admin/game-packages/review', headers: uploadHeaders, payload: zip });
   expect(reviewed.statusCode).toBe(200);
   const installed = await app.inject({ method: 'POST', url: `/api/v1/admin/game-packages?requestId=${randomUUID()}&expectedCatalogHash=${reviewed.json().data.catalogHash}`, headers: uploadHeaders, payload: zip });
   expect(installed.statusCode).toBe(200);
-  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.rummikub', version: '1.0.2' })]));
-  const art = await app.inject({ url: '/api/v1/game-packages/online.rummikub/versions/1.0.2/art/cover.png' });
+  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.rummikub', version: '1.0.3' })]));
+  const art = await app.inject({ url: '/api/v1/game-packages/online.rummikub/versions/1.0.3/art/cover.png' });
   expect(art.statusCode).toBe(200); expect(art.headers['content-type']).toContain('image/png');
-  const created = await write('/api/v1/rooms', alice, { requestId: randomUUID(), name: '拉密验收', gameId: 'online.rummikub', version: '1.0.2', options: {}, seatCount: 2 });
+  const created = await write('/api/v1/rooms', alice, { requestId: randomUUID(), name: '拉密验收', gameId: 'online.rummikub', version: '1.0.3', options: {}, seatCount: 2 });
   expect(created.statusCode).toBe(200);
   const { roomId, inviteCode } = created.json().data;
   const joined = await write('/api/v1/rooms/join', bob, { requestId: randomUUID(), inviteCode });
@@ -84,10 +86,64 @@ it('installs the real artwork ZIP, persists atomic/private/deduplicated turns, r
   expect((await write(`/api/v1/matches/${matchId}/actions`, player, { ...command, action: { type: 'play', table: [] } })).json().error.code).toBe('REQUEST_ID_CONFLICT');
   await app.close(); db = createDatabase(url!); app = await createApp({ db, config, registry: createRegistry(false) });
   expect((await read()).statusCode).toBe(200); expect(await snapshot()).toEqual(committed);
+  let arrangementRevision = 0;
+  let arrangement: number[][] = [];
   for (let i = 0; i < 250; i++) {
     const first = (await read()).json().data;
     if (first.status === 'finished') break;
     const current = first.view.canAct ? first : (await read(bob)).json().data;
+    if (!arrangementRevision && current.view.opened && current.view.table.length) {
+      const active = first.view.canAct ? alice : bob, observer = first.view.canAct ? bob : alice;
+      arrangement = (current.view.table as number[][]).flat().map(id => [id]);
+      const saved = await snapshot();
+      const previewCommand = { requestId: randomUUID(), expectedRevision: current.revision,
+        action: { type: 'arrange_public', layout: arrangement } };
+      await app.listen({ host: '127.0.0.1', port: 0 });
+      const address = app.server.address();
+      if (!address || typeof address === 'string') throw new Error('TCP address expected');
+      const socket = new WebSocket(`ws://127.0.0.1:${address.port}/api/v1/ws/session`, { origin, headers: { cookie: observer.cookie } });
+      const messages: ReturnType<typeof matchSnapshotMessageSchema.parse>[] = [];
+      socket.on('message', raw => {
+        const parsed = matchSnapshotMessageSchema.safeParse(JSON.parse(raw.toString()));
+        if (parsed.success) messages.push(parsed.data);
+      });
+      try {
+        await new Promise<void>((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject); });
+        socket.send(JSON.stringify({ protocolVersion: 1, type: 'room.subscribe', roomId }));
+        await expect.poll(() => messages.some(message => message.revision === current.revision)).toBe(true);
+        expect((await write(`/api/v1/matches/${matchId}/actions`, observer, previewCommand)).statusCode).toBe(422);
+        await db.query("CREATE FUNCTION fail_rummy_preview() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test rollback'; END $$");
+        await db.query('CREATE TRIGGER fail_rummy_preview AFTER UPDATE ON matches FOR EACH ROW EXECUTE FUNCTION fail_rummy_preview()');
+        try {
+          expect((await write(`/api/v1/matches/${matchId}/actions`, active, previewCommand)).statusCode).toBe(500);
+          expect(await snapshot()).toEqual(saved);
+        } finally {
+          await db.query('DROP TRIGGER fail_rummy_preview ON matches'); await db.query('DROP FUNCTION fail_rummy_preview()');
+        }
+        expect((await write(`/api/v1/matches/${matchId}/actions`, active, previewCommand)).statusCode).toBe(200);
+        arrangementRevision = current.revision + 1;
+        await expect.poll(() => messages.some(message => message.revision === arrangementRevision)).toBe(true);
+        const live = messages.find(message => message.revision === arrangementRevision)!;
+        expect(live.snapshot.delivery).toBe('live');
+        expect(live.snapshot.view).toMatchObject({ publicLayout: arrangement, table: current.view.table });
+        expect(live.snapshot.events).toEqual([expect.objectContaining({ type: 'table.arranged', layoutSeq: 1 })]);
+        const changed = await snapshot();
+        expect(changed.rng_state).toEqual(saved.rng_state);
+        expect(changed.state).toEqual({ ...saved.state, publicLayout: arrangement, layoutSeq: 1 });
+        expect((await write(`/api/v1/matches/${matchId}/actions`, active, previewCommand)).statusCode).toBe(200);
+        expect(await snapshot()).toEqual(changed);
+        expect((await write(`/api/v1/matches/${matchId}/actions`, active, { requestId: randomUUID(), expectedRevision: arrangementRevision,
+          action: { type: 'arrange_public', layout: [...arrangement, [current.view.hand[0].id]] } })).statusCode).toBe(422);
+        expect(await snapshot()).toEqual(changed);
+      } finally { socket.terminate(); }
+      await app.close(); db = createDatabase(url!); app = await createApp({ db, config, registry: createRegistry(false) });
+      expect((await read(observer)).json().data.view.publicLayout).toEqual(arrangement);
+      const reset = await write(`/api/v1/matches/${matchId}/actions`, active, { requestId: randomUUID(), expectedRevision: arrangementRevision,
+        action: { type: 'arrange_public', layout: null } });
+      expect(reset.statusCode).toBe(200);
+      expect((await read(observer)).json().data.view.publicLayout).toBeNull();
+      continue;
+    }
     const action = current.view.suggestions[0];
     const response = await write(`/api/v1/matches/${matchId}/actions`, first.view.canAct ? alice : bob,
       { requestId: randomUUID(), expectedRevision: current.revision, action });
@@ -95,6 +151,9 @@ it('installs the real artwork ZIP, persists atomic/private/deduplicated turns, r
   }
   const final = (await read()).json().data;
   expect(final.status).toBe('finished');
+  expect(arrangementRevision).toBeGreaterThan(0);
+  const previewReplay = await app.inject({ url: `/api/v1/matches/${matchId}/replay?revision=${arrangementRevision}`, headers: bob });
+  expect(previewReplay.statusCode).toBe(200); expect(previewReplay.json().data.view.publicLayout).toEqual(arrangement);
   const replay = await app.inject({ url: `/api/v1/matches/${matchId}/replay?revision=0`, headers: alice });
   expect(replay.statusCode).toBe(200); expect(replay.json().data.view.hand).toHaveLength(14);
   expect((await app.inject({ url: `/api/v1/rooms/${roomId}`, headers: alice })).json().data.status).toBe('waiting');

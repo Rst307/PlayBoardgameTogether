@@ -1,5 +1,15 @@
 # 开发进度
 
+## 拉密 1.0.3 公共牌重组同步（2026-10-04）
+
+按用户要求，已破冰的当前玩家移动已有公共牌后，对手通过原 WS 对局快照实时看到暂时排列及「正在整理公共牌 · 尚未确认」，包含暂时不合法的拆组，沿用克制移位动画与减少动态效果。撤销、还原同步；新手牌草稿确认前只在本人浏览器，不提前公开。未新增按钮或面板，核心流程仍为选牌 → 移动/重组 → 校验 → 确认，确认仍是主要操作。
+
+新增包内 `arrange_public` 动作和持久化 `publicLayout/layoutSeq`，只接受当前已破冰玩家恰好重排所有已公开牌；拒绝手牌、外来牌、重复、遗漏及越权。临时排列与已确认规则 table 分开，整理不改变手牌、回合 move、计分或 RNG。复用原 matches 身份、控制权、revision、回执、锁/事务、投影和广播；每次同步推进 match revision 并可回放，不另建临时通信通道。确认或摸牌时清除临时排列；刷新/重连恢复公共排列，本地新手牌草稿清除。包升为 1.0.3、内容版本 1.1.0，旧局继续精确旧包，无迁移及平台协议变更。
+
+实际验证：`node scripts/package-rummikub.mjs` 生成 `dist/game-packages/rummikub-1.0.3.zip`（544319 字节）；`pnpm typecheck` 通过；`pnpm test tests/unit/rummikub-package.test.ts` 11/11 通过，新增隐私/守恒/越权/无副作用、存档恢复、确认及摸牌清理测试。独立 `boardgame_rummikub_20261004` 经原忽略目录 wrapper 执行 `pnpm test tests/integration/rummikub-package.test.ts`，1/1 通过，无 skip：真实安装、对手认证 WS live 快照、错误控制者拒绝、数据库失败回滚、请求去重、非法私牌拒绝、API 重启、还原、整局及公共排列历史回放。未清理开发库。
+
+四尺寸专项 `node node_modules/@playwright/test/cli.js test --config playwright.rummikub-ui.config.ts --output .data/rummikub-public-layout-ui-final` 8/8 通过：两个同时打开的真实 React PackageBoard + QuickJS + sandbox 桥验证对手显示/只读、刷新恢复、撤销/还原同步及未确认新手牌不泄露，实际查看桌面、笔记本、390px/320px 对手截图。真实 WS 通道在集成测试验证，浏览器专项的传输为受控夹具，不宣称拉密已完成生产双人体验。`pnpm lint` 初次指出本轮测试夹具 prefer-const，修复后全库 ESLint 和 20 个 AST 边界目录通过。未重复不受影响的全量业务测试及平台生产构建；新版 ZIP 已经真实隔离运行时审核安装。未上架开发/生产环境，下一步管理员上传审核新版并创建新局。
+
 ## 拉密 1.0.2 移除组合建议（2026-10-04）
 
 按用户要求删除玩家端「组合建议」按钮、点击预览逻辑、按钮状态更新及玩法文案。保留手动组牌、拆分、排序、撤销、还原和合法性反馈；服务端候选仍用于脚本/模型 AI，不改变权威规则。包版本升级 1.0.2，输出 `dist/game-packages/rummikub-1.0.2.zip`（543502 字节），更新当前说明和测试版本引用，保留历史验收记录。未在开发/生产环境上架，须管理员上传新版；旧局继续使用原精确版本。
