@@ -58,9 +58,9 @@
 .desktop-shell--game .site-header nav > a, .desktop-shell--game .nav-tools summary { min-height: 44px; }
 .desktop-shell--game .brand { flex-shrink: 0; }
 .desktop-shell .chat-dock {
-  left: 16px;
-  right: auto;
-  bottom: 48px;
+  left: auto;
+  right: 16px;
+  bottom: 16px;
   width: min(368px, calc(100vw - 32px));
   max-height: calc(100dvh - 120px);
   border: 1px solid var(--line-strong);

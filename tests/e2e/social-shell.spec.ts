@@ -55,7 +55,7 @@ async function fixture(page: Page) {
   };
 }
 
-test('desktop chat stays at bottom left with two channels and retained drafts', async ({ page }, info) => {
+test('desktop chat stays at bottom right with two channels and retained drafts', async ({ page }, info) => {
   const state = await fixture(page);
   await page.goto('/profile');
   const dock = page.getByRole('region', { name: '聊天浮窗' });
@@ -68,8 +68,8 @@ test('desktop chat stays at bottom left with two channels and retained drafts', 
   await expect(page.getByRole('button', { name: '通知', exact: true })).toBeVisible();
   expect(state.publicReadCount()).toBe(0);
   const collapsed = await dock.boundingBox();
-  expect(collapsed!.x).toBe(16);
-  expect(collapsed!.y + collapsed!.height).toBe(852);
+  expect(collapsed!.x + collapsed!.width).toBe(page.viewportSize()!.width - 16);
+  expect(collapsed!.y + collapsed!.height).toBe(page.viewportSize()!.height - 16);
   await dock.getByRole('button', { name: '展开聊天', exact: true }).first().click();
   await expect(dock.getByText('公共频道你好', { exact: true })).toBeVisible();
   await dock.getByLabel('公共消息', { exact: true }).fill('公共草稿');
@@ -94,7 +94,7 @@ test('desktop chat stays at bottom left with two channels and retained drafts', 
   await expect(dock.getByLabel('私聊消息', { exact: true })).toHaveValue('好友草稿');
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
-    await page.screenshot({ path: info.outputPath('left-chat-' + theme + '.png'), fullPage: true });
+    await page.screenshot({ path: info.outputPath('right-chat-' + theme + '.png'), fullPage: true });
   }
   await page.goto(`/matches/${friend}`);
   const header = page.locator('.site-header');
@@ -111,6 +111,9 @@ test('desktop chat stays at bottom left with two channels and retained drafts', 
     expect(alignment.spread).toBeLessThan(2);
     expect(alignment.height).toBeLessThan(90);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const expanded = await dock.boundingBox();
+    expect(expanded!.x + expanded!.width).toBe(width - 16);
+    expect(expanded!.y + expanded!.height).toBe(884);
     await page.locator('.nav-tools summary').click();
     const menu = await page.locator('.nav-tools > div').boundingBox();
     expect(menu!.x).toBeGreaterThanOrEqual(0);
