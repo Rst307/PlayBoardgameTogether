@@ -28,7 +28,10 @@ export const socialRequestSchema = z.object({ requestId: z.string().uuid() }).st
 export const friendIdInputSchema = socialRequestSchema.extend({
   friendId: friendIdInputValueSchema, expectedRevision: z.number().int().positive(),
 }).strict();
-export const friendRequestInputSchema = socialRequestSchema.extend({ friendId: friendIdInputValueSchema }).strict();
+export const friendRequestInputSchema = socialRequestSchema.extend({
+  friendId: friendIdInputValueSchema, expectedAccountId: z.string().uuid().optional(),
+}).strict();
+export type FriendRequestInput = z.infer<typeof friendRequestInputSchema>;
 export const friendshipCommandSchema = socialRequestSchema.extend({
   action: z.enum(['accept', 'reject', 'cancel', 'remove']), expectedRevision: z.number().int().positive(),
 }).strict();
@@ -44,6 +47,9 @@ export const messageInputSchema = socialRequestSchema.extend({ text: z.string().
 export const socialPageQuerySchema = z.object({ before: z.string().uuid().optional(), after: z.string().uuid().optional() }).strict()
   .refine(value => !(value.before && value.after));
 export const messagePageSchema = z.object({ items: socialMessageSchema.array(), nextCursor: z.string().uuid().nullable() });
+export const publicMessageSchema = socialMessageSchema.extend({ sender: socialPersonSchema });
+export const publicMessagePageSchema = z.object({ items: publicMessageSchema.array(), nextCursor: z.string().uuid().nullable() });
+export type PublicMessage = z.infer<typeof publicMessageSchema>;
 export const readMessagesInputSchema = socialRequestSchema.extend({ messageId: z.string().uuid() }).strict();
 export const friendInviteInputSchema = socialRequestSchema.extend({
   friendAccountId: z.string().uuid(), expectedRoomRevision: z.number().int().nonnegative(),

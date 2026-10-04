@@ -6,6 +6,7 @@ const LoginPage = lazy(() => import('../pages/LoginPage.js').then(module => ({ d
 const RegisterPage = lazy(() => import('../pages/RegisterPage.js').then(module => ({ default: module.RegisterPage })));
 const ProfilePage = lazy(() => import('../pages/ProfilePage.js').then(module => ({ default: module.ProfilePage })));
 const FriendsPage = lazy(() => import('../pages/FriendsPage.js').then(module => ({ default: module.FriendsPage })));
+const PublicChatPage = lazy(() => import('../pages/PublicChatPage.js').then(module => ({ default: module.PublicChatPage })));
 const NewRoomPage = lazy(() => import('../pages/NewRoomPage.js').then(module => ({ default: module.NewRoomPage })));
 const GameDetailPage = lazy(() => import('../pages/GameDetailPage.js').then(module => ({ default: module.GameDetailPage })));
 const TutorialPage = lazy(() => import('../pages/TutorialPage.js').then(module => ({ default: module.TutorialPage })));
@@ -75,6 +76,7 @@ export function resolvePage(path: string): PageRoute {
     case '/friends/requests': return { title: '好友申请', page: <FriendsPage section="requests" /> };
     case '/friends/invitations': return { title: '房间邀请', page: <FriendsPage section="invitations" /> };
     case '/friends': return { title: '好友', page: <FriendsPage /> };
+    case '/chat': return { title: '公共聊天', page: <PublicChatPage /> };
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };
     case '/admin': return { title: '管理员后台', page: <AdminOverviewPage /> };

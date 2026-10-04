@@ -3,8 +3,8 @@ import type pg from 'pg';
 import {
   socialPersonSchema, socialIdentitySchema, socialOverviewSchema, friendshipSchema,
   socialMessageSchema, messagePageSchema, friendInviteSchema, socialDoneSchema,
-  socialSettingsSchema, type SocialSettingsInput,
-  type FriendshipCommand, type FriendInviteCommand,
+  socialSettingsSchema, publicMessageSchema, publicMessagePageSchema, type SocialSettingsInput,
+  type FriendshipCommand, type FriendInviteCommand, type FriendRequestInput,
 } from '@boardgame/protocol';
 import type { AuthContext } from '../auth.js';
 import type { Database } from '../db/index.js';
@@ -199,12 +199,14 @@ export class SocialService {
     }));
   }
 
-  async requestFriend(current: AuthContext, input: { requestId: string; friendId: string }) {
+  async requestFriend(current: AuthContext, input: FriendRequestInput) {
     return friendshipSchema.parse(await this.write(current, input.requestId, { operation: 'request', ...input }, async client => {
       const peer = await client.query<{ id: string }>("SELECT id FROM accounts WHERE friend_id=$1 AND status='active' FOR SHARE", [input.friendId]);
       const peerId = peer.rows[0]?.id;
       const accountId = current.account.id;
       if (!peerId || peerId === accountId) throw new AppError('FORBIDDEN', '不能向该 ID 发送好友申请', 403);
+      if (input.expectedAccountId && input.expectedAccountId !== peerId)
+        throw new AppError('STATE_CONFLICT', '对方好友 ID 已变化，请刷新聊天后重新打开名片', 409);
       const relation = await this.relation(client, accountId, peerId);
       if (relation && ['pending', 'accepted'].includes(relation.status)) return this.friendship(client, accountId, peerId);
       if (relation && relation.updated_at.getTime() > Date.now() - 15_000) {
@@ -265,6 +267,44 @@ export class SocialService {
       );
       return { ...result.rows[0], createdAt: result.rows[0]!.createdAt.toISOString() };
     }));
+  }
+
+  publicMessages(current: AuthContext, before?: string, after?: string) {
+    return this.read(current, async client => {
+      const result = await client.query<{
+        id: string; sequence: string; senderId: string; text: string; createdAt: Date; sender: PersonRow;
+      }>(`SELECT m.id,m.sequence::text,m.sender_id AS "senderId",m.text,m.created_at AS "createdAt",
+        json_build_object('id',a.id,'friendId',a.friend_id,'displayName',a.display_name,'avatar',a.avatar) AS sender
+        FROM public_messages m JOIN accounts a ON a.id=m.sender_id
+        WHERE ($1::uuid IS NULL OR m.sequence<(SELECT sequence FROM public_messages WHERE id=$1))
+          AND ($2::uuid IS NULL OR m.sequence>(SELECT sequence FROM public_messages WHERE id=$2))
+        ORDER BY m.sequence ${after ? 'ASC' : 'DESC'} LIMIT 31`, [before ?? null, after ?? null]);
+      const page = result.rows.slice(0, 30);
+      const items = page.map(row => ({ ...row, createdAt: row.createdAt.toISOString() }));
+      return publicMessagePageSchema.parse({
+        items: after ? items : items.reverse(), nextCursor: result.rows.length > 30 ? page.at(-1)!.id : null,
+      });
+    });
+  }
+
+  async sendPublicMessage(current: AuthContext, input: { requestId: string; text: string }) {
+    return publicMessageSchema.parse(await this.write(current, input.requestId,
+      { operation: 'public-message', ...input }, async client => {
+        const quota = await client.query<{ total: string; recent: string }>(`SELECT count(*) AS total,
+          count(*) FILTER (WHERE created_at>clock_timestamp()-interval '1 minute') AS recent
+          FROM public_messages WHERE sender_id=$1`, [current.account.id]);
+        if (Number(quota.rows[0]!.recent) >= 20)
+          throw new AppError('RATE_LIMITED', '发言过于频繁，请稍后再发送', 429);
+        if (Number(quota.rows[0]!.total) >= 20000)
+          throw new AppError('RATE_LIMITED', '公共消息存储已达上限，请联系维护者', 429);
+        const result = await client.query<{ id: string; sequence: string; senderId: string; text: string; createdAt: Date }>(
+          `INSERT INTO public_messages(id,sender_id,text) VALUES($1,$2,$3)
+           RETURNING id,sequence::text,sender_id AS "senderId",text,created_at AS "createdAt"`,
+          [randomUUID(), current.account.id, input.text],
+        );
+        return { ...result.rows[0], sender: await this.person(client, current.account.id),
+          createdAt: result.rows[0]!.createdAt.toISOString() };
+      }));
   }
 
   async markRead(current: AuthContext, peerId: string, input: { requestId: string; messageId: string }) {

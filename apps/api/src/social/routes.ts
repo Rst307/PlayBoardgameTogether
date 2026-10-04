@@ -28,6 +28,13 @@ export function registerSocialRoutes(app: FastifyInstance, auth: AuthService, se
   app.get('/api/v1/admin/social-settings', async request => ok(request, await service.settings(await administrator(request))));
   app.put('/api/v1/admin/social-settings', async request => ok(request, await service.setSettings(await administrator(request, true), socialSettingsInputSchema.parse(request.body))));
   app.get('/api/v1/social', async request => ok(request, await service.overview(await current(request))));
+  app.get('/api/v1/social/public/messages', async request => {
+    const context = await current(request);
+    const query = socialPageQuerySchema.parse(request.query);
+    return ok(request, await service.publicMessages(context, query.before, query.after));
+  });
+  app.post('/api/v1/social/public/messages', async request =>
+    ok(request, await service.sendPublicMessage(await current(request, true), messageInputSchema.parse(request.body))));
   app.get('/api/v1/social/search', async request => {
     const context = await current(request);
     const now = Date.now();

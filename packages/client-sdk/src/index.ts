@@ -20,9 +20,10 @@ import {
   socialOverviewSchema, socialPersonSchema, socialIdentitySchema, friendIdInputSchema,
   friendRequestInputSchema, friendshipSchema, friendshipCommandSchema, socialDoneSchema,
   messagePageSchema, messageInputSchema, socialMessageSchema, readMessagesInputSchema,
+  publicMessageSchema, publicMessagePageSchema,
   friendInviteInputSchema, friendInviteSchema, friendInviteCommandSchema,
   socialSettingsSchema, socialSettingsInputSchema, type SocialSettingsInput,
-  type FriendshipCommand, type FriendInviteCommand,
+  type FriendshipCommand, type FriendInviteCommand, type FriendRequestInput,
 } from '@boardgame/protocol';
 export type { AssetDraft, AssetVersion } from './assets.js';
 
@@ -71,7 +72,7 @@ export class ApiClient {
   async changeFriendId(input: { requestId: string; friendId: string; expectedRevision: number }) {
     return socialIdentitySchema.parse(await this.request<unknown>('/social/id', { method: 'PUT', body: JSON.stringify(friendIdInputSchema.parse(input)) }));
   }
-  async requestFriend(input: { requestId: string; friendId: string }) {
+  async requestFriend(input: FriendRequestInput) {
     return friendshipSchema.parse(await this.request<unknown>('/social/requests', { method: 'POST', body: JSON.stringify(friendRequestInputSchema.parse(input)) }));
   }
   async updateFriend(id: string, input: FriendshipCommand) {
@@ -85,6 +86,19 @@ export class ApiClient {
   }
   async sendDirectMessage(id: string, input: { requestId: string; text: string }) {
     return socialMessageSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify(messageInputSchema.parse(input)), signal: AbortSignal.timeout(10000) }));
+  }
+  async publicMessages(before?: string, signal?: AbortSignal, after?: string) {
+    const query = new URLSearchParams();
+    if (before) query.set('before', before);
+    if (after) query.set('after', after);
+    return publicMessagePageSchema.parse(await this.request<unknown>(
+      `/social/public/messages${query.size ? `?${query}` : ''}`, signal ? { signal } : undefined,
+    ));
+  }
+  async sendPublicMessage(input: { requestId: string; text: string }) {
+    return publicMessageSchema.parse(await this.request<unknown>('/social/public/messages', {
+      method: 'POST', body: JSON.stringify(messageInputSchema.parse(input)), signal: AbortSignal.timeout(10000),
+    }));
   }
   async readDirectMessages(id: string, input: { requestId: string; messageId: string }) {
     return socialDoneSchema.parse(await this.request<unknown>(`/social/friends/${encodeURIComponent(id)}/read`, { method: 'POST', body: JSON.stringify(readMessagesInputSchema.parse(input)) }));

@@ -1,5 +1,13 @@
 # 协议
 
+## 公共聊天（2026-10-04）
+
+GET `/api/v1/social/public/messages` 使用原 socialPageQuerySchema，before/after 为互斥 UUID，最新/更早 30 项按正序返回，after 为正序连续补取；nextCursor 为继续分页的 UUID 或 null。共享 publicMessagePageSchema 的消息包含 id、sequence（十进制字符串）、senderId、text、createdAt 及 sender（socialPerson：id/friendId/displayName/avatar）。需活跃 session，no-store；私聊游标不能跨到公共消息。
+
+POST 同路径使用原严格 messageInputSchema：`{requestId:UUID,text}`，trim 后 1–2000 字；需 session/Origin/CSRF。同账户请求摘要包含 public-message 操作，重复成功返回原消息，改正文或跨操作复用 ID 为 REQUEST_ID_CONFLICT。新请求每分钟最多 20 条/账户，累计 20000 条；原社交配额继续有效。输入或限流失败不保存消息/回执，事务故障整体回滚。
+
+POST `/social/requests` 新增可选 expectedAccountId UUID，作为预期接收账户与规范 friendId 联合核对；不匹配返回 STATE_CONFLICT，不能授予身份或绕过关系规则。旧调用省略时保持精确好友 ID 查找。经典表情仍为纯文本 `[微笑]` 等固定快捷码，Emoji 保留 Unicode，客户端不解析 HTML；没有表情 URL、图片上传或私聊 schema 变化。
+
 ## 在线桌面适配可见区域（2026-10-04）
 
 `boardgame:resize` 新增可选 `fit:'viewport'`，仍验证当前 contentWindow 和合法 height（320–4096 有限数字）。声明后宿主按 iframe 文档位置计算视口剩余高度，预留底部 16px，限定 180–4096px；后续内容高度消息不再改变该模式。window resize 与页面尺寸变化重新计算，切换包版本恢复默认。桌面自身按 iframe 高度约束棋盘与操作区，旧平台忽略 fit 时可继续使用 height 提示。只影响布局，无 HTTP/WS schema 或权限变更。

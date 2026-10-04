@@ -1,5 +1,13 @@
 # HTTP API
 
+## 公共聊天
+
+以下路径均带 `/api/v1` 前缀并需要活跃 session，响应 no-store。GET `/social/public/messages` 接收互斥的 before/after UUID，每页 30 条正序，返回 `{items,nextCursor}`；消息包含 id、sequence 字符串、senderId、text、createdAt 和 sender（账户 UUID、好友 ID、昵称、内置头像）。after 为连续补取，nextCursor 非空时继续读取；公共和私聊游标分离。
+
+POST 同路径严格接收 `{requestId:UUID,text}`，要求 Origin/X-CSRF-Token；trim 后 1–2000 字，重复成功先返回原结果，修改内容或跨操作复用编号返回 REQUEST_ID_CONFLICT。公共新发言每账户最多 20 条/分钟、累计 20000 条，仍受原社交命令配额限制。正文为纯文本，Emoji 与 `[微笑]` 等固定文字表情码不改变消息 schema；不解析 HTML，不支持图片上传。
+
+POST `/social/requests` 接收 `{requestId,friendId,expectedAccountId?}`；可选账户 UUID 用来核对名片的预期目标，防止可变好友 ID 被其他人复用，不授予权限。不匹配为 STATE_CONFLICT，旧调用继续兼容。
+
 ## 管理员在线 ZIP 安装
 
 POST `/admin/game-packages?requestId=UUID` 接收 application/zip 二进制（最多 5 MiB），只允许管理员 session + 同源 Origin + X-CSRF-Token；共享响应 `{gameId,version,name,hash}`。重复成功去重，不覆盖同版本，新版本必须提升版本号。GET `/game-packages/example.zip` 为公开示例下载，GET `/game-packages/:id/versions/:version/desktop` 为强制 sandbox CSP 的公开桌面。完整格式、资源限制与桥接见 [在线游戏 ZIP](/developers/game-packages)。这些路径均带 `/api/v1` 前缀。

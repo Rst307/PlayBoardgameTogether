@@ -5,7 +5,8 @@ import { createApp } from '../../apps/api/src/app.js';
 import { createDatabase, type Database } from '../../apps/api/src/db/index.js';
 import { createRegistry } from '../../apps/api/src/registry/index.js';
 import { createAccount } from '../../apps/api/src/auth.js';
-import { socialOverviewSchema, friendshipSchema, friendInviteSchema, messagePageSchema, socialMessageSchema } from '../../packages/protocol/src/index.js';
+import { socialOverviewSchema, friendshipSchema, friendInviteSchema, messagePageSchema, socialMessageSchema,
+  publicMessageSchema, publicMessagePageSchema } from '../../packages/protocol/src/index.js';
 
 process.loadEnvFile('.env');
 const url = process.env.TEST_DATABASE_URL;
@@ -57,6 +58,100 @@ describe('friends, private messages and room invitations', () => {
     const accepted = await post(`/api/v1/social/friends/${aid}`, { requestId: randomUUID(), expectedRevision: pending.revision, action: 'accept' }, b);
     expect(accepted.statusCode).toBe(200);
   }
+  it('public chat requires active sessions, Origin and CSRF and never exposes private messages', async () => {
+    const path = '/api/v1/social/public/messages';
+    const input = { requestId: randomUUID(), text: '一起开桌 [微笑] 🎲 <script>alert(1)</script>' };
+    expect((await app.inject({ url: path })).statusCode).toBe(401);
+    expect((await post(path, input, { ...a, origin: 'https://evil.example' })).statusCode).toBe(403);
+    expect((await post(path, input, { ...a, 'x-csrf-token': '' })).statusCode).toBe(403);
+    expect((await post(path, { ...input, senderId: bid })).statusCode).toBe(400);
+    expect((await post(path, { ...input, text: ' ' })).statusCode).toBe(400);
+    expect((await post(path, { ...input, text: 'x'.repeat(2001) })).statusCode).toBe(400);
+    const sent = await post(path, input);
+    const message = publicMessageSchema.parse(sent.json().data);
+    expect(message).toMatchObject({ text: input.text, senderId: aid, sender: { id: aid, friendId: 'social_a', displayName: '桌友 A', avatar: 'dice' } });
+    await friend();
+    await post(`/api/v1/social/friends/${bid}/messages`, { requestId: randomUUID(), text: 'private secret' });
+    const visible = await read(path, c);
+    expect(publicMessagePageSchema.parse(visible.json().data).items).toEqual([message]);
+    expect(visible.headers['cache-control']).toBe('no-store');
+    expect(visible.body).not.toMatch(/private secret|password|username|token|csrf/);
+    await db.query('UPDATE sessions SET revoked_at=now() WHERE account_id=$1', [cid]);
+    expect((await read(path, c)).statusCode).toBe(401);
+    expect((await post(path, { requestId: randomUUID(), text: 'revoked' }, c)).statusCode).toBe(401);
+  });
+
+  it('public sends are atomic, concurrent retries deduplicate and IDs cannot change content or operation', async () => {
+    const path = '/api/v1/social/public/messages';
+    const input = { requestId: randomUUID(), text: '[大笑] hello 😀' };
+    const replies = await Promise.all([post(path, input), post(path, input)]);
+    expect(replies.map(reply => reply.statusCode)).toEqual([200, 200]);
+    expect(replies[0]!.json().data).toEqual(replies[1]!.json().data);
+    expect((await db.query('SELECT * FROM public_messages')).rowCount).toBe(1);
+    expect((await post(path, { ...input, text: 'different' })).json().error.code).toBe('REQUEST_ID_CONFLICT');
+    expect((await post('/api/v1/social/requests', { requestId: input.requestId, friendId: 'social_b' })).json().error.code).toBe('REQUEST_ID_CONFLICT');
+    await db.query(`CREATE FUNCTION fail_public_receipt_test() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'injected receipt failure'; END $$`);
+    await db.query('CREATE TRIGGER fail_public_receipt_test BEFORE INSERT ON social_command_receipts FOR EACH ROW EXECUTE FUNCTION fail_public_receipt_test()');
+    const failed = { requestId: randomUUID(), text: 'must roll back' };
+    try {
+      expect((await post(path, failed)).statusCode).toBe(500);
+      expect((await db.query('SELECT 1 FROM public_messages WHERE text=$1', [failed.text])).rowCount).toBe(0);
+      expect((await db.query('SELECT 1 FROM social_command_receipts WHERE request_id=$1', [failed.requestId])).rowCount).toBe(0);
+    } finally {
+      await db.query('DROP TRIGGER fail_public_receipt_test ON social_command_receipts');
+      await db.query('DROP FUNCTION fail_public_receipt_test()');
+    }
+    expect((await post(path, failed)).statusCode).toBe(200);
+  });
+
+  it('public history and offline catch-up paginate without gaps and reject direct-message cursors', async () => {
+    const path = '/api/v1/social/public/messages';
+    const first = publicMessageSchema.parse((await post(path, { requestId: randomUUID(), text: 'first' })).json().data);
+    await db.query(`INSERT INTO public_messages(id,sender_id,text)
+      SELECT gen_random_uuid(),$1,'message '||i FROM generate_series(1,65) i`, [bid]);
+    const getPage = async (query = '') => publicMessagePageSchema.parse((await read(path + query, c)).json().data);
+    const newest = await getPage();
+    expect(newest.items).toHaveLength(30);
+    const older = await getPage(`?before=${newest.nextCursor}`);
+    const oldest = await getPage(`?before=${older.nextCursor}`);
+    const all = [...oldest.items, ...older.items, ...newest.items];
+    expect(all).toHaveLength(66);
+    expect(new Set(all.map(item => item.id)).size).toBe(66);
+    const catchup = await getPage(`?after=${first.id}`);
+    const next = await getPage(`?after=${catchup.nextCursor}`);
+    const last = await getPage(`?after=${next.nextCursor}`);
+    expect([...catchup.items, ...next.items, ...last.items].map(item => item.id)).toEqual(all.slice(1).map(item => item.id));
+    expect(last.nextCursor).toBeNull();
+    expect((await read(`${path}?before=${first.id}&after=${first.id}`)).statusCode).toBe(400);
+    await friend();
+    const privateMessage = (await post(`/api/v1/social/friends/${bid}/messages`, { requestId: randomUUID(), text: 'secret' })).json().data;
+    expect((await getPage(`?after=${privateMessage.id}`)).items).toEqual([]);
+    await db.query("UPDATE accounts SET display_name='新昵称',avatar='cat' WHERE id=$1", [bid]);
+    expect((await getPage()).items[0]!.sender).toMatchObject({ displayName: '新昵称', avatar: 'cat' });
+  });
+
+  it('limits public posting to 20 per minute while still replaying successful requests', async () => {
+    const path = '/api/v1/social/public/messages';
+    const input = { requestId: randomUUID(), text: 'original' };
+    const original = await post(path, input);
+    await db.query(`INSERT INTO public_messages(id,sender_id,text)
+      SELECT gen_random_uuid(),$1,'quota' FROM generate_series(1,19)`, [aid]);
+    expect((await post(path, { requestId: randomUUID(), text: 'too fast' })).statusCode).toBe(429);
+    expect((await post(path, input)).json().data).toEqual(original.json().data);
+    expect((await db.query('SELECT * FROM public_messages WHERE sender_id=$1', [aid])).rowCount).toBe(20);
+  });
+
+  it('binds a public-chat friend request to the selected account across friend ID reuse', async () => {
+    await db.query("UPDATE accounts SET friend_id='renamed_b' WHERE id=$1", [bid]);
+    await db.query("UPDATE accounts SET friend_id='social_b' WHERE id=$1", [cid]);
+    const result = await post('/api/v1/social/requests', { requestId: randomUUID(), friendId: 'social_b', expectedAccountId: bid });
+    expect(result.statusCode).toBe(409);
+    expect((await overview()).requests).toEqual([]);
+    const correct = await post('/api/v1/social/requests', { requestId: randomUUID(), friendId: 'renamed_b', expectedAccountId: bid });
+    expect(correct.statusCode).toBe(200);
+    expect(friendshipSchema.parse(correct.json().data).person.id).toBe(bid);
+  });
   async function room(password?: string, seatCount = 2) {
     const result = await post('/api/v1/rooms', { requestId: randomUUID(), name: '好友私桌', gameId: 'color-match', version: '1.0.0', options: {}, seatCount, visibility: 'private', ...(password ? { password } : {}) });
     expect(result.statusCode).toBe(200);

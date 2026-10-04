@@ -1,5 +1,11 @@
 # 数据模型
 
+## 公共消息（2026-10-04）
+
+迁移 `026_public_chat.sql` 新增 `public_messages`：UUID 主键、唯一 bigint identity sequence、sender_id（accounts 外键，删除账户级联）、text（数据库长度 1–2000）、created_at（服务端时钟）。索引 sender_id/created_at 用于频控与容量计数，sequence 唯一索引用于最新/历史/增量分页。正文为纯文本，经典表情保存文字快捷码，不保存图片、外部 URL 或资料副本。与私聊表、水位分离。
+
+公共消息写入与原 `social_command_receipts` 在同一 advisory lock 和事务中原子提交；摘要操作为 public-message，重复成功优先于新发言配额。回执保存原发送 DTO，读取历史时联结当前公开昵称/头像。回滚可能使 identity sequence 有间隙，分页只比较有记录的 sequence，不假定连续整数。没有自动过期清理，单账户累计上限 20000 条。
+
 ## 在线包默认展示图（2026-10-03）
 
 025_game_package_presentation.sql 给 game_packages 追加 presentation jsonb NOT NULL DEFAULT '{}'，对象/长度受约束；可选 icon/cover/background 保存 PNG data URL，随包安装同事务提交，不另存磁盘。旧包默认空对象，包 hash 包含 descriptor/图片字节，同版本不可覆盖。game_presentations 保留管理员独立配置与 revision，读取以非空配置覆盖包默认；清空配置恢复默认，不改变旧规则或 State。

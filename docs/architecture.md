@@ -1,5 +1,11 @@
 # 架构
 
+## 公共聊天（2026-10-04）
+
+原 social/service 与 routes 增加认证公共消息读写，迁移 026 的 public_messages 与 direct_messages 分离；复用同一社交锁、活跃身份重验、请求摘要回执及事务，成功去重先于公共频控。protocol/social.ts 提供公共消息及分页 DTO，client-sdk 边界解析 unknown。好友申请增加可选 expectedAccountId 防止名片中的可变好友 ID 复用导致目标改变，不新增身份或关系系统。
+
+Web 独立 /chat 路由与 PublicChatPage 负责名片/好友流程；DirectChat 选择 typed 公共或私聊传输，共用分页/补取/重试生命周期，公共模式不推进私聊读取水位。ChatExpressions 只将固定文字码展示为原创 SVG、提供按光标插入的按需选择器，消息仍为纯文本，不执行 HTML 或加载外部表情。没有新运行单元、社交 WS 或游戏规则依赖。
+
 ## 五子棋可见区域修复（2026-10-04）
 
 本轮修正下方 1.0.1 内容增高方案：五子棋 1.0.2 使用 iframe 视口高度约束内容宽度，同时预留状态栏和落子确认；不再从内容测量并报告高度，避免自动增高把棋盘推到屏幕外。规则通过原生 dialog 按需展示。PackageBoard 接受通用可选 fit:viewport 后，测量 iframe 文档位置并使用窗口剩余高度，监听 body ResizeObserver 和窗口 resize，卸载清理，切换包重置。没有按 gameId 分支；原内容高度模式和旧包继续兼容。旧宿主固定 560px 也完整显示新版棋盘。规则、HTTP/WS、数据库与旧局锁定版本不变。

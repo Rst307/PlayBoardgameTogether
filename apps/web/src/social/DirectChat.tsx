@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '@boardgame/client-sdk';
 import type { SocialMessage, SocialPerson } from '@boardgame/protocol';
 import { api, navigate } from '../platform.js';
+import { ChatText, ExpressionPicker } from './ChatExpressions.js';
+import { PersonAvatar } from './PersonAvatar.js';
 
-export function DirectChat({ person, refresh, visible = true, compact = false }: { person: SocialPerson; refresh: () => Promise<void>; visible?: boolean; compact?: boolean }) {
-  const [messages, setMessages] = useState<SocialMessage[]>([]);
+type ChatMessage = SocialMessage & { sender?: SocialPerson };
+
+export function DirectChat({ person, refresh, visible = true, compact = false, publicChat = false, onPerson }: {
+  person?: SocialPerson; refresh: () => Promise<void>; visible?: boolean; compact?: boolean;
+  publicChat?: boolean; onPerson?: (person: SocialPerson) => void;
+}) {
+  const peerId = person?.id ?? '';
+  const inputId = useId();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -23,6 +32,7 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
   const visibleNow = useRef(visible);
   visibleNow.current = visible;
   const input = useRef<HTMLTextAreaElement>(null);
+  const focusFrame = useRef<number | undefined>(undefined);
   const historyList = useRef<HTMLOListElement>(null);
   const followLatest = useRef(true);
   useEffect(() => {
@@ -32,7 +42,7 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
     const list = historyList.current;
     if (visible && list && followLatest.current) list.scrollTop = list.scrollHeight;
   }, [messages, visible]);
-  function merge(items: SocialMessage[], advance = true) {
+  function merge(items: ChatMessage[], advance = true) {
     if (advance) for (const item of items) if (!latest.current || BigInt(item.sequence) > BigInt(latest.current.sequence)) latest.current = item;
     setMessages(previous => {
       const known = new Map(previous.map(item => [item.id, item]));
@@ -47,7 +57,8 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
     if (before) { setMoreBusy(true); followLatest.current = false; }
     try {
       const after = !before ? latest.current?.id : undefined;
-      const page = await api.directMessages(person.id, before, controller.signal, after);
+      const page = publicChat ? await api.publicMessages(before, controller.signal, after)
+        : await api.directMessages(peerId, before, controller.signal, after);
       if (!mounted.current || sequence.current !== version) return;
       merge(page.items);
       if (before) loadedOlder.current = true;
@@ -56,7 +67,8 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
       // ascending batches after our watermark, never just the newest 30.
       let nextAfter = after ? page.nextCursor : null;
       while (nextAfter && mounted.current && !controller.signal.aborted) {
-        const catchup = await api.directMessages(person.id, undefined, controller.signal, nextAfter);
+        const catchup = publicChat ? await api.publicMessages(undefined, controller.signal, nextAfter)
+          : await api.directMessages(peerId, undefined, controller.signal, nextAfter);
         if (!mounted.current || sequence.current !== version) return;
         merge(catchup.items); nextAfter = catchup.nextCursor;
       }
@@ -76,25 +88,27 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
     window.addEventListener('online', sync); document.addEventListener('visibilitychange', sync);
     return () => {
       mounted.current = false; sequence.current++; request.current?.abort(); request.current = undefined; clearInterval(timer);
+      if (focusFrame.current !== undefined) cancelAnimationFrame(focusFrame.current);
       window.removeEventListener('online', sync); document.removeEventListener('visibilitychange', sync);
     };
-  }, [person.id, visible]);
+  }, [peerId, publicChat, visible]);
   useEffect(() => {
     const last = messages.at(-1);
-    if (!visible || !last || last.id !== latest.current?.id || last.id === lastRead.current || readLock.current || document.visibilityState !== 'visible') return;
+    if (publicChat || !visible || !last || last.id !== latest.current?.id || last.id === lastRead.current || readLock.current || document.visibilityState !== 'visible') return;
     readLock.current = true;
-    void api.readDirectMessages(person.id, { requestId: crypto.randomUUID(), messageId: last.id }).then(() => {
+    void api.readDirectMessages(peerId, { requestId: crypto.randomUUID(), messageId: last.id }).then(() => {
       lastRead.current = last.id;
       if (mounted.current) void refresh();
     }).catch(() => undefined).finally(() => { readLock.current = false; });
-  }, [messages, person.id, refresh, visible]);
+  }, [messages, peerId, publicChat, refresh, visible]);
   async function send(event: FormEvent) {
     event.preventDefault();
     if (sending.current || (!text.trim() && !pending.current)) return;
     sending.current = true; setBusy(true); setError('');
     pending.current ??= { requestId: crypto.randomUUID(), text: text.trim() };
     try {
-      const message = await api.sendDirectMessage(person.id, pending.current);
+      const message = publicChat ? await api.sendPublicMessage(pending.current)
+        : await api.sendDirectMessage(peerId, pending.current);
       pending.current = undefined;
       if (mounted.current) { setRetry(false); setText(''); merge([message], false); void load(); }
     } catch (cause) {
@@ -102,21 +116,24 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
       if (mounted.current) { setRetry(!!pending.current); setError(cause instanceof ApiError ? cause.message : '发送结果未知，请点击重试发送。'); }
     } finally { sending.current = false; if (mounted.current) setBusy(false); }
   }
-  return <section className="panel direct-chat" aria-label={`与 ${person.displayName} 的私聊`}>
-    {!compact && <h1>与 {person.displayName} 私聊</h1>}<p className="muted">仅你们双方可见</p>
+  return <section className={`panel direct-chat ${publicChat ? 'public-chat' : ''}`} aria-label={publicChat ? '公共聊天' : `与 ${person?.displayName} 的私聊`}>
+    {!compact && <h1>{publicChat ? '公共聊天' : `与 ${person?.displayName} 私聊`}</h1>}
+    <p className="muted">{publicChat ? '所有登录玩家可见 · 点击头像认识桌友' : '仅你们双方可见'}</p>
     {error && <p role="alert" className="error-notice">{error}<button className="secondary" onClick={() => void load()}>重新同步</button></p>}
     {cursor && <button className="secondary" disabled={moreBusy} onClick={() => void load(cursor)}>加载更早消息</button>}
     <ol ref={historyList} className="chat-history" aria-label="聊天记录" onScroll={event => {
       const list = event.currentTarget;
       followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 48;
-    }}>{messages.map(message => <li className={message.senderId === person.id ? '' : 'chat-message--mine'} key={message.id}>
-      <small>{message.senderId === person.id ? person.displayName : '我'} · {new Date(message.createdAt).toLocaleString('zh-CN')}</small><p>{message.text}</p>
+    }}>{messages.map(message => <li className={!publicChat && message.senderId !== peerId ? 'chat-message--mine' : ''} key={message.id}>
+      {publicChat && message.sender && <button className="secondary public-chat-person" type="button" onClick={() => onPerson?.(message.sender!)}
+        aria-label={`查看 ${message.sender.displayName} 的名片`}><PersonAvatar person={message.sender} /><strong>{message.sender.displayName}</strong></button>}
+      <small>{!publicChat && `${message.senderId === peerId ? person?.displayName : '我'} · `}{new Date(message.createdAt).toLocaleString('zh-CN')}</small><p><ChatText text={message.text} /></p>
     </li>)}</ol>
     {messages.length === 0 && <p className="muted">还没有消息，打个招呼吧。</p>}
     <form className="form-stack" onSubmit={send}>
-      <label>
-        私聊消息
+      <label htmlFor={inputId}>{publicChat ? '公共消息' : '私聊消息'}</label>
         <textarea
+          id={inputId}
           ref={input}
           required
           maxLength={2000}
@@ -127,7 +144,7 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
           disabled={busy}
           onChange={event => setText(event.target.value)}
           onKeyDown={event => {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
               event.preventDefault();
               if (!busy && (text.trim() || pending.current)) {
                 void send(event);
@@ -135,8 +152,22 @@ export function DirectChat({ person, refresh, visible = true, compact = false }:
             }
           }}
         />
-      </label>
-      <button disabled={busy || !text.trim()}>{busy ? '发送中…' : retry ? '重试发送' : '发送消息'}</button>
+      <div className="chat-compose-actions">
+        <ExpressionPicker disabled={busy || retry} insert={value => {
+          const element = input.current;
+          const start = element?.selectionStart ?? text.length;
+          const end = element?.selectionEnd ?? start;
+          if (text.length - (end - start) + value.length > 2000) return;
+          setText(text.slice(0, start) + value + text.slice(end));
+          if (focusFrame.current !== undefined) cancelAnimationFrame(focusFrame.current);
+          focusFrame.current = requestAnimationFrame(() => {
+            if (element?.isConnected && visibleNow.current) {
+              element.focus(); element.setSelectionRange(start + value.length, start + value.length);
+            }
+          });
+        }} />
+        <button disabled={busy || !text.trim()}>{busy ? '发送中…' : retry ? '重试发送' : '发送消息'}</button>
+      </div>
     </form>
   </section>;
 }

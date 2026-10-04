@@ -1,5 +1,23 @@
 # 开发进度
 
+## 公共聊天与表情（2026-10-04）
+
+编码前完成 UX 自检：主要任务为与大厅玩家聊天，独立 `/chat` 入口；消息流/输入/发送常驻，表情按需选择，加好友/私聊放在点击头像打开的原生名片，申请处理继续使用好友页。复用现有 SocialProvider 与 DirectChat 的认证同步、历史分页、断网补取、取消清理及同 requestId 重试。公共、私聊页和桌面浮窗支持 Emoji 与 12 个原创 SVG 经典表情，固定 `[微笑]` 等快捷码按光标/选区插入，未知码保持文本，不执行 HTML。中文输入法确认不发送。视觉检查后去掉公共头像按钮的主色/边框和消息背景，发送为唯一主操作；面板支持亮色/深色与 320px 手机。
+
+social 服务新增公共消息读取/发送，复用 session/Origin/CSRF、活跃身份重验、短写锁与摘要回执；新增迁移 026，公共消息与私聊/读取水位分离。每账户公共新消息最多 20 条/分钟、累计 20000 条，原社交配额继续有效。并发成功重试只保存一次，回执故障整体回滚。好友申请增加可选 expectedAccountId 核对名片目标，防止可变好友 ID 复用导致申请另一个账户；不新建身份或关系系统。协议/数据模型/架构/社交及公开开发者文档已同步。
+
+本轮实际验证（无 skip）：
+
+- `pnpm typecheck`、`pnpm lint` 通过，依赖边界 20 个目录。初轮类型检查发现 exactOptionalPropertyTypes 与可选字段不兼容，改用共享 schema 推导的 FriendRequestInput；初轮 lint 修正正则的冗余转义。
+- `pnpm test tests/unit`：33 文件/160 项通过。
+- `pnpm test:integration`：22 文件/156 项通过，含 social 的 25 项，新增公共权限/私聊隔离、撤销 session、并发重复/内容及跨操作冲突、回执故障回滚、66 条历史/离线补取、跨频道游标、频控和 ID 复用目标绑定测试。
+- 沙箱内 tsx 的系统用户读取失败；批准后运行原脚本。PostgreSQL/Docker 初始未启动，启动已有 Docker Desktop 和 Compose 服务。旧 boardgame_test 在 015 迁移校验和检查被阻止；没有修改旧库/迁移，进程级 TEST_DATABASE_URL 改为新独立 `boardgame_public_chat_20261004`，由原脚本核对与开发库隔离、创建、迁移、同步和种子，未覆盖 .env。
+- `pnpm build` 通过，含生产 bundle、API runtime、隔离 ZIP 规则和 AI worker；最后视觉样式变更后再次 Web 构建。公开 SDK/schema 与 API 文档随构建发布。
+- `pnpm exec playwright test --config playwright.public-chat.config.ts --output .data/public-chat-ui-complete`：桌面/手机 8/8，通过安全文本/未知表情、经典/Emoji 插入、真实 React 名片申请、结果未知同请求重试、输入法确认、私聊兼容、Esc 与访客不读取消息。手机缩至 320px，明暗主题无横向溢出；已实际查看两端经典表情截图。初轮发现包装 label 的名称随输入值变化，改为 useId + 独立关联标签后保留原严格定位通过。此专项使用 DTO 模拟，不代替真实账户验收。
+- 同一独立测试库执行 `pnpm test:e2e tests/e2e/public-chat-flow.spec.ts tests/e2e/social.spec.ts tests/e2e/social-shell.spec.ts --output .data/public-chat-e2e`：初轮 19/20 通过，新公共流程桌面/手机均通过，覆盖两账户公共发言→名片申请→接受→表情私聊→刷新持久化及私密内容不进入公共区；既有通知/聊天浮窗及未知结果重试通过。唯一失败为原手机好友导航同一行断言；定向复现坐标为 487/527/566，确认基础 CSS 在小屏将通用 nav 改为 column。社交导航显式 row，仅一行修复，保留原断言；`pnpm test:e2e tests/e2e/social.spec.ts --project mobile -g 'social pages separate' --output .data/public-chat-navigation-final` 1/1 通过，继续验证键盘、SPA/历史、刷新及 320/390/768/1440px 无溢出。未重复无改动的其他已通过用例。
+
+边界与下一步：执行 `pnpm db:migrate` 应用 026 后加载新版 API/Web；本轮仅测试库迁移，没有重置开发库、改历史迁移或公网部署。表情采用 QQ 常见文字码习惯和原创图形，不包含腾讯官方素材、QQ 互通或自定义表情包上传。公共聊天仍为可见时 5 秒认证 HTTP 同步，不新增推送、公共未读或自动存储清理。截图/测试输出仅在忽略的 .data，生成产物不提交。
+
 ## 五子棋无需滚动完整展示（2026-10-04）
 
 用户再次截图显示半盘与内部滚动；上轮只扩内容、测试使用 fullPage 截图，未验证核心棋盘在视口内，不能视作达到无需滚动要求。本轮先加入棋盘/确认按钮视口断言，运行 pnpm exec playwright test --config playwright.gomoku-ui.config.ts --project desktop --output .data/gomoku-viewport-repro，旧版失败：950px 屏幕的棋盘底部为 1107.45px。

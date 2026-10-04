@@ -1,5 +1,11 @@
 # 客户端 SDK
 
+## 公共聊天
+
+恢复 session 后通过 `api.publicMessages(before?, signal?, after?)` 读取公共历史；before/after 互斥，nextCursor 非空时按对应方向继续。`api.sendPublicMessage({requestId,text})` 保存公共发言并返回包含公开 sender 的消息。两者使用共享 schema 解析响应，发送也校验输入，沿用同源 cookie/CSRF。确认丢失时保留相同 requestId 和正文重试，不能每次生成新编号。
+
+`api.requestFriend({requestId,friendId,expectedAccountId?})` 可绑定名片目标账户，好友 ID 已变化/复用时返回冲突，刷新后重新选择；旧调用继续可用。公共及私聊表情均保存为纯文本，使用固定 `[微笑]` 等码或 Unicode Emoji；第三方客户端可保留文字码，不执行 HTML。
+
 ## 游戏接入申请
 
 登录后调用 `api.submitGame({ requestId, gameId, version, name, description, repositoryUrl })` 提交纯资料申请；`api.gameSubmissions(before?)`、`api.gameSubmission(id)` 读取本人申请。管理员使用 `adminGameSubmissions(before?)`、`adminGameSubmission(id)`、`reviewGameSubmission(id, { requestId, expectedRevision, status, reviewNote })`。所有这些方法在边界校验请求与响应，不接受任意泛型断言。reviewed 只表示资料审阅，不能安装或执行游戏；字段、配额和示例见 [添加游戏](/developer-docs/add-game.md)。
