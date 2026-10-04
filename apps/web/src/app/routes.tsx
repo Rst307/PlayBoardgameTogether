@@ -14,6 +14,7 @@ const MatchPage = lazy(() => import('../pages/MatchPage.js').then(module => ({ d
 const AssetAdminPage = lazy(() => import('../pages/AssetAdminPage.js').then(module => ({ default: module.AssetAdminPage })));
 const GamePresentationAdminPage = lazy(() => import('../pages/GamePresentationAdminPage.js').then(module => ({ default: module.GamePresentationAdminPage })));
 const AdminOverviewPage = lazy(() => import('../pages/admin/AdminOverviewPage.js').then(module => ({ default: module.AdminOverviewPage })));
+const AdminUpdatesPage = lazy(() => import('../pages/admin/AdminUpdatesPage.js').then(module => ({ default: module.AdminUpdatesPage })));
 const AdminAccountsPage = lazy(() => import('../pages/admin/AdminAccountsPage.js').then(module => ({ default: module.AdminAccountsPage })));
 const AdminGamesPage = lazy(() => import('../pages/admin/AdminGamesPage.js').then(module => ({ default: module.AdminGamesPage })));
 const AdminSubmissionsPage = lazy(() => import('../pages/admin/AdminSubmissionsPage.js').then(module => ({ default: module.AdminSubmissionsPage })));
@@ -77,6 +78,7 @@ export function resolvePage(path: string): PageRoute {
     case '/rooms/new': return { title: '创建房间', page: <NewRoomPage /> };
     case '/settings/models': return { title: '模型设置', page: <ModelSettingsPage /> };
     case '/admin': return { title: '管理员后台', page: <AdminOverviewPage /> };
+    case '/admin/updates': return { title: '服务更新', page: <AdminUpdatesPage /> };
     case '/admin/accounts': return { title: '账户管理', page: <AdminAccountsPage /> };
     case '/admin/catalog': return { title: '游戏管理', page: <AdminGamesPage /> };
     case '/admin/submissions': return { title: '接入审核', page: <AdminSubmissionsPage /> };

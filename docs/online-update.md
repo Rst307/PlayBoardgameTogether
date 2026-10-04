@@ -2,11 +2,11 @@
 
 使用 `pnpm start:online` 替代分别启动 API 与静态站点。首次部署仍需 `pnpm install --frozen-lockfile`、`pnpm db:migrate`、`pnpm games:sync`、`pnpm assets:seed`、`pnpm build`。更新监督进程默认监听 `127.0.0.1:8080`，同时托管生产 Web 和转发 HTTP/WS 到私有 `127.0.0.1:3001` API。原 API 服务需先停掉；让现有 HTTPS 反向代理转发到 8080 并保留 Host、Origin、WebSocket Upgrade。WEB_ORIGIN 必须填写用户实际访问的同源地址，HTTPS 设置 COOKIE_SECURE=true。由已有 Windows 服务管理器或 systemd 托管此长驻命令，监督进程不能代替操作系统开机启动服务。
 
-首次启动使用本地已构建版本，之后每五分钟检查 origin。默认跟踪启动目录当前分支，本项目当前为 `codex/splendor`；生产应明确配置经过审查的发布分支。这里“最新版”指该分支最新提交，不是 GitHub Release 或自动切到 main。只接受无内嵌凭据的 GitHub HTTPS/SSH origin，将拉取转换为 HTTPS；私人仓库需通过 Git credential helper 提供只读凭据，禁止把 token 写在 URL。SSH-only 私有凭据需另配 HTTPS helper。
+首次启动使用本地已构建版本，之后每五分钟检查 origin。默认跟踪 `main`，不再跟随启动目录的功能分支；生产配置请明确设置 `UPDATE_BRANCH=main`，已有显式配置不会被自动覆盖。功能改动在独立 `codex/<任务>` 分支验证后通过 PR 合并到 main，生产只获取合并后的提交。这里“最新版”指发布分支最新提交，不是 GitHub Release。只接受无内嵌凭据的 GitHub HTTPS/SSH origin，将拉取转换为 HTTPS；私人仓库需通过 Git credential helper 提供只读凭据，禁止把 token 写在 URL。SSH-only 私有凭据需另配 HTTPS helper。
 
 ```dotenv
 # 加入现有 .env，勿覆盖其他配置
-UPDATE_BRANCH=codex/splendor
+UPDATE_BRANCH=main
 UPDATE_PORT=8080
 UPDATE_HOST=127.0.0.1
 UPDATE_INTERVAL_MS=300000
@@ -16,6 +16,14 @@ UPDATE_ENABLED=true
 ```
 
 UPDATE_ENABLED=false 可暂时停用 GitHub 检测，仍使用同一个生产启动入口。UPDATE_STATE_DIR 可指定独立、私有的更新缓存绝对目录，默认 `.data/updates`；保留该目录以便重启恢复，不放在公开静态路径。
+
+## 管理员立即检测并更新（2026-10-04）
+
+从「管理员后台 → 服务更新」(`/admin/updates`) 点击「立即检测并更新」，无需等待五分钟轮询。页面显示实际发布分支、当前/候选提交、检测时间与阶段。仅已登录管理员可读取状态和触发检测，写请求继续校验 Origin/CSRF；请求只能带 requestId，不能指定仓库、分支、命令或强制切换。
+
+API 经父子 IPC 请求现有监督进程，立即返回 202 受理状态，再由同一个串行更新流程拉取、安装、构建和安全切换；202 不代表更新完成。重复触发在进行中合并，监督进程有界保留最近 256 个已受理请求 ID，响应丢失重试不再启动同一检测；此为进程内回执，重启或超出保留范围后可再次检测。页面每三秒读取状态，有取消与卸载清理；该状态读取不会刷新监督进程的请求静默计时，但仍计入实际在途请求，其他平台请求继续遵守原静默条件。
+
+活跃对局/连接或请求未静默时显示等待，后续周期继续尝试；含迁移时显示待维护，不绕过迁移开关。UPDATE_ENABLED=false 同时禁用手动检测。直接启动 API 时显示未启用托管并禁用按钮；旧监督进程未提供新版启动标记时显示未启用；具备标记但不响应 IPC 时明确返回暂时不可用，需要维护者重启监督命令。候选失败显示失败，可重试并检查服务就绪与日志；不会把恢复旧进程等同于数据库回退。更新器自身不会热替换，首次部署此功能需要安装新版文件并重启监督进程，按钮不负责部署配置或开机服务安装。
 
 ## 与 Linux 一键部署配合
 

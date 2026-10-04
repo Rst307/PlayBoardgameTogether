@@ -4,15 +4,18 @@ import {
   adminAccountQuerySchema,
   adminAccountCommandSchema,
   adminGameCommandSchema,
+  adminUpdateCommandSchema,
 } from '@boardgame/protocol';
 import type { AuthService } from '../auth.js';
 import { AppError } from '../errors.js';
 import type { AdminService } from './service.js';
+import { UpdateControl } from './update-control.js';
 
 export function registerAdminRoutes(
   app: FastifyInstance,
   auth: AuthService,
   service: AdminService,
+  updates: UpdateControl = new UpdateControl(),
 ) {
   const administrator = async (request: FastifyRequest, write = false) => {
     if (write) auth.assertOrigin(request);
@@ -27,6 +30,17 @@ export function registerAdminRoutes(
     ok: true,
     data,
     traceId: request.id,
+  });
+  app.get('/api/v1/admin/updates', async request => {
+    await administrator(request);
+    return ok(request, await updates.request('status'));
+  });
+  app.post('/api/v1/admin/updates/check', async (request, reply) => {
+    const current = await administrator(request, true);
+    const input = adminUpdateCommandSchema.parse(request.body);
+    const status = await updates.request('check', `${current.account.id}:${input.requestId}`);
+    reply.code(202);
+    return ok(request, status);
   });
   app.get('/api/v1/admin/overview', async (request) => {
     await administrator(request);

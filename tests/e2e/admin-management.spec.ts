@@ -141,6 +141,7 @@ test('ordinary players cannot access administrator controls', async ({
     '/admin/submissions',
     '/admin/games',
     '/admin/assets',
+    '/admin/updates',
   ]) {
     await page.goto(path);
     await expect(
@@ -148,4 +149,12 @@ test('ordinary players cannot access administrator controls', async ({
     ).toBeVisible();
     await expect(page.getByLabel('后台导航')).toHaveCount(0);
   }
+});
+
+test('administrator update page reports that the standalone test API has no supervisor', async ({ page }) => {
+  await login(page);
+  await page.goto('/admin/updates');
+  await expect(page.getByRole('status')).toContainText('未启用在线更新托管');
+  await expect(page.getByRole('button', { name: '立即检测并更新' })).toBeDisabled();
+  expect((await page.getByLabel('后台导航').boundingBox())?.height).toBeLessThan(130);
 });

@@ -1,5 +1,9 @@
 # 架构
 
+## 管理员更新控制（2026-10-04）
+
+后台独立 `/admin/updates` 页面经共享 protocol/client-sdk 读取和触发服务更新；admin/routes 复用 session、角色、Origin、CSRF，UpdateControl 仅提供有超时/关联 ID/严格响应解析的本地父子 IPC。监督进程仍是唯一部署命令执行者，没有新增 HTTP 监督端口或 API 内 Git/构建执行。update-control.mjs 管理公开阶段和有界请求去重，手动和定时任务共用原串行构建/排空/恢复流程。生产默认 main，显式配置保持；状态轮询不推进监督静默时间，实际在途请求/WS/active match 排空校验保持。没有数据库迁移或新的运行单元。下方“无网络更新权限接口”描述为 2026-10-03 的历史边界，现在新增的是经过管理员鉴权的 API 触发入口。
+
 ## 社交全局同步与聊天浮窗（2026-10-04）
 
 Web App 外壳装配 SocialProvider，统一认证后的社交概要读取、取消/世代检查和会话清理；useSocial 转为上下文消费者，原好友页、ID 管理及房间邀请不再分别轮询。SocialNotifications 投影本人未读/待处理数量与短暂站内提示；ChatDock 复用 DirectChat 的消息分页、增量补取、读取水位和 requestId 重试。最小化保留草稿但停止读取/已读，手机及会话深链接继续使用原独立页面。资料按 summary/edit/identity/history 路由分工，只有历史页请求对局记录。API、协议、数据库、房间权限和游戏规则均未改变；没有新增运行单元或社交 WS，仍是每 5 秒认证 HTTP 同步。
