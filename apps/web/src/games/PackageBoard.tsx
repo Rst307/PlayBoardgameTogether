@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function PackageBoard({ id, version, view, busy, events, onAction }: {
   id: string; version: string; view: unknown; busy: boolean; events: unknown[]; onAction: (action: unknown) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState<number>();
+  useEffect(() => setHeight(undefined), [id, version]);
   const latest = useRef({ view, busy, events, onAction });
   latest.current = { view, busy, events, onAction };
   const publish = () => {
@@ -15,6 +17,11 @@ export function PackageBoard({ id, version, view, busy, events, onAction }: {
       if (event.source !== frame.current?.contentWindow || !event.data || typeof event.data !== 'object') return;
       const data = event.data;
       if ('type' in data && data.type === 'boardgame:ready') publish();
+      if ('type' in data && data.type === 'boardgame:resize' && 'height' in data &&
+        typeof data.height === 'number' && Number.isFinite(data.height) &&
+        data.height >= 320 && data.height <= 4096) {
+        setHeight(Math.ceil(data.height));
+      }
       if ('type' in data && data.type === 'boardgame:action' && 'action' in data && !latest.current.busy) {
         try {
           if (JSON.stringify(data.action).length <= 8192) latest.current.onAction(data.action);
@@ -25,7 +32,8 @@ export function PackageBoard({ id, version, view, busy, events, onAction }: {
     return () => window.removeEventListener('message', receive);
   }, []);
   useEffect(publish, [view, busy, events]);
-  return <iframe ref={frame} title="在线游戏桌面" className="package-desktop"
+  return <iframe key={`${id}@${version}`} ref={frame} title="在线游戏桌面" className="package-desktop"
+    style={height === undefined ? undefined : { height, minHeight: 0 }}
     sandbox="allow-scripts" referrerPolicy="no-referrer" onLoad={publish}
     src={`/api/v1/game-packages/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}/desktop`} />;
 }

@@ -73,7 +73,7 @@ function candidates(state, snapshot) {
 }
 const game = {
   manifest: {
-    id: 'online.gomoku', version: '1.0.0', contentVersion: '1.0.0', sdkRange: '^0.1.0',
+    id: 'online.gomoku', version: '1.0.1', contentVersion: '1.0.0', sdkRange: '^0.1.0',
     name: '五子棋', description: '双人自由五子棋：15×15 棋盘，黑先白后，连成五子或更多获胜，无禁手。支持基础脚本 AI。',
     players: { min: 2, max: 2 }, mode: 'rules-driven', capabilities: ['turn-based', 'spatial'],
     defaultAssetPack: { id: 'online.gomoku.default', version: '1.0.0' }, developmentOnly: false

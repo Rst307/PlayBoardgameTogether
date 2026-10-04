@@ -8,7 +8,7 @@ const files = {};
 for (const [name, source] of [['game.json', 'game.json'], ['server.js', 'server.txt'], ['client.html', 'client.html']]) {
   files[name] = Buffer.from((await readFile(new URL(source, base), 'utf8')).replace(/^\uFEFF/, ''));
 }
-const output = new URL('../dist/game-packages/gomoku-1.0.0.zip', import.meta.url);
+const output = new URL('../dist/game-packages/gomoku-1.0.1.zip', import.meta.url);
 await mkdir(new URL('.', output), { recursive: true });
 const bytes = zipSync(files, { mtime: new Date('2026-10-04T00:00:00Z'), level: 9 });
 await writeFile(output, bytes);

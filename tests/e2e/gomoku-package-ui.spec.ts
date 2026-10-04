@@ -1,11 +1,18 @@
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { DeterministicRng, type Json } from '../../packages/game-sdk/src/index.js';
 import { PackageRuntime } from '../../apps/api/src/registry/package-runtime.js';
 import { readGamePackage } from '../../apps/api/src/catalog/game-package.js';
 
+// Use Vite's existing bundler to exercise the real React iframe container.
+const webRoot = fileURLToPath(new URL('../../apps/web/', import.meta.url));
+const webRequire = createRequire(new URL('../../apps/web/package.json', import.meta.url));
+const { buildSync } = createRequire(webRequire.resolve('vite'))('esbuild');
+
 test('sandbox desktop completes a QuickJS game and restores the authoritative board', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.0.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/gomoku-1.0.1.zip'));
   const game = (await PackageRuntime.create()).extension(parsed.server);
   const rng = new DeterministicRng(7);
   let state = game.setup({ seats: ['a', 'b'], options: {}, rng }).state;
@@ -16,7 +23,7 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
   const view = () => game.getView(state, { kind: 'seat', seatId });
   async function publish(busy = false) {
     await page.evaluate(({ next, busy }) => {
-      document.querySelector('iframe')!.contentWindow!.postMessage({ type: 'boardgame:view', view: next, busy, events: [] }, '*');
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'fixture:view', view: next, busy } }));
     }, { next: view(), busy });
   }
   await page.exposeFunction('acceptAction', async (raw: unknown) => {
@@ -25,6 +32,24 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
     state = game.applyAction(state, { kind: 'seat', seatId, controllerEpoch: 0 }, action, rng).state;
     await publish();
   });
+  const stylesheet = await readFile(new URL('../../apps/web/src/styles/usability.css', import.meta.url), 'utf8');
+  const fixture = buildSync({
+    stdin: { contents: `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { PackageBoard } from './src/games/PackageBoard.tsx';
+      const root = createRoot(document.getElementById('root'));
+      const render = (view, busy = false) => root.render(<PackageBoard
+        id="online.gomoku" version="1.0.1" view={view} busy={busy} events={[]}
+        onAction={action => window.acceptAction(action)} />);
+      addEventListener('message', event => {
+        if (event.data?.type === 'fixture:view') render(event.data.view, event.data.busy);
+      });
+      render(JSON.parse(document.getElementById('initial-view').textContent));
+    `, loader: 'tsx', resolveDir: webRoot },
+    bundle: true, write: false, format: 'iife', jsx: 'automatic',
+    define: { 'process.env.NODE_ENV': '"production"' },
+  }).outputFiles[0]!.text;
   await page.route('http://gomoku.test/**', async route => {
     if (route.request().url().endsWith('/desktop')) {
       await route.fulfill({
@@ -34,19 +59,35 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
     } else {
       await route.fulfill({ contentType: 'text/html', body: `<!doctype html>
         <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-        <body style="margin:0;background:#23262c"><iframe title="五子棋" sandbox="allow-scripts" src="/desktop" style="border:0;width:100%;height:920px"></iframe>
-        <script>const initialView=${JSON.stringify(view())};
-        addEventListener('message',event=>{
-          const child=document.querySelector('iframe').contentWindow;
-          if(event.source!==child)return;
-          if(event.data.type==='boardgame:ready')child.postMessage({type:'boardgame:view',view:initialView,busy:false,events:[]},'*');
-          if(event.data.type==='boardgame:action')window.acceptAction(event.data.action);
-        });</script></body></html>` });
+        <style>${stylesheet}</style>
+        <body style="margin:0;background:#23262c"><div id="root"></div>
+        <script id="initial-view" type="application/json">${JSON.stringify(view())}</script>
+        <script>${fixture}</script></body></html>` });
     }
   });
   await page.goto('http://gomoku.test/');
   const frame = page.frameLocator('iframe');
   await expect(frame.getByRole('status')).toHaveText('轮到你落子');
+  const childFrame = page.frames().find(item => item.url().endsWith('/desktop'))!;
+  const fits = () => childFrame.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1);
+  await expect.poll(fits).toBe(true);
+  const boardWidth = (await frame.locator('#board').boundingBox())!.width;
+  expect(boardWidth).toBeGreaterThan(info.project.name === 'mobile' ? 270 : 900);
+  const originalHeight = (await page.locator('iframe').boundingBox())!.height;
+  await frame.getByText('玩法说明', { exact: true }).click();
+  await expect.poll(async () => (await page.locator('iframe').boundingBox())!.height).toBeGreaterThan(originalHeight);
+  await expect.poll(fits).toBe(true);
+  await frame.getByText('玩法说明', { exact: true }).click();
+  await expect.poll(async () => (await page.locator('iframe').boundingBox())!.height).toBe(originalHeight);
+  // Untrusted parent messages and invalid child dimensions must not resize the container.
+  await page.evaluate(() => window.postMessage({ type: 'boardgame:resize', height: 4096 }, '*'));
+  await childFrame.evaluate(() => {
+    for (const height of [0, -1, 4097, NaN, Infinity, '900']) {
+      parent.postMessage({ type: 'boardgame:resize', height }, '*');
+    }
+  });
+  await frame.getByRole('button', { name: 'H8 空位', exact: true }).focus();
+  expect((await page.locator('iframe').boundingBox())!.height).toBe(originalHeight);
   await frame.getByRole('button', { name: 'H8 空位', exact: true }).click();
   await expect(frame.getByText('已选择 H8')).toBeVisible();
   expect(received).toHaveLength(0);
@@ -99,5 +140,9 @@ test('sandbox desktop completes a QuickJS game and restores the authoritative bo
   await page.keyboard.press('Enter');
   await expect(frame.getByText('已选择 I8')).toBeVisible();
   await page.screenshot({ path: info.outputPath('gomoku-selection.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 740 });
+  const resizedChild = page.frames().find(item => item.url().endsWith('/desktop'))!;
+  await expect.poll(() => resizedChild.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
+  expect(await resizedChild.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

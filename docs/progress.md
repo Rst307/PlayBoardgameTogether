@@ -1,5 +1,15 @@
 # 开发进度
 
+## 五子棋棋盘尺寸与窗口修复（2026-10-04）
+
+截图与代码确认桌面内容宽度只有 680px，而真实 PackageBoard 仅有 560px 最小高度，棋盘/确认区超过窗口产生内部滚动。编码前完成 UX 自检：核心任务保持选点/确认，状态→棋盘→确认为主层级，规则折叠、托管/声音继续辅助显示。1.0.1 内容宽度上限提高到 1000px，15×15 格数与落子规则不变。main ResizeObserver 去重报告内容高度；通用 PackageBoard 验证来源与 320–4096 有限高度，旧包保持默认布局，切换版本重置尺寸。没有修改服务端动作、数据库或旧局版本。
+
+本轮实际验证：node scripts/package-gomoku.mjs 生成 dist/game-packages/gomoku-1.0.1.zip（7179 字节）；pnpm typecheck、pnpm lint（20 个边界目录）、pnpm test tests/unit/gomoku-package.test.ts（10/10，无 skip）、pnpm build（生产 bundle/API runtime/隔离包及 AI worker 检查）通过。pnpm exec playwright test --config playwright.gomoku-ui.config.ts --output .data/gomoku-resize（桌面/320px 手机 2/2，无 skip）通过，测试改为打包真实 React PackageBoard 与真实生产 CSS，替代旧用例人为 920px iframe；覆盖棋盘放大、无内部滚动、规则展开/收起、390px 宽度变化、非法高度及错误来源，同时保留完整胜利、busy、键盘、刷新恢复与隔离断言。已查看两端选点截图，完整棋盘和确认区可查，截图和 ZIP 均不提交。
+
+文档更新后 pnpm --filter @boardgame/web build 通过，重新生成公开文档；git diff --check 通过。
+
+边界：未执行数据库集成、全平台房间 E2E、管理员 HTTP 安装或公网部署。本轮只改变客户端展示与包 manifest 版本，不改变内容/资源版本或规则。下一步更新平台 Web，管理员上传审核新版 1.0.1 后创建新局；已开始的 1.0.0 对局保留旧版桌面。README、上传包说明、公开消息契约、协议及架构同步。
+
 ## 五子棋独立 ZIP 包（2026-10-04）
 
 新增 game-packages/gomoku 规则及 sandbox 桌面、scripts/package-gomoku.mjs，生成 dist/game-packages/gomoku-1.0.0.zip（6886 字节，根目录仅 game.json/server.js/client.html）。online.gomoku@1.0.0 为双人 15×15 自由五子棋：黑先白后、四方向连续五枚或更多获胜、满盘无人获胜和棋，无禁手/交换开局/悔棋/计时。支持当前合法候选、基础脚本及平台模型接口；基础策略优先即时获胜/防守及延长连线，不承诺专业棋力。存档记录落子历史，恢复重建并校验重复位置、越界和胜利后额外动作。平台核心、网络协议、数据库和既有游戏未修改。

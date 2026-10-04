@@ -7,7 +7,13 @@
 <style>
 :root{color-scheme:dark;--wood:#d8b47a;--line:#705a3b;--black:#202329;--white:#f5f6f8;--blue:#3478c8}
 *{box-sizing:border-box}body{margin:0;background:#23262c;color:var(--white);font:15px/1.5 system-ui,sans-serif}
-main{max-width:680px;margin:auto;padding:20px 12px}header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+main {
+  width: 100%;
+  max-width: 1000px;
+  margin: auto;
+  padding: 20px 12px;
+}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 h1{font:600 27px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size:17px;margin:12px 0 4px}#identity,#last{color:#b6bcc6;font-size:13px}
 #board{position:relative;display:grid;grid-template-columns:repeat(15,1fr);aspect-ratio:1;background:var(--wood);border:16px solid var(--wood);margin:18px 0 12px;border-radius:4px}
 .point{position:relative;border:0;padding:0;min-width:0;background:transparent;aspect-ratio:1;cursor:pointer;color:var(--line)}
@@ -39,6 +45,24 @@ h1{font:600 27px/1.2 "Noto Serif CJK SC",SimSun,serif;margin:0}#status{font-size
 <script>
 let view = null, busy = false, pending = false, selected = null, focusIndex = 112;
 const board = document.getElementById('board'), confirm = document.getElementById('confirm');
+// Measure content rather than the iframe viewport so it can shrink as well as grow.
+const content = document.querySelector('main');
+let resizeFrame = 0, lastHeight = 0;
+const reportHeight = () => {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(() => {
+    const height = Math.max(320, Math.ceil(content.getBoundingClientRect().height));
+    if (height === lastHeight) return;
+    lastHeight = height;
+    parent.postMessage({ type: 'boardgame:resize', height }, '*');
+  });
+};
+const contentObserver = new ResizeObserver(reportHeight);
+contentObserver.observe(content);
+window.addEventListener('pagehide', () => {
+  contentObserver.disconnect();
+  cancelAnimationFrame(resizeFrame);
+});
 const coord = (x, y) => String.fromCharCode(65 + x) + (y + 1);
 const canPlay = () => view && !view.finished && view.you !== null && view.you === view.currentSeat && !busy && !pending;
 const points = [];
@@ -123,6 +147,7 @@ window.addEventListener('message', event => {
   render();
 });
 parent.postMessage({ type: 'boardgame:ready' }, '*');
+reportHeight();
 </script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 # 协议
 
+## 在线桌面高度消息（2026-10-04）
+
+客户端 iframe 桥新增可选 `{type:'boardgame:resize',height:number}`，只接受当前 iframe contentWindow，height 必须为 320–4096 的有限数字，向上取整设置窗口高度。未声明的旧包继续使用 560px 最小高度；切换游戏/版本恢复默认尺寸。该消息只控制布局，不改变 HTTP/WS DTO、正式动作、身份或权限。内容端应观察内容根节点、去重尺寸并在卸载时清理；完整示例见 [在线包](../apps/web/public/developer-docs/game-packages.md)。
+
 ## 管理员服务更新（2026-10-04）
 
 GET `/api/v1/admin/updates` 返回严格 `adminUpdateStatusSchema`：enabled、branch、currentSha、candidateSha、lastCheckedAt、phase。phase 为 unavailable/disabled/idle/checking/building/current/waiting/maintenance/applying/updated/failed；提交为完整 SHA 或 null，不包含环境、日志、凭据或文件路径。仅管理员可读，响应 no-store。

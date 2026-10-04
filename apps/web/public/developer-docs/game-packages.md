@@ -51,9 +51,13 @@ window.addEventListener('message', event => {
 parent.postMessage({type:'boardgame:ready'}, '*');
 // 用户选择合法操作后：
 parent.postMessage({type:'boardgame:action', action:{type:'your-action'}}, '*');
+// 可选：内容尺寸变化后报告实际高度，消除 iframe 内部滚动。
+parent.postMessage({type:'boardgame:resize', height:900}, '*');
 ```
 
 父页面只接受当前 iframe 的消息，动作最大 8 KiB，并继续交给原 match 命令链路做身份、控制权、revision、去重和规则校验。'*' 仅用于向不透明来源 iframe/父页面传递本人 View，不广播到其他窗口。桌面无跨局权限；卸载清理监听器。历史版本桌面始终可读取以恢复下架版本旧局，其 HTML 是公开程序，不能包含秘密或凭据。
+
+可选 `boardgame:resize` 只接受有限数字 height，范围 320–4096 CSS px，向上取整后设置桌面高度；非法值或其他来源忽略。旧包不发消息时保留 560px 最小高度与原滚动行为。建议用 ResizeObserver 测量内容根节点（而非 iframe 视口或至少等于视口的 scrollHeight），仅在高度变化时发送，避免反馈循环；卸载时清理观察器和动画帧。消息只控制展示尺寸，不授予动作权限。
 
 ## 安装 API 与版本
 
