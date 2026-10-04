@@ -1,5 +1,22 @@
 # 开发进度
 
+## 项目分支合并到 main（2026-10-04）
+
+按用户要求，将 codex/admin-online-update 的剩余提交及已有 AGENTS.md、README.md、architecture.md 文档修改合入最新 origin/main。codex/splendor 与 codex/admin-update-button 已包含在远程 main，无需重复移入。保留全部提交历史、双方开发进度及管理员更新说明，解决 README/progress 文档冲突；其他工作树无未提交改动，没有纳入 .env、凭据、测试资源或构建产物。
+
+合并验证复现通知菜单被正文拦截点击（桌面/手机均失败），为 workspace-toolbar 增加明确定位与层级后原社交界面用例全部通过，实际查看两端通知截图。未改业务事务、协议或数据库迁移。
+
+本轮实际验证：
+
+- pnpm typecheck、pnpm lint 通过，20 个源目录边界通过。
+- pnpm test tests/unit：32 文件、148 项通过，无 skip。
+- pnpm build 通过，包含生产 bundle/API runtime 与隔离 ZIP/AI worker 检查；最后浮层样式修复后 pnpm --filter @boardgame/web build 通过。
+- 原 pnpm test:integration 在 boardgame_test 的 015_game_presentations.sql 历史 checksum 校验处阻断。保留旧测试库及校验，使用仅进程级 TEST_DATABASE_URL 指向新建独立 boardgame_main_merge_20261004，原准备/迁移/同步/种子脚本及 pnpm test:integration 串行完成：22 文件、147 项全部通过，无 skip；开发库和 .env 未改动。
+- pnpm exec playwright test 分别使用 playwright.social-ui.config.ts、playwright.packages-ui.config.ts、playwright.azul-ui.config.ts、playwright.updates-ui.config.ts，最终桌面/手机共 26 项通过（10/2/10/4），无 skip。社交首次 8/10，通知浮层修复后 10/10；其余配置仅运行最终一轮。
+- 在上述独立测试库运行 pnpm test:e2e tests/e2e/admin-management.spec.ts tests/e2e/admin-navigation.spec.ts tests/e2e/game-packages.spec.ts tests/e2e/uno-package.spec.ts tests/e2e/social.spec.ts tests/e2e/azul.spec.ts tests/e2e/azul-tutorial.spec.ts：24/26 通过，无 skip。手机花砖在 azul.spec.ts:59 等待 AI 回合的 5000ms 轮询超时；手机社交在 social.spec.ts:123 的所有导航标签同一行断言失败。保留失败断言、限时与现场，没有把专项界面通过写成真实 E2E 全通过。
+
+剩余限制：未运行全部 E2E、未部署公网，手机花砖 AI 回合等待及社交导航布局仍需后续诊断。本轮只完成分支整合和验证中复现的通知浮层最小修复，不把合并视为所有历史未验收项已经解决。临时验证脚本和界面截图位于忽略目录 .data/main-merge，真实 E2E 失败现场位于忽略目录 test-results。
+
 ## 管理员立即检测并更新（2026-10-04）
 
 先完成后台页面职责、常驻/低频功能、层级与流程自检，新增独立 `/admin/updates`，只有一个「立即检测并更新」主按钮，展示发布分支、当前/候选提交、检测时间与真实阶段。手机后台导航保持两行，320/390/1440px 不横向溢出；等待、迁移待维护、失败、未启用/旧更新器分别反馈，不强制中断对局或刷新玩家页面。页面请求有锁、响应世代保护及卸载取消。
@@ -21,6 +38,53 @@
 - Windows 新工作树检出 SQL 换行与原测试库初始化字节不同，先确认规范化内容与提交完全一致，再保留初始化时原字节；未改迁移语义、checksum 校验或提交迁移改动。最终 pnpm test:integration 为 147/147 通过（22 文件，无 skip），旧 CLI 用例 3523ms；随后真实管理员 E2E 12/12 通过，无 skip。
 
 剩余限制与下一步：未部署公网服务器或验收真实 GitHub 新提交的安装/切换；首次启用需部署新版并重启监督进程，已有 UPDATE_BRANCH 要改为 main。刷新远程后确认 main 已经通过 PR 合入历史后台/更新器；本轮从最新 main 建立隔离分支，仅移入本任务差异，不连带共享分支的其他任务提交。隔离 main 基线的最终全量集成已通过；沿用迁移备份、旧资源保留及恢复边界。本轮提交不包含已有 AGENTS.md、文档排序或其他任务改动。
+## 花砖终局闪帧修复与快节奏 combo（2026-10-04）
+
+先核对桌面目标、常驻/折叠功能与操作路径：保留选砖、选行、确认单一流程，最近一轮明细继续折叠，不增加计分面板或按钮。真实 AzulBoard 浏览器复现确认 HTTP 终局 View 先到时先显示 53 分，live 事件到达后退回 10 分慢慢结算。客户端现在用公开 lastRound 与此前公开 View 保留起始分数、待铺墙砖和图案行，等待真实事件后连续推进；获胜名单与最终总分在全部动画完成后显示。等待最多 700ms，缺失事件直接收敛到权威快照，迟到同轮事件不再倒放；初次打开已结束对局、刷新不补播。
+
+落砖 300→160ms，分段加分 800→180ms，收尾 600→220ms，单项 1.7→0.56 秒，交叉 2.5→0.74 秒。墙边浮动数字由并排列算式改为单个累计值「+3→+6」「+7→+14→+21」；单次增量至少 6 分在 60ms 内快速滚动，累计 6/10 分分级增强字号、弹跳与金色光效。负分不触发正向 combo，读屏仍获得准确值；减少动态效果隐藏移动/飘字，每项 60ms 推进。终局期间显示「最后一轮 · 正在结算」，不提示继续选砖。规则、权威 State、动作事务、协议、音频资源与已锁版本均未变更；所有新增计时器卸载清理。操作指南同步到 games/azul.md。
+
+实际验证：
+
+- 修改前 `pnpm exec playwright test --config playwright.azul-ui.config.ts --project desktop --output .data/azul-scoring-red` 失败：期望 `10分`，实际 `53分`，确定捕获本次快照抢先闪帧。
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；最后状态文案修改后花砖包 typecheck 与本轮 TS/TSX 专项 ESLint 通过。
+- `pnpm test tests/unit/azul-scoring-presentation.test.ts tests/unit/azul-tutorial.test.ts tests/unit/azul.test.ts`：3 文件、23 项通过，无 skip，覆盖横竖分步合计、终局奖励、地板最低零分、6/10 分档位、教程与真实规则对照及完整 2–4 人规则对局。
+- `pnpm build` 通过，包含生产 bundle/API runtime、隔离 ZIP 规则及 AI worker 检查；最后终局文案调整后花砖包和 Web build 通过。
+- `pnpm exec playwright test --config playwright.azul-ui.config.ts --output .data/azul-scoring-verified`：最终桌面/手机 10/10 通过，无 skip。独立配置用真实 React 桌面与真实规则生成的公开投影测试，不配置或清理数据库；涵盖 HTTP 先到、延迟 live、丢失/迟到事件恢复、重复事件、初次已结束快照/刷新、高分滚动、减少动态效果和桌面/手机布局。实际查看桌面/手机高分截图，生成产物仅留忽略目录 .data。此前新增数字滚动测试在冻结时钟下未推进子组件计时器，修正观察时点后最终十项通过，未削弱数值断言。
+- 原 `pnpm test:e2e tests/e2e/azul.spec.ts tests/e2e/azul-tutorial.spec.ts` 在独立 boardgame_test 的资源准备阶段失败：`Built-in bytes differ from saved hash; restore original backup`，未进入浏览器，不记为通过。`node .data/run-azul-feedback-e2e.mjs` 派生独立 `boardgame_azul_feedback_test` 后复用原 test:e2e 的准备/迁移/同步/资源/E2E 流程：桌面/手机 4/4 通过（2.7 分钟），无 skip，完成真人与脚本 AI 整局、实时计分音效、终局胜利音效、刷新不重播、完整八步教程、飞砖/交叉/地板/终局反馈与布局检查。实际查看真实平台计分截图。没有修改 .env、删除旧资源或重置开发/原测试库。
+
+本轮仅修改客户端表现，不运行无关服务端集成或全量业务矩阵；保留其他正在进行的后台更新/上传游戏工作区改动，仅提交花砖代码、测试与说明。
+
+## 在线上传识别新游戏与审核更新（2026-10-04）
+
+按 manifest.id 而非名称识别游戏，现有上传弹窗采用选文件 → 检查 → 人工审核发布两步；检查展示新游戏/已有游戏更新/已安装、精确 ID 和版本。检查不持久化、不改变目录。更新审核后在原安装事务中锁定旧版本行、校验目录版本/启停 revision 摘要、上架新版并下架同 ID 旧版本，大厅只显示新版。并发状态变化要求重新检查；失败原子回滚，重复成功先返回回执。同版本不同内容仍要求提升版本；相同包重传不重新上架。进行中及历史对局继续按旧精确规则和桌面恢复，等待中的旧版本房间不能开局，审核界面明确提示。没有新数据库迁移，管理员承担来源/规则/私密投影的人工审核。
+
+实际验证：
+
+- pnpm typecheck、pnpm lint 通过，20 个源目录边界通过；最终增加安装行锁后 pnpm --filter @boardgame/api typecheck/build 和 pnpm lint 再通过。
+- pnpm test tests/unit/package-enhancements.test.ts tests/unit/uno-package.test.ts tests/unit/developer-publication.test.ts：3 文件 19 项通过，无 skip。
+- pnpm build 通过，含生产 bundle/API runtime、隔离 ZIP 规则与 AI worker 检查；前端/协议与 SDK 均构建成功。
+- pnpm test:integration 和 pnpm test:e2e tests/e2e/game-packages.spec.ts tests/e2e/uno-package.spec.ts 均在 seed-assets 阶段因既有 Built-in bytes differ from saved hash; restore original backup 失败。原脚本确认独立 boardgame_test、完成迁移与游戏同步；没有改写资源字节/哈希、环境配置或开发数据库。
+- 在上述已准备的隔离测试库上，pnpm test tests/integration/game-packages.test.ts：2 项真实数据库回归通过，无 skip。覆盖新旧识别、Origin/CSRF/管理员权限、审核无副作用、缺失/过期审核摘要、启停变化后恢复原状态仍过期、并发重复、失败回滚旧上架状态、新版大厅唯一、旧局状态/RNG/revision 不变、API 重启后旧局继续完成和源码损坏阻断。首次新增故障注入函数的 SQL 定界符写错，修正后通过；最终安装行锁改动后再次通过。
+- pnpm exec tsx --env-file=.env scripts/run-e2e.ts tests/e2e/game-packages.spec.ts tests/e2e/uno-package.spec.ts --output .data/package-update/real-e2e：原 runner 专项桌面/手机 4 项通过，真实登录、管理员检查/审核上传、隔离 iframe 双人完整对局/刷新恢复、UNO 图片及真人/脚本 AI 完整对局。此专项不依赖损坏的内置媒体，没有跳过任何用例或削弱隔离。
+- pnpm exec playwright test --config playwright.packages-ui.config.ts --output .data/package-update/ui：生产前端桌面/手机 2 项通过，无 skip。以模拟 API 验证检查前不发布、取消无发布、识别新旧、审核冲突重检和发布关闭，检查无横向溢出；实际查看两端审核截图。该检查不替代真实数据库回归。临时备份、脚本、补丁及截图仅在忽略的 .data/package-update。
+
+README、管理员说明、公开 ZIP 指南、协议与架构同步。保留工作区其他修改，仅提交本轮差异。下一步从原备份恢复测试库对应内置媒体后再运行全套集成/E2E；专项已通过不代表全套通过。
+
+## 好友菜单、头像与开桌邀请视觉修复（2026-10-04）
+
+完成好友/邀请页面目标、功能去留、层级与流程自检，保留原分栏路由。原「更多」展开把私聊按钮从 44px 撑到 96px；改成独立浮层，支持 Esc 回焦、点击外部/Tab 离开关闭，删除保留确认和原命令。服务端已投影 avatar，原列表误渲染昵称首字；好友列表、搜索、申请及房间邀请现在与资料页共享六种头像定义，概要刷新同步选择。
+
+邀请以头像、房间名、姓名、文字状态标签和有效期组成紧凑行；蓝/绿/琥珀/灰区分待回应/已接受/已拒绝/失效，适配亮暗主题和手机。有效收到邀请仍走原密码/加入链路，不自动入座；失效待处理记录隐藏无效操作。没有服务端、协议、数据库或规则修改，社交说明同步。
+
+实际验证：
+
+- 最小复现：pnpm exec playwright test --config playwright.social-ui.config.ts --project desktop --grep 'friend avatars|friend options' --output .data/friends-fix-red 两项失败；断言分别得到首字「桌」而非 🐱，以及私聊高度 96 而非 44。
+- pnpm typecheck、pnpm lint 通过（20 个源目录边界）；最终相关文件 ESLint 通过。pnpm test tests/unit/friend-handles.test.ts 3/3 通过，无 skip。
+- pnpm --filter @boardgame/web build 通过。pnpm exec playwright test --config playwright.social-ui.config.ts --output .data/friends-fix-final 桌面/手机 10/10 通过，无 skip；覆盖六种头像刷新、菜单不撑高/Esc/Tab/点击外部、320/390/768/1440px 视口、四色状态、邀请方向及原密码门槛/通知/聊天/资料流程。测试使用合法 HTTP 投影，不替代数据库验收；实际查看桌面/手机菜单和亮暗邀请截图，产物仅留忽略目录 .data。随后修正截图在下一主题前恢复原视口，专项 --grep 'room invitations distinguish' 2/2 通过。
+- 确认独立 boardgame_test 与开发库不同后，pnpm test:e2e tests/e2e/social.spec.ts 在准备阶段被 ECONNREFUSED 127.0.0.1:5434 阻断。pnpm db:up 因 Docker Desktop Linux engine 管道不存在失败，未清理开发库或覆盖 .env；真实双账户数据库流程未验证。前端局部修复未运行服务端集成和全量阶段验收。
+
+下一步：恢复 PostgreSQL/Docker 后重跑真实好友 E2E，确认双账户头像修改、私聊与邀请。保留并排除本轮无关的管理员更新及其他工作区改动。
 
 ## 亮色主题与全站外观切换（2026-10-04）
 

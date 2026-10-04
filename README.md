@@ -1,12 +1,12 @@
 # 桌游平台
 
-## 生产服务自动更新（2026-10-03）
-
-首次构建与数据库/资源准备后，用 `pnpm start:online` 托管生产 Web/API，默认每五分钟检测 GitHub origin 的 main 发布分支，后台独立安装构建，在无活跃对局/连接且请求静默时切换，不刷新玩家页面；候选启动失败尝试恢复旧版。管理员从「后台 → 服务更新」可立即检测并触发同一更新流程。监听 8080，反向代理指向该端口；含数据库迁移的更新默认等待维护。部署配置、分支选择与无感边界见 [在线更新](docs/online-update.md)。
-
 ## Linux 一键公网部署（2026-10-03）
 
 准备 Node.js 22、pnpm 11.15.1、Docker Compose v2 和 systemd 用户服务，域名解析并开放 80/443 后，在仓库根目录执行 `bash deploy.sh`。首次询问域名，自动生成独立生产密钥、构建、迁移、同步游戏/资源并启动 HTTPS 网站；后续运行同一命令更新，迁移前停服备份。执行 `bash deploy.sh admin` 设置首位管理员，`status` / `logs` / `backup` / `stop` 管理运行。开发 `.env` 和数据库保留，API 不挂载 Docker socket。前提、恢复边界和实际未验证项见 [部署指南](docs/deployment.md)。
+
+## 生产服务自动更新（2026-10-03）
+
+首次构建与数据库/资源准备后，用 `pnpm start:online` 托管生产 Web/API，默认每五分钟检测 GitHub origin 的 main 发布分支，后台独立安装构建，在无活跃对局/连接且请求静默时切换，不刷新玩家页面；候选启动失败尝试恢复旧版。管理员从「后台 → 服务更新」可立即检测并触发同一更新流程。监听 8080，反向代理指向该端口；含数据库迁移的更新默认等待维护。部署配置、分支选择与无感边界见 [在线更新](docs/online-update.md)。
 
 ## 账号注册（2026-10-03）
 
@@ -14,7 +14,7 @@
 
 ## 管理员在线安装游戏 ZIP（2026-10-03）
 
-「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」支持上传后立即安装上架、创建房间和完整对局，无需重启。声明决策接口的包支持脚本/模型 AI，内嵌 PNG 图标/封面/背景自动显示；UNO 新版打包见 [UNO 上传包](game-packages/uno/README.md)。窗口提供可玩示例。包采用固定 `game.json/server.js/client.html` 格式，规则在有界 QuickJS WASM 运行、桌面在隔离 iframe 运行；普通源码仓库 ZIP 需先打包。执行 `pnpm db:migrate` 应用 023/024/025，包持久在数据库，同版本不可覆盖，旧局使用原精确版本。格式与限制见 [在线游戏 ZIP](apps/web/public/developer-docs/game-packages.md)。
+「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」支持上传后检查识别新游戏或已有游戏更新，管理员审核确认后上架或替换大厅旧版本，再创建房间和完整对局，无需重启。声明决策接口的包支持脚本/模型 AI，内嵌 PNG 图标/封面/背景自动显示；UNO 新版打包见 [UNO 上传包](game-packages/uno/README.md)。窗口提供可玩示例。包采用固定 `game.json/server.js/client.html` 格式，规则在有界 QuickJS WASM 运行、桌面在隔离 iframe 运行；普通源码仓库 ZIP 需先打包。执行 `pnpm db:migrate` 应用 023/024/025，包持久在数据库，同版本不可覆盖，旧局使用原精确版本。格式与限制见 [在线游戏 ZIP](apps/web/public/developer-docs/game-packages.md)。
 
 ## 好友、私聊与好友 ID（2026-10-03）
 

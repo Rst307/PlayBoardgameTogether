@@ -147,11 +147,63 @@
 :root[data-theme="light"] .model-status-badge.status-mock { color: var(--accent); }
 :root[data-theme="light"] .model-status-badge.status-missing-key { color: var(--warning); }
 
-/* Keep a readable caption on the intentionally shaded game artwork. */
-:root[data-theme="light"] .game-banner-content h1 { color: #fff !important; }
-:root[data-theme="light"] .game-detail-banner::after {
-  background: linear-gradient(90deg, #0b0f18f2, #0b0f18cc 50%, #0b0f1866) !important;
+/* macOS Vibrancy Light Mode refinement for Lobby and Social */
+:root[data-theme="light"] :is(.room-row, button.room-row) {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
+:root[data-theme="light"] :is(.room-row, button.room-row):hover:not(:disabled) {
+  background: #f4f6fa !important;
+  border-color: var(--line-strong) !important;
+  transform: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+}
+:root[data-theme="light"] .room-row strong {
+  color: var(--text) !important;
+}
+:root[data-theme="light"] .lobby-filters,
+:root[data-theme="light"] .game-room-page .lobby-filters {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+:root[data-theme="light"] :is(.social-directory, .social-invitations, .social-request-layout .panel, .direct-chat, .social-add-layout .panel) {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+:root[data-theme="light"] .social-row:hover {
+  background: #f8f9fc !important;
+}
+:root[data-theme="light"] .social-navigation {
+  background: var(--panel-raised) !important;
+  border-color: var(--line) !important;
+}
+:root[data-theme="light"] .social-navigation a[aria-current="page"] {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+:root[data-theme="light"] .invitation-row {
+  background: #f9fafc !important;
+  border-color: var(--line) !important;
+}
+:root[data-theme="light"] .invitation-row:hover {
+  border-color: var(--line-strong) !important;
+}
+:root[data-theme="light"] .chat-history li {
+  background: #e5e5ea !important;
+  color: #1c1c1e !important;
+  border-color: transparent !important;
+}
+:root[data-theme="light"] .chat-history li.chat-message--mine {
+  background: #007aff !important;
+  color: #ffffff !important;
+}
+
 @media (forced-colors: active) {
   .theme-select select { appearance: auto; }
 }

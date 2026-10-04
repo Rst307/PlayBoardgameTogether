@@ -43,7 +43,9 @@ async function fixture(page: Page) {
         roomId: friend, roomName: '周末桌', hasPassword: true, status: 'pending', expiresAt: '2099-10-04T00:00:00.000Z', available: true,
       }] };
     },
+    avatar(avatar: SocialOverview["friends"][number]["person"]["avatar"]) { overview.friends[0]!.person.avatar = avatar; },
     readCount: () => reads,
+    invitations(items: SocialOverview["invitations"]) { overview = { ...overview, invitations: items }; },
   };
 }
 
@@ -125,4 +127,81 @@ test('profile keeps editing, ID settings and history behind task entrances', asy
   await page.getByRole('button', { name: '退出登录' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('button', { name: /通知/ })).toHaveCount(0);
+});
+
+
+test('friend avatars reflect the selected profile avatar', async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto('/friends');
+  await expect(page.locator('.social-avatar').first()).toHaveText('🐱');
+  for (const [avatar, symbol] of [['dice', '🎲'], ['leaf', '🌿'], ['rocket', '🚀'], ['star', '⭐'], ['coffee', '☕'], ['cat', '🐱']] as const) {
+    state.avatar(avatar);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(page.locator('.social-avatar').first()).toHaveText(symbol);
+  }
+});
+
+test('friend options float without stretching the chat action and dismiss accessibly', async ({ page }, info) => {
+  await fixture(page);
+  await page.goto('/friends');
+  const chat = page.getByRole('link', { name: '私聊 桌友小明' });
+  const trigger = page.getByLabel('桌友小明 的好友操作');
+  const before = await chat.boundingBox();
+  await trigger.click();
+  await expect(page.getByRole('button', { name: '删除好友' })).toBeVisible();
+  const after = await chat.boundingBox();
+  expect(after?.height).toBe(before?.height);
+  await page.screenshot({ path: info.outputPath('friend-options.png'), fullPage: true });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '删除好友' })).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '删除好友' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '删除好友' })).toBeHidden();
+  await trigger.click();
+  await page.getByRole('heading', { name: '好友', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除好友' })).toBeHidden();
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await trigger.click();
+    const bounds = await page.getByRole('button', { name: '删除好友' }).boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.keyboard.press('Escape');
+  }
+});
+
+test('room invitations distinguish response states in light and dark themes', async ({ page }, info) => {
+  const state = await fixture(page);
+  const sender = { id: friend, friendId: 'bob', displayName: '桌友小明', avatar: 'cat' as const };
+  const recipient = { id: me, friendId: 'alice', displayName: '桌友小红', avatar: 'dice' as const };
+  const base = { sender, recipient, roomId: friend, hasPassword: false, expiresAt: '2099-10-04T00:00:00.000Z' };
+  state.invitations([
+    { ...base, id: messageId, roomName: '周末桌', status: 'pending', available: true },
+    { ...base, id: '10000000-0000-4000-8000-000000000005', roomName: '已接受的桌', status: 'accepted', available: false },
+    { ...base, id: '10000000-0000-4000-8000-000000000006', roomName: '已拒绝的桌', status: 'rejected', available: false },
+    { ...base, id: '10000000-0000-4000-8000-000000000007', roomName: '已失效的桌', status: 'pending', available: false },
+    { ...base, sender: recipient, recipient: sender, id: '10000000-0000-4000-8000-000000000008', roomName: '我发出的桌', status: 'accepted', available: false },
+  ]);
+  await page.goto('/friends/invitations');
+  await expect(page.locator('.invitation-status')).toHaveText(['等待回应', '已接受', '已拒绝', '已失效', '已接受']);
+  await expect(page.locator('.invitation-row').last()).toContainText('已邀请 桌友小明');
+  await expect(page.locator('.invitation-row').last().getByRole('link')).toHaveCount(0);
+  await expect(page.locator('.invitation-row').nth(3).getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '进入已接受的房间' })).toHaveCount(1);
+  const viewport = page.viewportSize()!;
+  for (const theme of ['dark', 'light']) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const colors = await page.locator('.invitation-status').evaluateAll(items => items.map(item => getComputedStyle(item).color));
+    expect(new Set(colors.slice(0, 4)).size).toBe(4);
+    await page.screenshot({ path: info.outputPath('invitations-' + theme + '.png'), fullPage: true });
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  }
 });

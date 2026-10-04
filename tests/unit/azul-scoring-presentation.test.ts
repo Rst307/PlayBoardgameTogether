@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DeterministicRng } from '@boardgame/game-sdk';
 import { azulExtension as game } from '../../games/azul/src/server/index.js';
-import { impactScore, scoreImpacts, scoreTiming, settlementFloors } from '../../games/azul/src/client/scoring.js';
+import { comboPoints, comboTier, impactScore, scoreImpacts, scoreTiming, settlementFloors } from '../../games/azul/src/client/scoring.js';
 import { azulTutorialReferences } from './azul-tutorial-reference.js';
 
 const viewer = { kind: 'seat' as const, seatId: 'tutorial.you' };
@@ -47,11 +47,9 @@ describe('花砖分步计分表现', () => {
     expect(impacts[0]!.cells.every(cell => cell.row === cross.row)).toBe(true);
     expect(impacts[1]!.cells.every(cell => cell.col === cross.col)).toBe(true);
     expect([0, 1, 2].map(count => impactScore(cross, impacts, count))).toEqual([0, 3, 6]);
-    // Give each term enough reading time, without the previous long settlement pause.
-    expect(scoreTiming.impact).toBeGreaterThanOrEqual(600);
+    expect([0, 1, 2].map(count => comboPoints(impacts, count))).toEqual([0, 3, 6]);
     const duration = scoreTiming.landing + impacts.length * scoreTiming.impact + scoreTiming.hold;
-    expect(duration).toBeGreaterThanOrEqual(2200);
-    expect(duration).toBeLessThanOrEqual(2800);
+    expect(duration).toBeLessThanOrEqual(800);
   });
   it('splits each completed-column bonus and preserves authoritative totals and zero floor', () => {
     const final = steps(7);
@@ -69,5 +67,12 @@ describe('花砖分步计分表现', () => {
   it('falls back to the projected amount if geometry cannot explain an event', () => {
     const cross = { ...steps(5)[0]!, points: 7, total: 7 };
     expect(scoreImpacts(cross).map(hit => hit.points)).toEqual([7]);
+  });
+  it('boosts six-point and ten-point combos without boosting penalties', () => {
+    expect([1, 5, 6, 9, 10, 21, -10].map(comboTier)).toEqual([
+      'normal', 'normal', 'strong', 'strong', 'mega', 'mega', 'normal',
+    ]);
+    const bonus = steps(7).find(step => step.points === 21)!;
+    expect([1, 2, 3].map(count => comboPoints(scoreImpacts(bonus), count))).toEqual([7, 14, 21]);
   });
 });

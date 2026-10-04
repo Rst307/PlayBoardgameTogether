@@ -29,7 +29,16 @@ export interface ScoreImpact {
   points: number;
   cells: ScoreStep['cells'];
 }
-export const scoreTiming = { landing: 300, impact: 800, hold: 600, reduced: 180 };
+export const scoreTiming = { landing: 160, impact: 180, hold: 220, reduced: 60, eventWait: 700 };
+
+/** A single growing number keeps multi-line and multi-bonus combos readable. */
+export function comboPoints(impacts: ScoreImpact[], revealed: number): number {
+  return impacts.slice(0, revealed).reduce((sum, hit) => sum + hit.points, 0);
+}
+
+export function comboTier(points: number): 'normal' | 'strong' | 'mega' {
+  return points >= 10 ? 'mega' : points >= 6 ? 'strong' : 'normal';
+}
 
 /** Presentation only. Every sequence must sum to the server's projected delta. */
 export function scoreImpacts(step: ScoreStep): ScoreImpact[] {

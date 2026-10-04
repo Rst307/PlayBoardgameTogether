@@ -23,6 +23,14 @@ describe('administrator instant game installation', () => {
     return { cookie: (Array.isArray(raw) ? raw : [String(raw)]).map(value => value.split(';')[0]).join('; '), origin, 'x-csrf-token': String(response.json().data.csrfToken) };
   }
   const upload = (bytes: Buffer, requestId = randomUUID(), headers = admin) => app.inject({ method: 'POST', url: `/api/v1/admin/game-packages?requestId=${requestId}`, headers: { ...headers, 'content-type': 'application/zip' }, payload: bytes });
+  const review = (bytes: Buffer, headers = admin) => app.inject({
+    method: 'POST', url: '/api/v1/admin/game-packages/review',
+    headers: { ...headers, 'content-type': 'application/zip' }, payload: bytes,
+  });
+  const publish = (bytes: Buffer, catalogHash: string, requestId = randomUUID()) => app.inject({
+    method: 'POST', url: `/api/v1/admin/game-packages?requestId=${requestId}&expectedCatalogHash=${catalogHash}`,
+    headers: { ...admin, 'content-type': 'application/zip' }, payload: bytes,
+  });
   const write = (path: string, headers: Headers, payload: unknown, method: 'POST' | 'PUT' = 'POST') => app.inject({ method, url: path, headers, payload });
   beforeAll(async () => {
     db = createDatabase(url!);
@@ -39,6 +47,13 @@ describe('administrator instant game installation', () => {
   });
   it('checks admin/Origin/CSRF before parsing archives and keeps failed uploads atomic', async () => {
     const zip = await gamePackageZip();
+    expect((await review(zip, alice)).statusCode).toBe(403);
+    expect((await review(zip, { ...admin, origin: 'https://wrong.example' })).statusCode).toBe(403);
+    expect((await review(zip, { ...admin, 'x-csrf-token': 'wrong' })).statusCode).toBe(403);
+    const checked = await review(zip);
+    expect(checked.statusCode).toBe(200);
+    expect(checked.json().data).toMatchObject({ kind: 'new', installedVersions: [] });
+    expect((await db.query('SELECT count(*)::int AS count FROM game_packages')).rows[0].count).toBe(0);
     expect((await upload(zip, randomUUID(), alice)).statusCode).toBe(403);
     expect((await upload(zip, randomUUID(), { ...admin, origin: 'https://wrong.example' })).statusCode).toBe(403);
     expect((await upload(zip, randomUUID(), { ...admin, 'x-csrf-token': 'wrong' })).statusCode).toBe(403);
@@ -89,6 +104,35 @@ describe('administrator instant game installation', () => {
     const forged = await write(`/api/v1/matches/${matchId}/actions`, bob, { requestId: randomUUID(), expectedRevision: 0, action: { type: 'claim' } });
     expect(forged.statusCode).toBe(422);
     expect((await db.query('SELECT state,rng_state,revision FROM matches WHERE id=$1', [matchId])).rows[0]).toEqual(before);
+    // A reviewed update replaces catalog availability without changing the active match.
+    const updatedZip = await gamePackageZip(source => source.replaceAll('1.0.0', '1.1.0'));
+    const checked = await review(updatedZip);
+    expect(checked.json().data).toMatchObject({ kind: 'update', installedVersions: ['1.0.0'], version: '1.1.0' });
+    expect((await db.query("SELECT enabled FROM game_installations WHERE game_id='online.score-race'")).rows[0].enabled).toBe(true);
+    expect((await upload(updatedZip)).json().error.code).toBe('STATE_CONFLICT');
+    expect((await publish(updatedZip, '0'.repeat(64))).json().error.code).toBe('STATE_CONFLICT');
+    // Actual concurrent admin changes invalidate a review even when the status returns to its old value.
+    await db.query("UPDATE game_installations SET enabled=false WHERE game_id='online.score-race'");
+    await db.query("UPDATE game_installations SET enabled=true WHERE game_id='online.score-race'");
+    expect((await publish(updatedZip, checked.json().data.catalogHash)).json().error.code).toBe('STATE_CONFLICT');
+    const catalogHash: string = (await review(updatedZip)).json().data.catalogHash;
+    await db.query("CREATE FUNCTION fail_game_update() RETURNS trigger LANGUAGE plpgsql AS $body$ BEGIN RAISE EXCEPTION 'simulated update failure'; END $body$");
+    await db.query('CREATE TRIGGER fail_game_update AFTER INSERT ON game_packages FOR EACH ROW EXECUTE FUNCTION fail_game_update()');
+    try {
+      expect((await publish(updatedZip, catalogHash)).statusCode).toBe(500);
+      expect((await db.query("SELECT game_version,enabled FROM game_installations WHERE game_id='online.score-race'")).rows).toEqual([{ game_version: '1.0.0', enabled: true }]);
+    } finally {
+      await db.query('DROP TRIGGER fail_game_update ON game_packages');
+      await db.query('DROP FUNCTION fail_game_update()');
+    }
+    const updateRequestId = randomUUID();
+    const published = await publish(updatedZip, catalogHash, updateRequestId);
+    expect(published.statusCode).toBe(200);
+    expect((await publish(updatedZip, catalogHash, updateRequestId)).json().data).toEqual(published.json().data);
+    expect((await app.inject({ url: '/api/v1/games' })).json().data.filter((game: { id: string }) => game.id === 'online.score-race').map((game: { version: string }) => game.version)).toEqual(['1.1.0']);
+    expect((await db.query('SELECT state,rng_state,revision FROM matches WHERE id=$1', [matchId])).rows[0]).toEqual(before);
+    expect((await read()).statusCode).toBe(200);
+    expect((await app.inject({ url: '/api/v1/game-packages/online.score-race/versions/1.0.0/desktop' })).statusCode).toBe(200);
     // Recreate the actual API and registry while preserving database state and sessions.
     await app.close(); db = createDatabase(url!); app = await createApp({ db, config, registry: createRegistry(false) });
     expect((await read()).statusCode).toBe(200);
@@ -104,11 +148,11 @@ describe('administrator instant game installation', () => {
     }
     expect((await read()).json().data.status).toBe('finished');
     expect((await db.query('SELECT status FROM rooms WHERE id=$1', [roomId])).rows[0].status).toBe('waiting');
-    const status = (await app.inject({ url: '/api/v1/admin/games', headers: admin })).json().data.find((game: { id: string }) => game.id === 'online.score-race');
+    const status = (await app.inject({ url: '/api/v1/admin/games', headers: admin })).json().data.find((game: { id: string; version: string }) => game.id === 'online.score-race' && game.version === '1.0.0');
     expect((await write('/api/v1/admin/games/online.score-race/versions/1.0.0/status', admin, { requestId: randomUUID(), expectedRevision: status.revision, enabled: false }, 'PUT')).statusCode).toBe(200);
     expect((await read()).statusCode).toBe(200);
     expect((await upload(zip)).statusCode).toBe(200);
-    expect((await db.query("SELECT enabled FROM game_installations WHERE game_id='online.score-race'")).rows[0].enabled).toBe(false);
+    expect((await db.query("SELECT enabled FROM game_installations WHERE game_id='online.score-race' AND game_version='1.0.0'")).rows[0].enabled).toBe(false);
     const saved = (await db.query('SELECT state,rng_state,revision FROM matches WHERE id=$1', [matchId])).rows[0];
     await db.query("UPDATE game_packages SET server_source=server_source || E'\\n// damaged source' WHERE game_id='online.score-race'");
     await app.close(); db = createDatabase(url!); app = await createApp({ db, config, registry: createRegistry(false) });

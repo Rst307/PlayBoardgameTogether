@@ -2,7 +2,7 @@ import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, model
 import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
-import { gamePackageResultSchema } from '@boardgame/protocol';
+import { gamePackageResultSchema, gamePackageReviewSchema } from '@boardgame/protocol';
 import {
   adminOverviewSchema, adminAccountPageSchema, adminAccountSchema, adminGameSchema,
   adminAccountCommandSchema, adminGameCommandSchema,
@@ -43,9 +43,14 @@ export class ApiClient {
       method: 'POST', body: JSON.stringify(registrationInputSchema.parse(input)),
     }));
   }
-  async installGamePackage(file: Blob, requestId: string, signal?: AbortSignal) {
+  async reviewGamePackage(file: Blob, signal?: AbortSignal) {
+    return gamePackageReviewSchema.parse(await this.request<unknown>('/admin/game-packages/review', {
+      method: 'POST', headers: { 'content-type': 'application/zip' }, body: file, ...(signal ? { signal } : {}),
+    }));
+  }
+  async installGamePackage(file: Blob, requestId: string, signal?: AbortSignal, expectedCatalogHash?: string) {
     return gamePackageResultSchema.parse(await this.request<unknown>(
-      `/admin/game-packages?requestId=${encodeURIComponent(requestId)}`,
+      `/admin/game-packages?requestId=${encodeURIComponent(requestId)}${expectedCatalogHash ? `&expectedCatalogHash=${encodeURIComponent(expectedCatalogHash)}` : ''}`,
       { method: 'POST', headers: { 'content-type': 'application/zip' }, body: file, ...(signal ? { signal } : {}) },
     ));
   }

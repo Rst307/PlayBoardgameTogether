@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { packageArtworkKindSchema, packagePresentationSchema } from './package-art.js';
 import { z } from 'zod';
 import { DeterministicRng } from '@boardgame/game-sdk';
-import { gamePackageResultSchema } from '@boardgame/protocol';
+import { gamePackageResultSchema, gamePackageReviewSchema } from '@boardgame/protocol';
 import type { AuthContext } from '../auth.js';
 import type { Database } from '../db/index.js';
 import type { GameRegistry } from '../registry/index.js';
@@ -48,7 +48,7 @@ export class GamePackageService {
       this.register(source.rows[0]!);
     }
   }
-  async install(current: AuthContext, requestId: string, bytes: Buffer) {
+  private validate(bytes: Buffer) {
     const hash = createHash('sha256').update(bytes).digest('hex');
     const packageData = readGamePackage(bytes);
     const extension = this.runtime.extension(packageData.server), manifest = extension.manifest;
@@ -77,6 +77,31 @@ export class GamePackageService {
       z.object({ status: z.enum(['ongoing', 'finished']) }).parse(extension.getOutcome(recovered));
     }
     const result = gamePackageResultSchema.parse({ gameId: manifest.id, version: manifest.version, name: manifest.name, hash });
+    return { hash, packageData, manifest, result };
+  }
+  private async catalog(client: Pick<Database, 'query'>, id: string, lock = false) {
+    const versions = await client.query<{ game_version: string; enabled: boolean; admin_revision: number }>(
+      `SELECT game_version,enabled,admin_revision FROM game_installations WHERE game_id=$1 ORDER BY game_version${lock ? ' FOR UPDATE' : ''}`, [id]);
+    return {
+      versions: versions.rows.map(row => row.game_version),
+      hash: createHash('sha256').update(JSON.stringify(versions.rows)).digest('hex'),
+    };
+  }
+  async review(bytes: Buffer) {
+    const { manifest, hash, result } = this.validate(bytes);
+    const catalog = await this.catalog(this.db, manifest.id);
+    const known = await this.db.query<{ package_hash: string }>(
+      'SELECT package_hash FROM game_packages WHERE game_id=$1 AND game_version=$2', [manifest.id, manifest.version]);
+    if (catalog.versions.includes(manifest.version) && known.rows[0]?.package_hash !== hash) {
+      throw new AppError('STATE_CONFLICT', '此版本已存在，请提升版本号后上传', 409);
+    }
+    return gamePackageReviewSchema.parse({ ...result, catalogHash: catalog.hash,
+      installedVersions: catalog.versions,
+      kind: known.rowCount ? 'installed' : catalog.versions.length ? 'update' : 'new',
+    });
+  }
+  async install(current: AuthContext, requestId: string, bytes: Buffer, expectedCatalogHash?: string) {
+    const { hash, packageData, manifest, result } = this.validate(bytes);
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
@@ -97,10 +122,17 @@ export class GamePackageService {
       const known = await client.query<{ package_hash: string }>('SELECT package_hash FROM game_packages WHERE game_id=$1 AND game_version=$2', [manifest.id, manifest.version]);
       if (known.rows[0] && known.rows[0].package_hash !== hash) throw new AppError('STATE_CONFLICT', '此版本已存在，请提升版本号后上传', 409);
       if (!known.rowCount) {
+        const catalog = await this.catalog(client, manifest.id, true);
+        if ((catalog.versions.length && !expectedCatalogHash) ||
+          (expectedCatalogHash && expectedCatalogHash !== catalog.hash)) {
+          throw new AppError('STATE_CONFLICT', '游戏版本或上架状态已变化，请重新检查并审核游戏包', 409);
+        }
         const counts = await client.query<{ count: number }>('SELECT count(*)::int AS count FROM game_packages');
         if (counts.rows[0]!.count >= 100) throw new AppError('RATE_LIMITED', '已达到 100 个在线安装版本，请联系维护者', 429);
         const existing = await client.query('SELECT 1 FROM game_installations WHERE game_id=$1 AND game_version=$2', [manifest.id, manifest.version]);
         if (existing.rowCount || this.registry.get(manifest.id, manifest.version)) throw new AppError('STATE_CONFLICT', '不能覆盖已安装游戏版本', 409);
+        // Replace catalog availability atomically; immutable old rules remain recoverable.
+        await client.query('UPDATE game_installations SET enabled=false WHERE game_id=$1 AND enabled=true', [manifest.id]);
         await client.query('INSERT INTO game_installations(game_id,game_version,content_version,sdk_range,manifest,enabled) VALUES($1,$2,$3,$4,$5,true)', [manifest.id, manifest.version, manifest.contentVersion, manifest.sdkRange, manifest]);
         await client.query('INSERT INTO game_packages(game_id,game_version,package_hash,server_source,client_html,public_rules,installed_by,presentation) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [manifest.id, manifest.version, hash, packageData.server, packageData.client, packageData.rules, current.account.id, packageData.presentation ?? {}]);
       }

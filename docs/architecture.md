@@ -8,13 +8,13 @@
 
 Web App 外壳装配 SocialProvider，统一认证后的社交概要读取、取消/世代检查和会话清理；useSocial 转为上下文消费者，原好友页、ID 管理及房间邀请不再分别轮询。SocialNotifications 投影本人未读/待处理数量与短暂站内提示；ChatDock 复用 DirectChat 的消息分页、增量补取、读取水位和 requestId 重试。最小化保留草稿但停止读取/已读，手机及会话深链接继续使用原独立页面。资料按 summary/edit/identity/history 路由分工，只有历史页请求对局记录。API、协议、数据库、房间权限和游戏规则均未改变；没有新增运行单元或社交 WS，仍是每 5 秒认证 HTTP 同步。
 
-## 生产更新监督（2026-10-03）
-
-`scripts/online-update.mjs` 是显式启用的生产启动入口，托管静态 Web、同源 HTTP/WS 代理及唯一 API 子进程；不是第二套业务服务或多副本协调。GitHub 分支提交在私有独立目录构建，源工作区不被拉取覆盖。`update-drain.ts` 只通过父进程 IPC 设置请求入口闸门，然后核对请求计数、WS 和数据库 active matches，无网络更新权限接口、不改变房间/动作事务。切换复用迁移与安装脚本、就绪检查和精确版本恢复；默认迁移待维护，数据库不随代码回退。共享绝对资源目录，保留旧 Web chunk，成功就绪后才切换并原子记录版本。具体运维边界见 [在线更新](online-update.md)。
-
 ## Linux 生产部署入口（2026-10-03）
 
 `deploy.sh` 编排独立生产配置、Compose PostgreSQL/HTTPS 入口、原有迁移/游戏/资源同步及 systemd 用户 API 服务；业务模块和协议不变。生产 API 在宿主机当前部署账户运行，使用其已有本机 Docker 权限调用原有隔离媒体处理器，网站容器不挂载 Docker socket。Caddy 通过 Linux host 网络访问回环 API 3301，生产 PostgreSQL 仅发布回环 5435；开发环境继续使用原配置。网站只复制 Web 构建文件并排除 sourcemap。生产资源和主密钥保存在私有 `.data/deploy`，更新迁移前停服备份；仍为单 API、需要维护窗口，无自动数据库降级或零停机承诺。使用与信任边界见 [部署指南](deployment.md)。
+
+## 生产更新监督（2026-10-03）
+
+`scripts/online-update.mjs` 是显式启用的生产启动入口，托管静态 Web、同源 HTTP/WS 代理及唯一 API 子进程；不是第二套业务服务或多副本协调。GitHub 分支提交在私有独立目录构建，源工作区不被拉取覆盖。`update-drain.ts` 只通过父进程 IPC 设置请求入口闸门，然后核对请求计数、WS 和数据库 active matches，无网络更新权限接口、不改变房间/动作事务。切换复用迁移与安装脚本、就绪检查和精确版本恢复；默认迁移待维护，数据库不随代码回退。共享绝对资源目录，保留旧 Web chunk，成功就绪后才切换并原子记录版本。具体运维边界见 [在线更新](online-update.md)。
 
 ## 花砖计分移动与节拍音效（2026-10-03）
 
@@ -182,3 +182,7 @@ RoomService 复用原房间写事务添加和修改 bot 的脚本/模型配置�
 ## 在线包 AI 与默认展示图（2026-10-03）
 
 registry/PackageRuntime 对可选 getDecisionContext 做严格有界 JSON 适配，基础 worker 按需加载内置策略、其他 basic-v1 使用包的有序合法候选；不在宿主加载包 JS，不新增 gameId 规则分支。脚本/模型仍使用 AiScheduler、matches 权限/事务。catalog/package-art 校验 PNG 数据，025 在包表保存不可变默认图，package-routes 提供公开 PNG，presentations.list 以管理员 URL 优先、包默认次之。浏览器复用既有 GameArtwork，不接触 State、图片 base64 或数据库。UNO 1.1.0 在 ZIP 中携带原创图标/封面/背景和自己的私密 View 候选排序。
+
+## 在线游戏更新审核（2026-10-04）
+
+catalog/package-service 复用同一隔离规则生命周期检查生成只读审核摘要，按 gameId 查询安装版本及启停 revision。发布在原安装 advisory lock、管理员/session 重验与回执事务中校验 catalogHash，再原子下架同 ID 旧版本并插入新版本。registry 保留全部不可变规则，旧 matches 不迁移；没有新增认证、数据库表或运行单元。上传弹窗以检查/审核发布两步消费 protocol/client-sdk，不解析 ZIP 或秘密 State。
