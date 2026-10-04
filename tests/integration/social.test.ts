@@ -240,6 +240,34 @@ describe('friends, private messages and room invitations', () => {
     expect((await post(`/api/v1/social/friends/${cid}`, { requestId: randomUUID(), expectedRevision: 1, action: 'cancel' })).statusCode).toBe(200);
     expect((await overview()).requests).toHaveLength(0);
   });
+  it.each(['reject', 'cancel', 'remove'] as const)('allows reapplying after 15 seconds following %s', async action => {
+    if (action === 'remove') {
+      await friend();
+    } else {
+      expect((await post('/api/v1/social/requests', {
+        requestId: randomUUID(), friendId: 'social_b',
+      })).statusCode).toBe(200);
+    }
+    const recipient = action === 'reject';
+    expect((await post(`/api/v1/social/friends/${recipient ? aid : bid}`, {
+      requestId: randomUUID(), expectedRevision: action === 'remove' ? 2 : 1, action,
+    }, recipient ? b : a)).statusCode).toBe(200);
+
+    const input = { requestId: randomUUID(), friendId: 'social_b' };
+    await db.query("UPDATE friendships SET updated_at=clock_timestamp()-interval '10 seconds'");
+    const blocked = await post('/api/v1/social/requests', input);
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.json().error).toMatchObject({ code: 'RATE_LIMITED', message: '请在 15 秒后重新申请' });
+    expect((await db.query('SELECT 1 FROM social_command_receipts WHERE request_id=$1', [input.requestId])).rowCount).toBe(0);
+
+    await db.query("UPDATE friendships SET updated_at=clock_timestamp()-interval '16 seconds'");
+    const retried = await post('/api/v1/social/requests', input);
+    expect(retried.statusCode).toBe(200);
+    const pending = friendshipSchema.parse(retried.json().data);
+    expect(pending).toMatchObject({ status: 'pending', revision: action === 'remove' ? 4 : 3 });
+    expect((await post('/api/v1/social/requests', input)).json().data).toEqual(pending);
+    expect((await db.query('SELECT revision FROM friendships')).rows[0].revision).toBe(pending.revision);
+  });
   it('keeps messages private, deduplicates concurrent sends and read watermarks are monotonic', async () => {
     const path = `/api/v1/social/friends/${bid}/messages`;
     expect((await post(path, { requestId: randomUUID(), text: 'before friendship' })).statusCode).toBe(403);

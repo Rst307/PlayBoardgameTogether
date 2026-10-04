@@ -207,7 +207,9 @@ export class SocialService {
       if (!peerId || peerId === accountId) throw new AppError('FORBIDDEN', '不能向该 ID 发送好友申请', 403);
       const relation = await this.relation(client, accountId, peerId);
       if (relation && ['pending', 'accepted'].includes(relation.status)) return this.friendship(client, accountId, peerId);
-      if (relation && relation.updated_at.getTime() > Date.now() - 24 * 60 * 60_000) throw new AppError('RATE_LIMITED', '请在 24 小时后重新申请', 429);
+      if (relation && relation.updated_at.getTime() > Date.now() - 15_000) {
+        throw new AppError('RATE_LIMITED', '请在 15 秒后重新申请', 429);
+      }
       const count = await client.query<{ count: string }>("SELECT count(*) FROM friendships WHERE (account_low=$1 OR account_high=$1 OR account_low=$2 OR account_high=$2) AND status IN ('pending','accepted')", [accountId, peerId]);
       if (Number(count.rows[0]!.count) >= 200) throw new AppError('RATE_LIMITED', '好友或申请数量已达上限', 429);
       await client.query(`INSERT INTO friendships(account_low,account_high,requested_by,status) VALUES($1,$2,$3,'pending')
