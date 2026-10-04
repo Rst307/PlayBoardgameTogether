@@ -1,5 +1,9 @@
 # 架构
 
+## 常驻聊天与导航外壳（2026-10-04）
+
+App 统一装配独立 ChatDock、NavigationTools 与左下角辅助导航；ChatDock 从 SocialProvider 获取当前频道/会话/收起状态，按需加载 PublicChatPage，公共名片与私聊继续使用 DirectChat 和原类型化传输。隐藏频道通过 visible 停止消息同步及已读，未展开不挂载正文，退出会话清理挂载内容。NavigationTools 独立管理浮层关闭与监听清理；shell-social.css 在主题后限定外壳样式，覆盖游戏 header 与侧栏冲突。没有新增服务端边界、运行单元或身份路径。
+
 ## 对局玩家名称展示（2026-10-04）
 
 MatchService 从固定 match_participants 与账户读取公开 players 元数据，经原认证 HTTP/WS 快照发送。MatchPage 将 seatId→displayName 映射作为 GameBoard 第七个可选参数，Web registry 装配到花砖物语和璀璨宝石；平台不解析游戏 State，不从当前房间座位推断旧局身份。game-sdk/presentation 独立客户端工具提供名称与本人标记，未修改被规则摘要覆盖的 SDK 核心。迁移 027 和 RoomService 原开局事务保存参与者名称。

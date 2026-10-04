@@ -10,6 +10,8 @@ interface SocialState {
   refresh: () => Promise<void>;
   chatId: string | undefined;
   minimized: boolean;
+  chatTab: 'public' | 'friends';
+  setChatTab: (value: 'public' | 'friends') => void;
   openChat: (id: string) => void;
   closeChat: () => void;
   setMinimized: (value: boolean) => void;
@@ -22,7 +24,8 @@ export function SocialProvider({ children, enabled }: { children: ReactNode; ena
   const [error, setError] = useState('');
   const [guest, setGuest] = useState(false);
   const [chatId, setChatId] = useState<string>();
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(true);
+  const [chatTab, setChatTab] = useState<'public' | 'friends'>('public');
   const active = useRef(false);
   const authenticated = useRef(false);
   const signedOut = useRef(false);
@@ -36,6 +39,8 @@ export function SocialProvider({ children, enabled }: { children: ReactNode; ena
     signedOut.current = true;
     setData(undefined);
     setChatId(undefined);
+    setMinimized(true);
+    setChatTab('public');
     setError('');
     setGuest(true);
   }, []);
@@ -89,10 +94,11 @@ export function SocialProvider({ children, enabled }: { children: ReactNode; ena
     if (!matchMedia('(min-width: 761px)').matches) { navigate(`/friends/chat/${id}`); return; }
     if (!data?.friends.some(item => item.person.id === id)) return;
     setChatId(id);
+    setChatTab('friends');
     setMinimized(false);
   };
   return <SocialContext.Provider value={{ data, error, guest, refresh, chatId, minimized, openChat,
-    closeChat: () => setChatId(undefined), setMinimized, clearSession }}>{children}</SocialContext.Provider>;
+    closeChat: () => setChatId(undefined), setMinimized, chatTab, setChatTab, clearSession }}>{children}</SocialContext.Provider>;
 }
 
 export function useSocialContext() {

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SocialOverview } from '@boardgame/protocol';
-import { DirectChat } from './DirectChat.js';
 import { useSocialContext } from './SocialProvider.js';
 import '../styles/social.css';
 
@@ -70,26 +69,4 @@ export function SocialNotifications() {
     </section>}
     {toast && createPortal(<div className="notification-toast" role="status"><span>你有新的好友消息或邀请</span><button className="secondary" onClick={() => { setOpen(true); setToast(false); trigger.current?.focus(); }}>查看通知</button><button className="secondary" aria-label="关闭通知提示" onClick={() => setToast(false)}>×</button></div>, document.body)}
   </div>;
-}
-
-export function ChatDock() {
-  const { data, chatId, minimized, setMinimized, closeChat, refresh } = useSocialContext();
-  const [desktop, setDesktop] = useState(() => matchMedia('(min-width: 761px)').matches);
-  const toggle = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const media = matchMedia('(min-width: 761px)');
-    const change = () => setDesktop(media.matches);
-    media.addEventListener('change', change);
-    return () => media.removeEventListener('change', change);
-  }, []);
-  const friend = data?.friends.find(item => item.person.id === chatId);
-  if (!friend || !desktop) return null;
-  return <section className={`chat-dock ${minimized ? 'chat-dock--minimized' : ''}`} aria-label="聊天浮窗">
-    <div className="chat-dock-toolbar">
-      <button className="secondary chat-dock-title" ref={toggle} aria-label={`${minimized ? '展开' : '最小化'}与 ${friend.person.displayName} 的聊天`} aria-expanded={!minimized} onClick={() => setMinimized(!minimized)}>{friend.person.displayName}{friend.unread > 0 && <span className="unread-count">{friend.unread}</span>}</button>
-      {!minimized && <button className="secondary" aria-label="最小化聊天" onClick={() => { setMinimized(true); toggle.current?.focus(); }}>−</button>}
-      <button className="secondary" aria-label="关闭聊天" onClick={closeChat}>×</button>
-    </div>
-    <div hidden={minimized}><DirectChat key={friend.person.id} person={friend.person} refresh={refresh} visible={!minimized} compact /></div>
-  </section>;
 }

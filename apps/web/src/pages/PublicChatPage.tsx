@@ -6,7 +6,7 @@ import { DirectChat } from '../social/DirectChat.js';
 import { PersonAvatar } from '../social/PersonAvatar.js';
 import { useSocialContext } from '../social/SocialProvider.js';
 
-export function PublicChatPage() {
+export function PublicChatPage({ compact = false, visible = true }: { compact?: boolean; visible?: boolean }) {
   const social = useSocialContext();
   const [selected, setSelected] = useState<SocialPerson>();
   const [busy, setBusy] = useState(false);
@@ -57,7 +57,7 @@ export function PublicChatPage() {
   const friend = social.data.friends.find(item => item.person.id === selected?.id);
   const request = social.data.requests.find(item => item.person.id === selected?.id);
   return <div className="social-page public-chat-page">
-    <DirectChat publicChat refresh={social.refresh} onPerson={person => {
+    <DirectChat publicChat compact={compact} visible={visible} refresh={social.refresh} onPerson={person => {
       selectionVersion.current++;
       setSelected(person); setError(''); setNotice(''); pending.current = undefined;
     }} />

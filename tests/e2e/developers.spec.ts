@@ -8,7 +8,7 @@ test('guest can browse production developer docs and download exact SDK without 
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/developers');
   await expect(page.getByRole('heading', { name: '开发者中心', exact: true })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: '开发者文档' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('navigation', { name: '辅助导航' }).getByRole('link', { name: '开发者文档' })).toHaveAttribute('aria-current', 'page');
   const nav = page.getByRole('navigation', { name: '开发文档', exact: true });
   for (const [label, heading, path] of [
     ['快速开始', '快速开始', 'quickstart'],

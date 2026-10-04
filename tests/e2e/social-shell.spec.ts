@@ -9,6 +9,7 @@ async function fixture(page: Page) {
   let guest = false;
   let reads = 0;
   let arrivals = 0;
+  let publicReads = 0;
   let overview: SocialOverview = {
     identity: { friendId: 'alice', revision: 1, changeIntervalDays: 30, nextChangeAt: null, canChange: true },
     friends: [{ person: { id: friend, friendId: 'bob', displayName: '桌友小明', avatar: 'cat' }, status: 'accepted', direction: 'incoming', revision: 1, unread: 0 }],
@@ -22,6 +23,10 @@ async function fixture(page: Page) {
     if (guest) return route.fulfill({ status: 401, json: { ok: false, traceId: 'social-ui', error: { code: 'UNAUTHENTICATED', message: '请登录', retryable: false } } });
     if (path === '/auth/me') return ok({ account: { id: me, username: 'alice', displayName: profile.displayName, role: 'user' }, csrfToken: 'fixture-csrf' });
     if (path === '/social') return ok(overview);
+    if (path === '/social/public/messages') {
+      publicReads++;
+      return ok({ items: [{ id: messageId, sequence: '1', senderId: friend, sender: overview.friends[0]!.person, text: '公共频道你好', createdAt: timestamp }], nextCursor: null });
+    }
     if (path === '/profile') {
       if (route.request().method() === 'PUT') profile = { ...profile, ...route.request().postDataJSON() };
       return ok(profile);
@@ -45,9 +50,75 @@ async function fixture(page: Page) {
     },
     avatar(avatar: SocialOverview["friends"][number]["person"]["avatar"]) { overview.friends[0]!.person.avatar = avatar; },
     readCount: () => reads,
+    publicReadCount: () => publicReads,
     invitations(items: SocialOverview["invitations"]) { overview = { ...overview, invitations: items }; },
   };
 }
+
+test('desktop chat stays at bottom left with two channels and retained drafts', async ({ page }, info) => {
+  const state = await fixture(page);
+  await page.goto('/profile');
+  const dock = page.getByRole('region', { name: '聊天浮窗' });
+  if (info.project.name !== 'desktop') {
+    await expect(dock).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '公共聊天', exact: true })).toBeVisible();
+    return;
+  }
+  await expect(dock).toBeVisible();
+  await expect(page.getByRole('button', { name: '通知', exact: true })).toBeVisible();
+  expect(state.publicReadCount()).toBe(0);
+  const collapsed = await dock.boundingBox();
+  expect(collapsed!.x).toBe(16);
+  expect(collapsed!.y + collapsed!.height).toBe(852);
+  await dock.getByRole('button', { name: '展开聊天', exact: true }).first().click();
+  await expect(dock.getByText('公共频道你好', { exact: true })).toBeVisible();
+  await dock.getByLabel('公共消息', { exact: true }).fill('公共草稿');
+  await dock.getByRole('button', { name: '好友聊天', exact: true }).click();
+  await dock.getByRole('button', { name: '私聊 桌友小明', exact: true }).click();
+  await expect(dock.getByText('晚上一起开桌吗？', { exact: true })).toBeVisible();
+  await dock.getByLabel('私聊消息', { exact: true }).fill('好友草稿');
+  const publicReads = state.publicReadCount();
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  expect(state.publicReadCount()).toBe(publicReads);
+  await dock.getByRole('button', { name: '公共聊天', exact: true }).click();
+  await expect(dock.getByLabel('公共消息', { exact: true })).toHaveValue('公共草稿');
+  await dock.getByRole('button', { name: '最小化聊天', exact: true }).first().click();
+  const reads = state.publicReadCount();
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  expect(state.publicReadCount()).toBe(reads);
+  await dock.getByRole('button', { name: '展开聊天', exact: true }).click();
+  await dock.getByRole('button', { name: '好友聊天', exact: true }).click();
+  await expect(dock.getByLabel('私聊消息', { exact: true })).toHaveValue('好友草稿');
+  await page.getByRole('link', { name: '开发者文档', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '开发者中心', exact: true })).toBeVisible();
+  await expect(dock.getByLabel('私聊消息', { exact: true })).toHaveValue('好友草稿');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    await page.screenshot({ path: info.outputPath('left-chat-' + theme + '.png'), fullPage: true });
+  }
+  await page.goto(`/matches/${friend}`);
+  const header = page.locator('.site-header');
+  await expect(header).toBeVisible();
+  for (const width of [768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const alignment = await header.evaluate(element => {
+      const centers = [...element.querySelectorAll('.brand, nav > a:not(.mobile-chat-link), summary')].map(item => {
+        const rect = item.getBoundingClientRect();
+        return rect.y + rect.height / 2;
+      });
+      return { spread: Math.max(...centers) - Math.min(...centers), height: element.getBoundingClientRect().height };
+    });
+    expect(alignment.spread).toBeLessThan(2);
+    expect(alignment.height).toBeLessThan(90);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator('.nav-tools summary').click();
+    const menu = await page.locator('.nav-tools > div').boundingBox();
+    expect(menu!.x).toBeGreaterThanOrEqual(0);
+    expect(menu!.x + menu!.width).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: info.outputPath(`game-header-${width}.png`), fullPage: true });
+    await page.keyboard.press('Escape');
+  }
+});
 
 test('messages and invitations notify outside the friends page', async ({ page }, info) => {
   const state = await fixture(page);

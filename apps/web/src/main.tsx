@@ -12,3 +12,4 @@ import './styles/model-settings.css';
 import './styles/theme-refresh.css';
 import './styles/rooms.css';
 import './styles/themes.css';
+import './styles/shell-social.css';

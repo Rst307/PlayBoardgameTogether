@@ -1,5 +1,19 @@
 # 开发进度
 
+## 左下角常驻聊天、文档入口与游戏导航（2026-10-04）
+
+编码前完成现有功能分析、UX 自检、入口结构和流程：主导航保留大厅/资料/好友，桌面左下角常驻收起聊天栏，展开切换公共/好友，发送为主要操作；文档为下方辅助入口，设置藏在更多浮层。手机公共/私聊仍使用独立页。复用 PublicChatPage 名片与 DirectChat 的权限、表情、分页和原请求重试；隐藏频道停止读取和已读，切频道/收起/站内切页保留草稿，退出清理，首次展开才加载正文。独立 NavigationTools 支持外部点击、Esc/焦点还原、焦点离开和切页关闭。游戏 header 消除侧栏 margin/border 与主题 !important 冲突。视觉检查后减少频道/辅助按钮和内部面板边框。
+
+本轮实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 通过，20 个边界目录。沙箱内 lint 的 tsx 系统用户读取失败，批准后原命令通过；最终修改后复验通过。
+- `pnpm test tests/unit/friend-handles.test.ts tests/unit/dependency-boundaries.test.ts tests/unit/developer-publication.test.ts`：3 文件/11 项通过。最初误指定不存在的 social-expressions 测试路径，命令未执行用例，随后按实际文件验证。
+- `pnpm build` 通过，包含生产 bundle、API runtime 与 ZIP/AI 检查；聊天改为 lazy 和最终样式调整后执行 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm exec playwright test --config playwright.shell-social.config.ts --output .data/shell-social-ui`：首次 22/26，通过全部手机用例及文档/菜单；桌面提前挂载导致重复输入定位、好友按钮名称不完整，修正后重跑桌面 public-chat/social-shell 10/11。其中通知目标页遇到生产分块加载失败，最终使用新构建定向验证 `desktop chat|messages and invitations` 2/2 通过，无 skip。坐标验证 768/1024/1440px 品牌与导航中心线差小于 2px、header 小于 90px、菜单/页面无水平溢出；已查看明暗聊天与游戏 header 截图。
+- 独立 `boardgame_names_20261004` 测试库通过原脚本校验隔离、迁移/同步/种子，未覆盖 .env。`pnpm test:e2e tests/e2e/public-chat-flow.spec.ts --output .data/shell-social-real-e2e` 手机通过；桌面常驻真实发送后两条发言使头像定位歧义，改为指定公共消息行定位。`pnpm test:e2e tests/e2e/public-chat-flow.spec.ts --project=desktop --output .data/shell-social-real-final` 1/1 通过，覆盖真实常驻发送、公共表情、名片申请/接受、私聊和刷新持久化，无 skip。
+
+本轮只修改前端外壳与对应说明/测试，无协议、数据库和规则修改，未运行数据库集成或全游戏验收、未部署线上。初次进入全屏游戏页的未登录/失败视图也沿用同一已检查 header；本轮没有宣称此前璀璨宝石市场布局限制已修复。工作区同期后台管理/AGENTS 改动保留且不纳入本轮提交。生成截图/构建输出在忽略目录。
+
 ## 游戏管理先选游戏再看版本（2026-10-04）
 
 `/admin/catalog` 从全部版本平铺改为两步：先按游戏 ID 合并成名称/ID 可筛选的游戏列表，选择后只展示该游戏的精确安装版本及上下架操作。返回保留筛选并恢复列表按钮焦点，手动刷新保留所选游戏；规则/资源缺失版本仍可见且不能上架。版本说明默认折叠，上传示例和打包指南进入既有 ZIP 审核弹窗，展示/资源管理保留后台导航入口，移除重复快捷按钮及版本行里的游戏 ID。编码前完成页面目标、信息层级和用户流程设计，最终查看桌面与手机截图；针对全局强制按钮样式使用局部覆盖，使游戏选择呈现为低权重列表行。API、权限、revision、去重、上传审核和数据库行为不变。
