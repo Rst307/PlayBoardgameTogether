@@ -10,8 +10,32 @@ const webRoot = fileURLToPath(new URL('../../apps/web/', import.meta.url));
 const webRequire = createRequire(new URL('../../apps/web/package.json', import.meta.url));
 const { buildSync } = createRequire(webRequire.resolve('vite'))('esbuild');
 
+test('updated cover fits the catalog alongside existing geometric artwork', async ({ page }, info) => {
+  const parsed = readGamePackage(await readFile('dist/game-packages/catan-1.0.1.zip'));
+  const css = await readFile(new URL('../../apps/web/src/styles/catalog.css', import.meta.url), 'utf8');
+  const cards = [{ name: '卡坦岛', cover: parsed.presentation.cover }];
+  for (const [name, file] of [['璀璨宝石', 'apps/web/public/game-art/splendor.svg'], ['五子棋', 'game-packages/gomoku/art/cover.svg'], ['花砖物语', 'apps/web/public/game-art/azul.svg']]) {
+    const svg = await readFile(file!, 'utf8');
+    cards.push({ name: name!, cover: 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64') });
+  }
+  await page.setContent(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    :root{--text:#eff0f3;--muted:#b7bec8;--line-strong:#69787e;--accent:#d9c08a}
+    *{box-sizing:border-box}body{margin:0;padding:16px;background:#23262c;font-family:"Microsoft YaHei",sans-serif}
+    ${css}</style></head><body><div class="game-catalog-grid">
+    ${cards.map(card => `<a class="game-card" href="#"><div class="game-cover"><img alt="${card.name}封面" src="${card.cover}"></div><div class="game-card-info"><h3>${card.name}</h3><p class="game-card-desc">经典桌游 · 查看房间</p></div></a>`).join('')}
+    </div></body></html>`);
+  for (const img of await page.locator('.game-cover img').all()) await img.evaluate((el: HTMLImageElement) => el.decode());
+  const cover = page.getByAltText('卡坦岛封面');
+  expect(await cover.evaluate((el: HTMLImageElement) => el.naturalWidth / el.naturalHeight)).toBe(16 / 9);
+  const box = (await cover.boundingBox())!;
+  expect(box.width / box.height).toBeCloseTo(16 / 9, 2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('catalog.png'), fullPage: true });
+});
+
 test('sandbox island placement, trades, modal privacy, busy guards and responsive board', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/catan-1.0.0.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/catan-1.0.1.zip'));
   expect(Object.keys(parsed.presentation).sort()).toEqual(['background', 'cover', 'icon']);
   const game = (await PackageRuntime.create()).extension(parsed.server), rng = new DeterministicRng(123);
   let state = game.setup({ seats: ['a', 'b', 'c'], options: {}, rng }).state;
@@ -37,7 +61,7 @@ test('sandbox island placement, trades, modal privacy, busy guards and responsiv
     import { PackageBoard } from './src/games/PackageBoard.tsx';
     const root = createRoot(document.getElementById('root'));
     const render = (view, busy = false) => root.render(<PackageBoard
-      id="online.catan" version="1.0.0" view={view} busy={busy} events={[]}
+      id="online.catan" version="1.0.1" view={view} busy={busy} events={[]}
       onAction={action => window.acceptAction(action)} />);
     addEventListener('message', event => { if(event.data?.type==='fixture:view')render(event.data.view,event.data.busy); });
     render(JSON.parse(document.getElementById('initial-view').textContent));

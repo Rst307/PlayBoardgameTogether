@@ -353,7 +353,7 @@ function check(s) {
 }
 const game = {
     manifest: {
-        id: 'online.catan', version: '1.0.0', contentVersion: '1.0.0', sdkRange: '^0.1.0', name: '卡坦岛',
+        id: 'online.catan', version: '1.0.1', contentVersion: '1.0.0', sdkRange: '^0.1.0', name: '卡坦岛',
         description: '3–4 人经典基础版：生产与交易资源，建设岛屿，发展卡与最长道路，率先在自己回合达到 10 分。',
         players: { min: 3, max: 4 }, mode: 'rules-driven', capabilities: ['private-view', 'turn-based', 'spatial'],
         defaultAssetPack: { id: 'online.catan.default', version: '1.0.0' }, developmentOnly: false

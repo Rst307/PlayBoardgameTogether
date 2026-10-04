@@ -32,14 +32,14 @@ beforeAll(async () => {
 afterAll(async () => { if (app) await app.close(); });
 
 it('reviews/installs Catan, runs three-party official identity turns with atomic receipts and restores exact package state', async () => {
-  const zip = await readFile('dist/game-packages/catan-1.0.0.zip'), upload = { ...admin, 'content-type': 'application/zip' };
+  const zip = await readFile('dist/game-packages/catan-1.0.1.zip'), upload = { ...admin, 'content-type': 'application/zip' };
   const reviewed = await app.inject({ method: 'POST', url: '/api/v1/admin/game-packages/review', headers: upload, payload: zip });
   expect(reviewed.statusCode).toBe(200);
   const installed = await app.inject({ method: 'POST', url: `/api/v1/admin/game-packages?requestId=${randomUUID()}&expectedCatalogHash=${reviewed.json().data.catalogHash}`, headers: upload, payload: zip });
   expect(installed.statusCode).toBe(200);
-  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.catan', version: '1.0.0', players: { min: 3, max: 4 } })]));
-  expect((await app.inject({ url: '/api/v1/game-packages/online.catan/versions/1.0.0/art/cover.png' })).headers['content-type']).toContain('image/png');
-  const created = await write('/api/v1/rooms', players[0]!, { requestId: randomUUID(), name: '卡坦岛验收', gameId: 'online.catan', version: '1.0.0', options: {}, seatCount: 3 });
+  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.catan', version: '1.0.1', players: { min: 3, max: 4 } })]));
+  expect((await app.inject({ url: '/api/v1/game-packages/online.catan/versions/1.0.1/art/cover.png' })).headers['content-type']).toContain('image/png');
+  const created = await write('/api/v1/rooms', players[0]!, { requestId: randomUUID(), name: '卡坦岛验收', gameId: 'online.catan', version: '1.0.1', options: {}, seatCount: 3 });
   expect(created.statusCode).toBe(200); const { roomId, inviteCode } = created.json().data;
   let revision = created.json().data.roomRevision;
   for (let i = 1; i < 3; i++) {

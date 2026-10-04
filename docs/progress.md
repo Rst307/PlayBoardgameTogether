@@ -1251,3 +1251,16 @@ bot 保持无账户登录身份，通过独立 model_owner_account_id 在开局�
 
 最终规则专项：pnpm test tests/unit/catan-package.test.ts，13/13 通过，无 skip，四脚本完整对局通过。
 最后仅将缩放工具顶部间距改为 0，320px 手机专项 1/1 再验通过并查看截图，港口文字完整；其余 3 个尺寸按该次 project 过滤不运行，不计该次通过。
+
+## 卡坦岛封面协调更新（2026-10-04）
+
+`online.catan@1.0.1` 仅更新大厅封面。根据用户对封面突兀的反馈，采用与璀璨宝石、花砖物语、五子棋一致的深青背景、低饱和几何地块与抽象资源图形，去除重复标题和写实环境。新源图 `game-packages/catan/art/cover.png` 为 960×540、272251 字节；制作方式及最终提示词记录在同目录 `cover-prompt.md`。保留原图标、详情背景与游戏规则，内容版本仍为 1.0.0，旧局精确版本不变。
+
+本轮实际验证：
+
+- `node scripts/package-catan.mjs` 成功，`dist/game-packages/catan-1.0.1.zip` 为 366510 字节。
+- `node node_modules/@playwright/test/cli.js test --config playwright.catan-ui.config.ts --output .data/catan-cover/ui`：8/8 通过，无 skip。桌面、笔记本、390px/320px 手机均覆盖真实封面与现有游戏并排展示、16:9 比例和无横向溢出，以及既有 sandbox 棋桌流程；查看桌面与手机截图确认视觉协调。
+- `pnpm test tests/unit/catan-package.test.ts -t 'has exact board topology'`：针对真实 QuickJS 拓扑、确定性与序列化的 1/1 通过，其余 12 项按过滤排除，不计本轮通过。
+- `pnpm typecheck`、`pnpm lint`（20 个边界源目录）、`pnpm build` 均通过，保留生产 bundle/API runtime、隔离 ZIP 与 AI worker 检查。
+
+本轮未运行数据库集成测试，未上传开发或生产环境。现有集成 fixture 已同步到 1.0.1；只涉及封面资产和版本元数据，无业务/数据库改动。下一步管理员上传审核新版 ZIP 后使用新封面。
