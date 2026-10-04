@@ -1,0 +1,215 @@
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function analyze(state) {
+  if (!exact(state, ['seats', 'hands', 'pool', 'table', 'opened', 'turn', 'passes', 'move'])
+    || !Array.isArray(state.seats) || state.seats.length < 2 || state.seats.length > 4
+    || !state.seats.every(s => typeof s === 'string' && s.length > 0 && s.length <= 128)
+    || new Set(state.seats).size !== state.seats.length
+    || !Array.isArray(state.hands) || state.hands.length !== state.seats.length
+    || !state.hands.every(h => Array.isArray(h) && h.every(tileId))
+    || !Array.isArray(state.pool) || !state.pool.every(tileId)
+    || !Array.isArray(state.opened) || state.opened.length !== state.seats.length
+    || !state.opened.every(b => typeof b === 'boolean')
+    || !Number.isInteger(state.turn) || state.turn < 0 || state.turn >= state.seats.length
+    || !Number.isSafeInteger(state.move) || state.move < 0
+    || !Number.isInteger(state.passes) || state.passes < 0 || state.passes > state.seats.length
+    || (state.pool.length > 0 && state.passes !== 0) || tableProblem(state.table)) throw new Error('Invalid save');
+  const ids = [...state.hands.flat(), ...state.pool, ...state.table.flat()];
+  if (ids.length !== 106 || new Set(ids).size !== 106) throw new Error('Tile conservation failed');
+  if (state.hands.some((h, i) => !state.opened[i] && h.length < 14)
+    || (state.table.length === 0 && state.opened.some(Boolean))) throw new Error('Invalid opening');
+  const empty = state.hands.findIndex(h => h.length === 0);
+  const blocked = state.pool.length === 0 && state.passes === state.seats.length;
+  const penalties = state.hands.map(h => h.reduce((sum, id) => sum + (tile(id).joker ? 30 : tile(id).number), 0));
+  const finished = empty >= 0 || blocked;
+  const lowest = Math.min(...penalties);
+  const winners = !finished ? [] : empty >= 0 ? [state.seats[empty]]
+    : state.seats.filter((s, i) => penalties[i] === lowest);
+  const scores = finished ? penalties.map((p, i) => empty >= 0
+    ? (i === empty ? penalties.reduce((a, b) => a + b, 0) : -p)
+    : (winners.includes(state.seats[i]) ? penalties.reduce((sum, n) => sum + n - lowest, 0) / winners.length : lowest - p)) : null;
+  return { finished, winners, scores, blocked };
+}
+function checkPlay(state, index, table) {
+  const problem = tableProblem(table);
+  if (problem) throw new Error(problem);
+  const before = state.table.flat(), after = table.flat();
+  if (!before.every(id => after.includes(id))) throw new Error('不能拿回公共桌面的牌');
+  const added = after.filter(id => !before.includes(id));
+  if (!added.length || !added.every(id => state.hands[index].includes(id))) throw new Error('必须使用至少一张自己的牌');
+  if (!state.opened[index]) {
+    if (table.length < state.table.length || !state.table.every((row, i) => JSON.stringify(row) === JSON.stringify(table[i]))) {
+      throw new Error('首次出牌不能改动桌面');
+    }
+    const points = table.slice(state.table.length).reduce((sum, row) => sum + meld(row).points, 0);
+    if (points < 30) throw new Error('首次出牌需至少 30 分');
+  }
+  return added;
+}
+// A bounded, private-view-only heuristic, not an exhaustive manipulation solver.
+function suggestions(view) {
+  if (!view.canAct) return [];
+  const remaining = view.hand.map(t => t.id), table = clone(view.table);
+  let used = 0;
+  if (view.opened) {
+    for (const row of table) {
+      let extended = true;
+      while (extended) {
+        extended = false;
+        for (const id of remaining) {
+          const append = [...row, id], prepend = [id, ...row];
+          const next = meld(append) ? append : meld(prepend) ? prepend : null;
+          if (next) {
+            row.splice(0, row.length, ...next);
+            remaining.splice(remaining.indexOf(id), 1);
+            used++;
+            extended = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  const fresh = [];
+  while (remaining.length >= 3) {
+    const candidates = [];
+    const jokers = remaining.filter(id => tile(id).joker);
+    const lookup = Array.from({ length: 4 }, () => Array(14));
+    for (const id of remaining) {
+      const t = tile(id);
+      if (!t.joker && lookup[t.color][t.number] === undefined) lookup[t.color][t.number] = id;
+    }
+    for (let number = 13; number >= 1; number--) {
+      const group = [];
+      for (let color = 0; color < 4; color++) {
+        const id = lookup[color][number];
+        if (id !== undefined) group.push(id);
+      }
+      for (const id of jokers) if (group.length < 4) group.push(id);
+      const valid = meld(group);
+      if (valid) candidates.push({ ids: group, points: valid.points });
+    }
+    for (let color = 0; color < 4; color++) {
+      for (let start = 1; start <= 11; start++) {
+        const run = [], wild = [...jokers];
+        for (let number = start; number <= 13; number++) {
+          let id = lookup[color][number];
+          if (id === undefined) id = wild.shift();
+          if (id === undefined) break;
+          run.push(id);
+        }
+        const valid = meld(run);
+        if (valid) candidates.push({ ids: run, points: valid.points });
+      }
+    }
+    candidates.sort((a, b) => b.ids.length - a.ids.length || b.points - a.points);
+    if (!candidates.length) break;
+    const best = candidates[0].ids;
+    fresh.push(best);
+    for (const id of best) remaining.splice(remaining.indexOf(id), 1);
+    used += best.length;
+  }
+  const points = fresh.reduce((sum, row) => sum + meld(row).points, 0);
+  const actions = [];
+  if (used && (view.opened || points >= 30)) actions.push({ type: 'play', table: [...table, ...fresh] });
+  actions.push({ type: 'draw' });
+  return actions;
+}
+const game = {
+  manifest: {
+    id: 'online.rummikub', version: '1.0.0', contentVersion: '1.0.0', name: '拉密', sdkRange: '^0.1.0',
+    description: '2–4 人数字牌桌：30 分破冰、百搭与自由重组。支持基础 AI，象牙牌与绒面棋桌。',
+    players: { min: 2, max: 4 }, mode: 'rules-driven', capabilities: ['private-view', 'turn-based'],
+    defaultAssetPack: { id: 'online.rummikub.default', version: '1.0.0' }, developmentOnly: false
+  },
+  validateOptions(value) {
+    if (!exact(value, [])) throw new Error('No options');
+    return {};
+  },
+  parseAction(value) {
+    if (exact(value, ['type']) && value.type === 'draw') return { type: 'draw' };
+    if (!exact(value, ['type', 'table']) || value.type !== 'play' || !Array.isArray(value.table)
+      || value.table.length > 35 || !value.table.every(row => Array.isArray(row)
+        && row.length >= 3 && row.length <= 13 && row.every(tileId))) throw new Error('Invalid action');
+    return { type: 'play', table: value.table.map(row => [...row]) };
+  },
+  setup({ seats, options, rng }) {
+    this.validateOptions(options);
+    if (!Array.isArray(seats) || seats.length < 2 || seats.length > 4 || new Set(seats).size !== seats.length) throw new Error('Invalid seats');
+    const pool = Array.from({ length: 106 }, (_, i) => i);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = rng.nextInt(0, i + 1);
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const state = { seats: [...seats], hands: seats.map(() => pool.splice(0, 14)), pool, table: [],
+      opened: seats.map(() => false), turn: rng.nextInt(0, seats.length), passes: 0, move: 0 };
+    analyze(state);
+    return { state, events: [] };
+  },
+  getView(state, viewer) {
+    const outcome = analyze(state);
+    const index = viewer.kind === 'seat' ? state.seats.indexOf(viewer.seatId) : -1;
+    const you = index < 0 ? null : state.seats[index];
+    const view = {
+      you, currentSeat: outcome.finished ? null : state.seats[state.turn],
+      players: state.seats.map((seatId, i) => ({ seatId, count: state.hands[i].length, opened: state.opened[i], score: outcome.scores ? outcome.scores[i] : null })),
+      hand: index < 0 ? [] : state.hands[index].map(tile), table: clone(state.table),
+      poolCount: state.pool.length, opened: index >= 0 && state.opened[index],
+      canAct: !outcome.finished && index === state.turn, move: state.move,
+      finished: outcome.finished, winners: outcome.winners, blocked: outcome.blocked
+    };
+    return { ...view, suggestions: suggestions(view) };
+  },
+  getActionSpec(state, viewer) {
+    const view = this.getView(state, viewer);
+    return { actions: view.suggestions, description: 'play 提交全部桌面组合；draw 摸一张并结束回合，牌堆空时跳过。' };
+  },
+  validateAction(state, actor, action) {
+    const parsed = this.parseAction(action), outcome = analyze(state);
+    if (outcome.finished || actor.kind !== 'seat' || actor.seatId !== state.seats[state.turn]) throw new Error('Not your turn');
+    if (parsed.type === 'play') checkPlay(state, state.turn, parsed.table);
+  },
+  applyAction(state, actor, action) {
+    this.validateAction(state, actor, action);
+    const parsed = this.parseAction(action), next = clone(state), index = next.turn;
+    const events = [];
+    if (parsed.type === 'draw') {
+      if (next.pool.length) {
+        next.hands[index].push(next.pool.pop());
+        next.passes = 0;
+        events.push({ type: 'tile.drawn', seatId: actor.seatId });
+      } else {
+        next.passes++;
+        events.push({ type: 'turn.passed', seatId: actor.seatId });
+      }
+    } else {
+      const added = checkPlay(state, index, parsed.table);
+      next.table = parsed.table;
+      next.hands[index] = next.hands[index].filter(id => !added.includes(id));
+      next.opened[index] = true;
+      next.passes = 0;
+      events.push({ type: 'tiles.played', seatId: actor.seatId, count: added.length });
+    }
+    next.move++;
+    next.turn = (next.turn + 1) % next.seats.length;
+    const outcome = analyze(next);
+    if (outcome.finished) events.push({ type: 'game.finished', winners: outcome.winners });
+    return { state: next, events };
+  },
+  projectEvents(events) {
+    return events.map(event => event.type === 'game.finished'
+      ? { type: event.type, winners: [...event.winners] }
+      : event.type === 'tiles.played' ? { type: event.type, seatId: event.seatId, count: event.count }
+      : { type: event.type, seatId: event.seatId });
+  },
+  getOutcome(state) {
+    const outcome = analyze(state);
+    return outcome.finished ? { status: 'finished', winners: outcome.winners } : { status: 'ongoing' };
+  },
+  serialize(state) { analyze(state); return clone(state); },
+  deserialize(value) { analyze(value); return clone(value); },
+  getFallbackAction(view) { return view.suggestions[0] || null; },
+  getDecisionContext(state, viewer) {
+    const view = this.getView(state, viewer);
+    return view.canAct ? { decisionKey: 'turn:' + view.move, legalActions: view.suggestions } : null;
+  }
+};

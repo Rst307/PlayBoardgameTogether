@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拉密 · 数字棋桌</title>
+<style>
+:root {
+  color-scheme: dark;
+  --background:#203c3e;
+  --surface:#2b4a4b;
+  --raised:#365859;
+  --text:#edf3ed;
+  --secondary:#b8ceca;
+  --muted:#91aba8;
+  --border:#557270;
+  --accent:#d9c08a;
+  --success:#bad7af;
+  --warning:#edd19c;
+  --danger:#ffb7ab;
+  --s1:4px;
+  --s2:8px;
+  --s3:12px;
+  --s4:16px;
+  --s6:24px;
+  --r1:5px;
+  --r2:10px;
+  --r3:18px;
+  --duration:320ms;
+  --tile-w:43px;
+  --tile-h:60px;
+  font-family:
+    "Microsoft YaHei",
+    "PingFang SC",
+    sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  color: var(--text);
+  background: var(--background);
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+  opacity: .4;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+button:not(.tile) {
+  border: 1px solid var(--border);
+  border-radius: var(--r1);
+  background: transparent;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+button:not(.tile):hover:not(:disabled) {
+  background: var(--raised);
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #293733;
+  font-weight: 700;
+}
+button.primary:hover:not(:disabled) {
+  background: #ead4a6;
+}
+button.quiet {
+  border-color: transparent;
+  color: var(--secondary);
+}
+main {
+  height: 100dvh;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4) var(--s6);
+  max-width: 1500px;
+  margin: auto;
+  background:
+    radial-gradient(
+      ellipse at 50% 30%,
+      #35545480,
+      transparent 65%);
+}
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.identity {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+h1 {
+  font-family:
+    "Palatino Linotype",
+    "Songti SC",
+    serif;
+  font-size: 25px;
+  letter-spacing: .12em;
+  font-weight: 500;
+  margin: 0;
+}
+.edition {
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: var(--muted);
+}
+.top-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12px;
+  color: var(--secondary);
+}
+.players {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+.player {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12px;
+  color: var(--secondary);
+}
+.player-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.player.current {
+  color: var(--text);
+}
+.player.current .player-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px #d9c08a18;
+}
+.player small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.status-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  align-items: center;
+  font-size: 13px;
+  min-height: 24px;
+}
+.status-line p {
+  margin: 0;
+}
+.opening {
+  font-size: 12px;
+  color: var(--accent);
+}
+.table {
+  flex: 1;
+  min-height: 100px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  border-radius: var(--r3);
+  border: 1px solid #6d908333;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      #ffffff02 0,
+      #ffffff02 1px,
+      transparent 1px,
+      transparent 5px);
+  padding: var(--s4);
+  box-shadow: inset 0 3px 24px #0d262a40;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: var(--s4);
+}
+.empty {
+  width: 100%;
+  height: 100%;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.empty strong {
+  font-family:
+    "Palatino Linotype",
+    "Songti SC",
+    serif;
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: .15em;
+  color: #afc5bf;
+}
+.empty p {
+  margin: 0;
+  line-height: 1.7;
+}
+.meld {
+  max-width: 100%;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 8px 5px;
+  border-bottom: 2px solid #87ac9b24;
+  flex-wrap: wrap;
+}
+.meld.invalid {
+  border-bottom-color: var(--danger);
+}
+.meld .row-action {
+  padding: 5px 7px;
+  font-size: 11px;
+  color: var(--secondary);
+  align-self: center;
+}
+.meld .row-action:disabled {
+  display: none;
+}
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tile {
+  width: var(--tile-w);
+  height: var(--tile-h);
+  flex: none;
+  border-radius: var(--r1);
+  border: 1px solid #e5decb;
+  background:
+    linear-gradient(
+      155deg,
+      #faf6e9,
+      #dfd8c6);
+  box-shadow: 0 3px 0 #b7ad96, 0 5px 7px #091c2330;
+  color: var(--ink);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size: 32px;
+  font-weight: 700;
+  transition:
+    box-shadow 160ms,
+    filter 160ms,
+    translate 160ms;
+  touch-action: manipulation;
+}
+.tile::after {
+  content: attr(data-mark);
+  position: absolute;
+  bottom: 5px;
+  font-family: Arial, sans-serif;
+  font-size: 8px;
+  color: var(--ink);
+  opacity: .75;
+}
+.tile.selected {
+  translate: 0 -6px;
+  box-shadow:
+    0 3px 0 #b7ad96,
+    0 0 0 2px var(--accent),
+    0 8px 15px #081e2750;
+  filter: brightness(1.07);
+}
+.tile.fresh::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #506d54;
+}
+.tile.joker {
+  font-size: 29px;
+  color: #675383;
+}
+.tile[aria-disabled=true] {
+  cursor: default;
+}
+.tile:hover:not([aria-disabled=true]) {
+  filter: brightness(1.06);
+}
+.rack-area {
+  flex: none;
+}
+.rack-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--s2);
+  gap: var(--s2);
+}
+.rack-head h2 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+.rack-tools {
+  display: flex;
+  gap: var(--s1);
+}
+.rack-tools button {
+  font-size: 11px;
+  padding: 5px 7px;
+}
+.rack {
+  min-height: 85px;
+  max-height: 170px;
+  overflow: auto;
+  padding: var(--s3) var(--s3) var(--s4);
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  border-radius: var(--r2);
+  background: linear-gradient(#4b4940, #353b35);
+  border-bottom: 5px solid #696152;
+  box-shadow: 0 5px 14px #10272840;
+}
+.rack .tile {
+  --tile-w:45px;
+  --tile-h:62px;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  align-items: center;
+  flex: none;
+}
+.draft-tools {
+  display: flex;
+  gap: var(--s1);
+  flex-wrap: wrap;
+}
+.commit {
+  display: flex;
+  gap: var(--s2);
+}
+.feedback {
+  font-size: 12px;
+  color: var(--secondary);
+  min-height: 18px;
+  line-height: 1.5;
+  margin: 0;
+}
+.feedback.error {
+  color: var(--danger);
+}
+dialog {
+  max-width: min(520px, calc(100vw - 32px));
+  max-height: 80dvh;
+  background: #263f41;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: var(--s6);
+  line-height: 1.8;
+  font-size: 13px;
+}
+dialog::backdrop {
+  background: #081b24a0;
+}
+dialog h2 {
+  font-family: "Songti SC", serif;
+  font-size: 24px;
+  font-weight: 500;
+  margin-top: 0;
+}
+dialog p {
+  color: var(--secondary);
+}
+dialog .dialog-bottom {
+  text-align: right;
+}
+@media (max-width:650px) {
+  :root {
+    --tile-w:34px;
+    --tile-h:49px;
+  }
+  main {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .edition {
+    display: none;
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .top-tools {
+    gap: 4px;
+  }
+  .top-tools button {
+    padding: 5px 8px;
+  }
+  .players {
+    gap: 8px 12px;
+  }
+  .player {
+    font-size: 11px;
+  }
+  .player small {
+    font-size: 10px;
+  }
+  .table {
+    padding: 8px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+  .meld {
+    gap: 3px;
+    padding: 6px 2px;
+  }
+  .tiles {
+    gap: 4px;
+  }
+  .tile {
+    font-size: 26px;
+  }
+  .rack .tile {
+    --tile-w:35px;
+    --tile-h:50px;
+  }
+  .rack {
+    gap: 6px;
+    min-height: 74px;
+    max-height: 132px;
+    padding: 10px 8px 14px;
+  }
+  .rack-tools {
+    gap: 0;
+  }
+  .rack-tools button {
+    padding: 5px;
+    font-size: 11px;
+  }
+  .footer {
+    align-items: stretch;
+    gap: 4px;
+    flex-direction: column;
+  }
+  .draft-tools {
+    justify-content: flex-start;
+  }
+  .draft-tools button {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .commit {
+    justify-content: flex-end;
+  }
+  .commit button {
+    flex: 1;
+    padding: 10px;
+  }
+  .feedback {
+    font-size: 11px;
+  }
+  .opening {
+    font-size: 11px;
+  }
+  .status-line {
+    font-size: 12px;
+  }
+}
+@media (max-height:570px) {
+  main {
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .rack {
+    max-height: 85px;
+  }
+  .top h1 {
+    font-size: 20px;
+  }
+  .player {
+    font-size: 10px;
+  }
+  .table {
+    min-height: 60px;
+  }
+  .rack-head {
+    margin-bottom: 4px;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="top"><div class="identity"><h1>拉密</h1><span class="edition">THE TILE TABLE</span></div><div class="top-tools"><span id="pool">牌堆 —</span><button id="rules" class="quiet" aria-label="玩法说明">玩法</button></div></header>
+  <div id="players" class="players" aria-label="玩家状态"></div>
+  <div class="status-line"><p id="status" role="status" aria-live="polite">正在连接棋桌…</p><span id="opening" class="opening"></span></div>
+  <section id="table" class="table" aria-label="公共牌桌"></section>
+  <section class="rack-area" aria-label="我的牌架"><div class="rack-head"><h2 id="rack-title">我的牌架</h2><div class="rack-tools"><button id="sort-color" class="quiet">按颜色</button><button id="sort-number" class="quiet">按数字</button><button id="hint" class="quiet">组合建议</button></div></div><div id="rack" class="rack"></div></section>
+  <p id="feedback" class="feedback" aria-live="polite">选牌后组成一组，再确认出牌。</p>
+  <footer class="footer"><div class="draft-tools"><button id="new-row">组成新组</button><button id="return" class="quiet">放回牌架</button><button id="undo" class="quiet">撤销</button><button id="reset" class="quiet">还原桌面</button></div><div class="commit"><button id="draw">摸一张</button><button id="play" class="primary">确认出牌</button></div></footer>
+</main>
+<dialog id="rule-dialog" aria-labelledby="rule-title"><h2 id="rule-title">组合、拆分，再组合。</h2><p>每人 14 张牌。四种颜色各有两套 1–13，另有两张百搭牌。先出完手牌获胜。</p><p>同数牌组：3–4 张不同颜色的相同数字。顺子：至少 3 张同色连续数字，1 不能接在 13 后面。百搭牌「★」代替缺少的牌；顺子里的位置决定其数字。</p><p>首次出牌只能用自己牌架的牌，合计至少 30 分；百搭按代表的数字计分。首次出牌不能借用或改动桌面，之后的回合才可拆分、合并、追加或重组。</p><p>点击牌进行多选，再点「组成新组」，或目标组的「← / →」追加。按点击顺序排列；普通顺子也可使用「按颜色」排序后顺序选牌。桌面牌可移动至其他组，不能收回手牌；百搭牌必须留在合法组合里。</p><p>桌面修改只是本地草稿，全部组合合法且至少用一张手牌后才能确认。可撤销或还原。摸一张立即结束回合；有草稿时先还原桌面。牌堆空时跳过，全员连续跳过按剩余牌点数最低者获胜；百搭剩余扣 30 分。</p><p>本版为无计时单局模式，随机先手。组合建议和基础 AI 采用有限搜索，不能穷尽所有重组。减少动态效果设置下关闭牌移动动画。</p><div class="dialog-bottom"><button id="close-rules">回到棋桌</button></div></dialog>
+<script>
+/* RUMMIKUB_SHARED */
+const $ = id => document.getElementById(id);
+const colors = ['#ad3f3a', '#296b9d', '#b47721', '#343f48'];
+const colorNames = ['红', '蓝', '橙', '黑'];
+const marks = ['●', '◆', '▲', '■'];
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+let view = null, busy = true, pending = false, draft = [], selected = [], history = [], order = 'color';
+const animations = new Set();
+const copy = value => JSON.parse(JSON.stringify(value));
+function editable() { return view && view.canAct && !busy && !pending; }
+function changed() { return view && JSON.stringify(draft) !== JSON.stringify(view.table); }
+function handIds() { const onTable = draft.flat(); return view.hand.map(t => t.id).filter(id => !onTable.includes(id)); }
+function label(id) { const t = tile(id); return t.joker ? '百搭牌 ' + (id - 103) : colorNames[t.color] + ' ' + t.number; }
+function positions() {
+  return new Map([...document.querySelectorAll('.tile')].map(el => [Number(el.dataset.id), el.getBoundingClientRect()]));
+}
+function stopAnimations() { for (const animation of animations) animation.cancel(); animations.clear(); }
+function animate(old, freshDraw = false) {
+  stopAnimations();
+  if (reduced.matches) return;
+  for (const el of document.querySelectorAll('.tile')) {
+    const id = Number(el.dataset.id), next = el.getBoundingClientRect();
+    const before = old.get(id) || (freshDraw ? $('pool').getBoundingClientRect() : null);
+    if (!before || (!old.has(id) && !handIds().includes(id))) continue;
+    const dx = before.left - next.left, dy = before.top - next.top;
+    if (Math.abs(dx) + Math.abs(dy) < 2) continue;
+    const animation = el.animate([
+      { transform: `translate(${dx}px,${dy}px)`, opacity: old.has(id) ? 1 : .25 },
+      { transform: 'translate(0,0)', opacity: 1 }
+    ], { duration: 360, easing: 'cubic-bezier(.22,.75,.2,1)' });
+    animations.add(animation);
+    animation.onfinish = () => animations.delete(animation);
+  }
+}
+function tileButton(id, location) {
+  const t = tile(id), el = document.createElement('button');
+  el.type = 'button'; el.className = 'tile' + (t.joker ? ' joker' : '')
+    + (selected.includes(id) ? ' selected' : '') + (location === 'table' && view.hand.some(t => t.id === id) ? ' fresh' : '');
+  el.dataset.id = id; el.dataset.mark = t.joker ? 'JOKER' : marks[t.color];
+  el.style.setProperty('--ink', t.joker ? '#675383' : colors[t.color]);
+  el.textContent = t.joker ? '★' : t.number;
+  el.setAttribute('aria-label', label(id)); el.setAttribute('aria-pressed', String(selected.includes(id)));
+  const allowed = editable() && (location === 'rack' || view.opened || view.hand.some(t => t.id === id));
+  el.setAttribute('aria-disabled', String(!allowed));
+  el.onclick = () => {
+    if (!allowed) return;
+    selected = selected.includes(id) ? selected.filter(n => n !== id) : [...selected, id];
+    render();
+    document.querySelector(`[data-id="${id}"]`)?.focus({ preventScroll: true });
+  };
+  return el;
+}
+function problem() {
+  if (!changed()) return '选牌后组成一组，再确认出牌。';
+  const invalid = tableProblem(draft);
+  if (invalid) return invalid;
+  const old = view.table.flat(), fresh = draft.flat().filter(id => !old.includes(id));
+  if (!fresh.length) return '本回合须至少出一张手牌';
+  if (!view.opened) {
+    const points = draft.slice(view.table.length).reduce((sum, row) => sum + meld(row).points, 0);
+    if (points < 30) return '首次出牌还需 ' + (30 - points) + ' 分';
+  }
+  return null;
+}
+function edit(fn) {
+  if (!editable()) return;
+  const before = positions();
+  history.push(copy(draft)); if (history.length > 50) history.shift();
+  fn(); selected = []; render(); animate(before);
+}
+function moveTo(index, prepend = false) {
+  if (!selected.length || !editable()) return;
+  const ids = [...selected];
+  edit(() => {
+    const rows = draft.map(row => row.filter(id => !ids.includes(id)));
+    if (index === null) rows.push(ids);
+    else rows[index] = prepend ? [...ids, ...rows[index]] : [...rows[index], ...ids];
+    draft = rows.filter(row => row.length);
+  });
+}
+function render() {
+  if (!view) return;
+  const scroll = $('table').scrollTop, rackScroll = $('rack').scrollTop;
+  const focusedId = document.activeElement?.dataset?.id;
+  $('pool').textContent = '牌堆 ' + view.poolCount;
+  $('players').replaceChildren();
+  view.players.forEach((p, index) => {
+    const el = document.createElement('div'); el.className = 'player' + (p.seatId === view.currentSeat ? ' current' : '');
+    const dot = document.createElement('span'); dot.className = 'player-dot';
+    const name = document.createElement('span'); name.textContent = '玩家 ' + (index + 1) + (p.seatId === view.you ? ' · 你' : '');
+    const detail = document.createElement('small'); detail.textContent = p.count + ' 张' + (view.finished ? ' · ' + p.score + ' 分' : p.opened ? ' · 已破冰' : ' · 未破冰');
+    el.append(dot, name, detail); $('players').append(el);
+  });
+  const current = view.players.findIndex(p => p.seatId === view.currentSeat) + 1;
+  $('status').textContent = view.finished ? (view.winners.includes(view.you) ? '你赢了 · ' : '本局结束 · ')
+    + (view.blocked ? '牌堆耗尽，按余牌计分' : '有人出完了全部手牌')
+    : pending || busy ? '正在同步棋桌…' : view.canAct ? '轮到你 · 整理组合后确认' : '等待玩家 ' + current + ' 出牌';
+  $('opening').textContent = view.finished || !view.you ? '' : view.opened ? '可自由重组桌面' : '首次出牌 ≥ 30 分';
+  $('table').replaceChildren();
+  if (!draft.length) {
+    const empty = document.createElement('div'); empty.className = 'empty';
+    const title = document.createElement('strong'); title.textContent = '从你的第一组开始';
+    const tip = document.createElement('p'); tip.textContent = '同色连号，或异色同数。\n首次出牌合计至少 30 分。';
+    empty.append(title, tip); $('table').append(empty);
+  }
+  draft.forEach((row, index) => {
+    const el = document.createElement('div'); el.className = 'meld' + (!meld(row) ? ' invalid' : '');
+    el.setAttribute('aria-label', '组合 ' + (index + 1));
+    for (const prepend of [true, false]) {
+      const button = document.createElement('button'); button.className = 'row-action'; button.textContent = prepend ? '←' : '→';
+      button.setAttribute('aria-label', (prepend ? '放到组首 ' : '放到组尾 ') + (index + 1));
+      button.disabled = !editable() || !selected.length || (!view.opened && index < view.table.length);
+      button.onclick = () => moveTo(index, prepend);
+      if (prepend) el.append(button);
+      else {
+        const tiles = document.createElement('div'); tiles.className = 'tiles';
+        row.forEach(id => tiles.append(tileButton(id, 'table')));
+        el.append(tiles, button);
+      }
+    }
+    $('table').append(el);
+  });
+  $('rack').replaceChildren();
+  const ids = handIds();
+  ids.sort((a, b) => order === 'color' ? (tile(a).joker - tile(b).joker || tile(a).color - tile(b).color || tile(a).number - tile(b).number || a - b)
+    : (tile(a).joker - tile(b).joker || tile(a).number - tile(b).number || tile(a).color - tile(b).color || a - b));
+  ids.forEach(id => $('rack').append(tileButton(id, 'rack')));
+  $('rack-title').textContent = view.you ? '我的牌架 · ' + ids.length + ' 张' : '观战视角';
+  const error = problem();
+  $('feedback').textContent = selected.length ? '已选 ' + selected.length + ' 张 · 点箭头追加到已有组，或组成新组' : error || '组合有效 · 确认后结束本回合';
+  $('feedback').className = 'feedback' + (changed() && error ? ' error' : '');
+  $('play').disabled = !editable() || Boolean(error);
+  $('draw').disabled = !editable() || changed(); $('draw').textContent = view.poolCount ? '摸一张' : '跳过回合';
+  $('new-row').disabled = !editable() || !selected.length;
+  $('return').disabled = !editable() || !selected.length || !selected.every(id => view.hand.some(t => t.id === id));
+  $('undo').disabled = !editable() || !history.length; $('reset').disabled = !editable() || !changed();
+  $('hint').disabled = !editable() || !view.suggestions.some(a => a.type === 'play');
+  $('table').scrollTop = scroll; $('rack').scrollTop = rackScroll;
+  if (focusedId) document.querySelector(`[data-id="${focusedId}"]`)?.focus({ preventScroll: true });
+}
+function send(action) {
+  if (!editable()) return;
+  pending = true; selected = []; render();
+  parent.postMessage({ type: 'boardgame:action', action }, '*');
+}
+$('new-row').onclick = () => moveTo(null);
+$('return').onclick = () => {
+  if (!$('return').disabled) edit(() => { draft = draft.map(row => row.filter(id => !selected.includes(id))).filter(row => row.length); });
+};
+$('undo').onclick = () => { if (editable() && history.length) { const old = positions(); draft = history.pop(); selected = []; render(); animate(old); } };
+$('reset').onclick = () => { if (editable()) edit(() => { draft = copy(view.table); }); };
+$('hint').onclick = () => {
+  const action = view?.suggestions.find(a => a.type === 'play');
+  if (action) edit(() => { draft = copy(action.table); });
+};
+$('sort-color').onclick = () => { const old = positions(); order = 'color'; render(); animate(old); };
+$('sort-number').onclick = () => { const old = positions(); order = 'number'; render(); animate(old); };
+$('play').onclick = () => { if (!problem()) send({ type: 'play', table: copy(draft) }); };
+$('draw').onclick = () => { if (!changed()) send({ type: 'draw' }); };
+$('rules').onclick = () => $('rule-dialog').showModal();
+$('close-rules').onclick = () => $('rule-dialog').close();
+function receive(event) {
+  if (event.source !== parent || event.data?.type !== 'boardgame:view' || !event.data.view) return;
+  const next = event.data.view, old = positions();
+  const same = view && next.move === view.move && next.you === view.you;
+  const live = view && next.move === view.move + 1 && !event.data.busy && event.data.events?.length;
+  if (!same) { draft = copy(next.table); selected = []; history = []; pending = false; }
+  else if (!event.data.busy) pending = false;
+  view = next; busy = Boolean(event.data.busy); render();
+  if (live) animate(old, true); else if (!same) stopAnimations();
+}
+window.addEventListener('message', receive);
+reduced.addEventListener('change', stopAnimations);
+window.addEventListener('pagehide', () => {
+  window.removeEventListener('message', receive);
+  reduced.removeEventListener('change', stopAnimations);
+  stopAnimations();
+}, { once: true });
+parent.postMessage({ type: 'boardgame:resize', height: 560, fit: 'viewport' }, '*');
+parent.postMessage({ type: 'boardgame:ready' }, '*');
+</script>
+</body>
+</html>

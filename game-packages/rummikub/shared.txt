@@ -1,0 +1,33 @@
+// Public tile semantics; used by both the sandbox rules and the desktop.
+function exact(value, keys) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+}
+function tile(id) {
+  return id >= 104 ? { id, color: -1, number: 0, joker: true }
+    : { id, color: Math.floor(id / 26), number: Math.floor((id % 26) / 2) + 1, joker: false };
+}
+function tileId(id) { return Number.isInteger(id) && id >= 0 && id < 106; }
+function meld(ids) {
+  if (!Array.isArray(ids) || ids.length < 3 || ids.length > 13 || !ids.every(tileId)
+    || new Set(ids).size !== ids.length) return null;
+  const real = ids.map(tile).filter(t => !t.joker);
+  if (!real.length) return null;
+  if (ids.length <= 4 && real.every(t => t.number === real[0].number)
+    && new Set(real.map(t => t.color)).size === real.length) {
+    return { kind: 'group', points: ids.length * real[0].number };
+  }
+  if (!real.every(t => t.color === real[0].color)) return null;
+  // The array order explicitly fixes what each joker represents in a run.
+  const start = real[0].number - ids.indexOf(real[0].id);
+  if (start < 1 || start + ids.length - 1 > 13
+    || !ids.every((id, index) => tile(id).joker || tile(id).number === start + index)) return null;
+  return { kind: 'run', points: ids.length * (2 * start + ids.length - 1) / 2 };
+}
+function tableProblem(table) {
+  if (!Array.isArray(table) || table.length > 35) return '桌面组合数量不正确';
+  const ids = table.flat();
+  if (ids.length > 106 || new Set(ids).size !== ids.length) return '同一张牌不能重复使用';
+  const bad = table.findIndex(row => !meld(row));
+  return bad < 0 ? null : '第 ' + (bad + 1) + ' 组须为至少三张同色连续牌，或三至四张不同色同数牌';
+}
