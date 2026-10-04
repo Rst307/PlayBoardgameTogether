@@ -78,6 +78,10 @@ export function ReplayPage({ id }: { id: string }) {
 
   function seek(revision: number) { setPlaying(false); void load(revision); }
 
+  // Automatic frame reads must not flash the controls into their disabled style.
+  // Manual seeks stop playback and supersede any pending read via its request token.
+  const controlsBusy = busy && !playing;
+
   return <div className="replay-page">
     <section className="replay-heading">
       <div><p className="eyebrow">对局回放</p><h1>{frame ? clientGame(frame.gameId, frame.gameVersion).name : '回放'}</h1>
@@ -97,18 +101,18 @@ export function ReplayPage({ id }: { id: string }) {
         <div className="replay-progress">
           <label htmlFor="replay-position">第 {frame.revision} / {frame.lastRevision} 步</label>
           <input id="replay-position" aria-label="回放进度" type="range" min={frame.firstRevision} max={frame.lastRevision} value={frame.revision}
-            disabled={busy || frame.firstRevision === frame.lastRevision} onChange={event => seek(Number(event.target.value))} />
-          <span className="muted" aria-live="polite">{busy ? '读取中…' : frame.actorSeatId ? `${frame.players.find(player => player.seatId === frame.actorSeatId)?.displayName ?? '玩家'}行动` : frame.revision === 0 ? '初始局面' : '已保存局面'}</span>
+            disabled={controlsBusy || frame.firstRevision === frame.lastRevision} onChange={event => seek(Number(event.target.value))} />
+          <span className="muted" aria-live="polite">{controlsBusy ? '读取中…' : frame.actorSeatId ? `${frame.players.find(player => player.seatId === frame.actorSeatId)?.displayName ?? '玩家'}行动` : frame.revision === 0 ? '初始局面' : '已保存局面'}</span>
         </div>
         <div className="replay-buttons">
-          <button className="secondary" disabled={busy || frame.revision <= frame.firstRevision} onClick={() => seek(frame.firstRevision)}>开头</button>
-          <button className="secondary" disabled={busy || frame.revision <= frame.firstRevision} onClick={() => seek(frame.revision - 1)}>上一步</button>
-          <button disabled={busy || !board || frame.firstRevision === frame.lastRevision} onClick={() => {
+          <button className="secondary" disabled={controlsBusy || frame.revision <= frame.firstRevision} onClick={() => seek(frame.firstRevision)}>开头</button>
+          <button className="secondary" disabled={controlsBusy || frame.revision <= frame.firstRevision} onClick={() => seek(frame.revision - 1)}>上一步</button>
+          <button disabled={controlsBusy || !board || frame.firstRevision === frame.lastRevision} onClick={() => {
             if (playing) setPlaying(false);
             else { if (frame.revision === frame.lastRevision) void load(frame.firstRevision); setPlaying(true); }
           }}>{playing ? '暂停' : '播放'}</button>
-          <button className="secondary" disabled={busy || frame.revision >= frame.lastRevision} onClick={() => seek(frame.revision + 1)}>下一步</button>
-          <button className="secondary" disabled={busy || frame.revision >= frame.lastRevision} onClick={() => seek(frame.lastRevision)}>末尾</button>
+          <button className="secondary" disabled={controlsBusy || frame.revision >= frame.lastRevision} onClick={() => seek(frame.revision + 1)}>下一步</button>
+          <button className="secondary" disabled={controlsBusy || frame.revision >= frame.lastRevision} onClick={() => seek(frame.lastRevision)}>末尾</button>
           <label>速度 <select aria-label="播放速度" value={speed} onChange={event => setSpeed(Number(event.target.value))}>
             <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option><option value={4}>4×</option>
           </select></label>

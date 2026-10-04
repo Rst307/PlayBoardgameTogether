@@ -49,7 +49,24 @@ test('original participants can seek and play a saved match without sending acti
     await page.getByRole('button', { name: '上一步', exact: true }).click();
     await expect(page.getByLabel('回放进度')).toHaveValue('0');
     await page.getByLabel('播放速度').selectOption('4');
+    // Hold an automatic frame request open to expose transient control flicker.
+    let releaseFrame!: () => void;
+    let frameRequested!: () => void;
+    const heldFrame = new Promise<void>(resolve => { releaseFrame = resolve; });
+    const requestedFrame = new Promise<void>(resolve => { frameRequested = resolve; });
+    await page.route(`**/matches/${id}/replay?revision=1`, async route => {
+      frameRequested();
+      await heldFrame;
+      await route.continue();
+    }, { times: 1 });
     await page.getByRole('button', { name: '播放', exact: true }).click();
+    await requestedFrame;
+    try {
+      await expect(page.getByRole('region', { name: '回放棋桌' })).toHaveAttribute('aria-busy', 'true');
+      await expect(page.getByRole('button', { name: '下一步', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeEnabled();
+      await expect(page.getByLabel('回放进度')).toBeEnabled();
+    } finally { releaseFrame(); }
     await expect(page.getByLabel('回放进度')).toHaveValue('2');
     await expect(page.getByRole('button', { name: '播放', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '下一步', exact: true })).toBeDisabled();
@@ -68,7 +85,9 @@ test('original participants can seek and play a saved match without sending acti
     if (info.project.name === 'desktop') {
       const label = await page.locator('label[for="replay-position"]').boundingBox();
       const dock = await page.locator('.chat-dock').boundingBox();
-      expect(label!.x).toBeGreaterThan(dock!.x + dock!.width);
+      // The dock may sit on either side; require that it does not cover the label.
+      expect(label!.x + label!.width <= dock!.x || dock!.x + dock!.width <= label!.x ||
+        label!.y + label!.height <= dock!.y || dock!.y + dock!.height <= label!.y).toBe(true);
     }
     await page.screenshot({ path: info.outputPath('replay.png'), fullPage: true });
     if (info.project.name === 'desktop') {
