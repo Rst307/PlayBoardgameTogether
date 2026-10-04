@@ -46,6 +46,12 @@
 .room-page .room-heading {
   margin-bottom: 32px;
 }
+.room-heading-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .room-page h1, .room-page h3 {
   overflow-wrap: anywhere;
 }

@@ -3,7 +3,7 @@ import { ApiError } from '@boardgame/client-sdk';
 import type { SocialMessage, SocialPerson } from '@boardgame/protocol';
 import { api, navigate } from '../platform.js';
 
-export function DirectChat({ person, refresh }: { person: SocialPerson; refresh: () => Promise<void> }) {
+export function DirectChat({ person, refresh, visible = true, compact = false }: { person: SocialPerson; refresh: () => Promise<void>; visible?: boolean; compact?: boolean }) {
   const [messages, setMessages] = useState<SocialMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -20,6 +20,18 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
   const lastRead = useRef('');
   const latest = useRef<SocialMessage | undefined>(undefined);
   const readLock = useRef(false);
+  const visibleNow = useRef(visible);
+  visibleNow.current = visible;
+  const input = useRef<HTMLTextAreaElement>(null);
+  const historyList = useRef<HTMLOListElement>(null);
+  const followLatest = useRef(true);
+  useEffect(() => {
+    if (compact && visible) input.current?.focus();
+  }, [compact, visible]);
+  useEffect(() => {
+    const list = historyList.current;
+    if (visible && list && followLatest.current) list.scrollTop = list.scrollHeight;
+  }, [messages, visible]);
   function merge(items: SocialMessage[], advance = true) {
     if (advance) for (const item of items) if (!latest.current || BigInt(item.sequence) > BigInt(latest.current.sequence)) latest.current = item;
     setMessages(previous => {
@@ -29,10 +41,10 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
     });
   }
   async function load(before?: string) {
-    if (request.current) return;
+    if (request.current || !visibleNow.current) return;
     const version = sequence.current;
     const controller = new AbortController(); request.current = controller;
-    if (before) setMoreBusy(true);
+    if (before) { setMoreBusy(true); followLatest.current = false; }
     try {
       const after = !before ? latest.current?.id : undefined;
       const page = await api.directMessages(person.id, before, controller.signal, after);
@@ -58,7 +70,7 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
   }
   useEffect(() => {
     mounted.current = true;
-    const sync = () => { if (document.visibilityState === 'visible') void load(); };
+    const sync = () => { if (visible && document.visibilityState === 'visible') void load(); };
     sync();
     const timer = window.setInterval(sync, 5000);
     window.addEventListener('online', sync); document.addEventListener('visibilitychange', sync);
@@ -66,16 +78,16 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
       mounted.current = false; sequence.current++; request.current?.abort(); request.current = undefined; clearInterval(timer);
       window.removeEventListener('online', sync); document.removeEventListener('visibilitychange', sync);
     };
-  }, [person.id]);
+  }, [person.id, visible]);
   useEffect(() => {
     const last = messages.at(-1);
-    if (!last || last.id !== latest.current?.id || last.id === lastRead.current || readLock.current || document.visibilityState !== 'visible') return;
+    if (!visible || !last || last.id !== latest.current?.id || last.id === lastRead.current || readLock.current || document.visibilityState !== 'visible') return;
     readLock.current = true;
     void api.readDirectMessages(person.id, { requestId: crypto.randomUUID(), messageId: last.id }).then(() => {
       lastRead.current = last.id;
       if (mounted.current) void refresh();
     }).catch(() => undefined).finally(() => { readLock.current = false; });
-  }, [messages, person.id, refresh]);
+  }, [messages, person.id, refresh, visible]);
   async function send(event: FormEvent) {
     event.preventDefault();
     if (sending.current || (!text.trim() && !pending.current)) return;
@@ -91,14 +103,17 @@ export function DirectChat({ person, refresh }: { person: SocialPerson; refresh:
     } finally { sending.current = false; if (mounted.current) setBusy(false); }
   }
   return <section className="panel direct-chat" aria-label={`与 ${person.displayName} 的私聊`}>
-    <h1>与 {person.displayName} 私聊</h1><p className="muted">仅你们双方可见</p>
+    {!compact && <h1>与 {person.displayName} 私聊</h1>}<p className="muted">仅你们双方可见</p>
     {error && <p role="alert" className="error-notice">{error}<button className="secondary" onClick={() => void load()}>重新同步</button></p>}
     {cursor && <button className="secondary" disabled={moreBusy} onClick={() => void load(cursor)}>加载更早消息</button>}
-    <ol className="chat-history" aria-label="聊天记录">{messages.map(message => <li className={message.senderId === person.id ? '' : 'chat-message--mine'} key={message.id}>
+    <ol ref={historyList} className="chat-history" aria-label="聊天记录" onScroll={event => {
+      const list = event.currentTarget;
+      followLatest.current = list.scrollHeight - list.scrollTop - list.clientHeight < 48;
+    }}>{messages.map(message => <li className={message.senderId === person.id ? '' : 'chat-message--mine'} key={message.id}>
       <small>{message.senderId === person.id ? person.displayName : '我'} · {new Date(message.createdAt).toLocaleString('zh-CN')}</small><p>{message.text}</p>
     </li>)}</ol>
     {messages.length === 0 && <p className="muted">还没有消息，打个招呼吧。</p>}
-    <form className="form-stack" onSubmit={send}><label>私聊消息<textarea required maxLength={2000} rows={3} value={text} readOnly={retry} disabled={busy} onChange={event => setText(event.target.value)} /></label>
+    <form className="form-stack" onSubmit={send}><label>私聊消息<textarea ref={input} required maxLength={2000} rows={3} value={text} readOnly={retry} disabled={busy} onChange={event => setText(event.target.value)} /></label>
       <button disabled={busy || !text.trim()}>{busy ? '发送中…' : retry ? '重试发送' : '发送消息'}</button>
     </form>
   </section>;

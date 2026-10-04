@@ -74,7 +74,7 @@ GET `/admin/social-settings` 返回 `{friendIdChangeDays,revision}`；PUT 使用
 | 方法 | 路径 | 请求 / 用途 |
 | --- | --- | --- |
 | GET | /rooms | 本人房间；limit 默认 20、最大 50，cursor 分页 |
-| GET | /rooms/lobby | 公开概要；limit/cursor/gameId/roomType/status 可选 |
+| GET | /rooms/lobby | 公开概要及当前房主 hostDisplayName/hostFriendId（无 @ 的公开 ID）；limit/cursor/gameId/roomType/status 可选，不返回登录名、房主账户 UUID 或成员名单 |
 | POST | /rooms | 创建，下方给出完整示例；返回 { roomId, inviteCode } |
 | POST | /rooms/join | { requestId, inviteCode, password? } |
 | POST | /rooms/:id/join | { requestId, password? }，只允许公开房 |

@@ -1,0 +1,157 @@
+/* Loaded last. Game artwork and rule colors retain their own palettes. */
+.theme-select {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+.theme-select select { width: 100%; min-width: 0; }
+@media (max-width: 700px) {
+  .site-header:has(.nav-tools[open]) { z-index: 80; }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6fa;
+  --panel: #ffffff;
+  --panel-raised: #e9edf4;
+  --panel-hover: #e2e8f1;
+  --text: #202938;
+  --text-secondary: #445167;
+  --muted: #58657a;
+  --muted-dark: #58657a;
+  --line: #2029381f;
+  --line-strong: #20293833;
+  --control-line: #788599;
+  --control-line-focus: #075bc8;
+  --accent: #075bc8;
+  --accent-hover: #064da9;
+  --accent-soft: #e7effc;
+  --accent-gradient: linear-gradient(135deg, #1267d6, #075bc8);
+  --accent-glow: 0 0 0 3px #075bc81f;
+  --success: #087348;
+  --success-soft: #e5f5ec;
+  --warning: #845100;
+  --warning-soft: #fff3d6;
+  --danger: #b51d3a;
+  --danger-soft: #fff0f2;
+  --neutral-rgb: 32 41 56;
+  --surface-rgb: 255 255 255;
+  --shadow: 0 1px 2px #2029380a;
+  --shadow-sm: 0 2px 8px #2029380a;
+  --shadow-card: 0 4px 20px #2029380a;
+  --shadow-card-hover: 0 8px 24px #20293814;
+}
+
+:root[data-theme="light"] body { background-image: none; }
+:root[data-theme="light"] .workspace { background: var(--bg); }
+:root[data-theme="light"] :is(.site-header, .auth-card, .nav-tools > div) {
+  box-shadow: var(--shadow-card) !important;
+}
+:root[data-theme="light"] :is(.page-heading h1, .hero h1, .empty h1) {
+  background: none;
+  -webkit-text-fill-color: var(--text);
+}
+:root[data-theme="light"] :is(
+  .workspace-toolbar strong, .room-row strong, .seat-card h2,
+  .detail-support-title, .auth-back:hover,
+  .site-header nav > a:hover, .site-header nav a[aria-current="page"],
+  .nav-tools summary:hover, .nav-tools a:hover,
+  .detail-support-card:hover .detail-support-chevron,
+  .rules-text, .developer-table th, .developer-toc a:hover,
+  .status-service-card h2, .advanced-options-details summary:hover,
+  .guest-banner-info h3, .round-complete h2
+) { color: var(--text) !important; }
+:root[data-theme="light"] .brand-symbol rect { fill: var(--accent-soft) !important; }
+:root[data-theme="light"] .brand-symbol path { fill: var(--accent) !important; }
+:root[data-theme="light"] :is(.game-card, .game-cover, .game-art-fallback) {
+  background: var(--panel-raised);
+}
+:root[data-theme="light"] .game-card { background: var(--panel); }
+:root[data-theme="light"] :is(.detail-support-card, .room-row) {
+  box-shadow: var(--shadow-sm) !important;
+}
+:root[data-theme="light"] :is(.detail-support-card[open], .detail-support-card:hover, .room-row:hover:not(:disabled)) {
+  background: var(--panel) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+:root[data-theme="light"] :is(input, select, textarea) {
+  border-color: var(--control-line) !important;
+  box-shadow: none;
+}
+:root[data-theme="light"] :is(input, select, textarea):hover:not(:disabled) {
+  border-color: var(--text-secondary) !important;
+}
+:root[data-theme="light"] :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}
+:root[data-theme="light"] :is(button.secondary, .button-link.secondary):hover {
+  color: var(--text) !important;
+}
+:root[data-theme="light"] :is(button.danger, .error-notice, .status--error) {
+  color: var(--danger) !important;
+  background: var(--danger-soft) !important;
+}
+:root[data-theme="light"] .status--ok {
+  color: var(--success) !important;
+  background: var(--success-soft) !important;
+}
+:root[data-theme="light"] .status--warn {
+  color: var(--warning) !important;
+  background: var(--warning-soft) !important;
+}
+:root[data-theme="light"] :is(.action-hint, .invite-box strong, .detail-support-icon--invite, .detail-support-card[open] .detail-support-chevron) {
+  color: var(--accent) !important;
+}
+:root[data-theme="light"] :is(.rules-notice, .detail-support-icon--rules) { color: var(--success) !important; }
+:root[data-theme="light"] .detail-support-body > p { color: var(--muted) !important; }
+:root[data-theme="light"] .invite-box strong { text-shadow: none; }
+:root[data-theme="light"] .color-card small { color: var(--text); }
+/* Felt and tile tables are game artwork, with their own readable dark controls. */
+:root[data-theme="light"] :is(.sp-table, .az-table) {
+  color-scheme: dark;
+  --bg: #1c1c1e;
+  --panel: #2c2c2e;
+  --panel-raised: #3a3a3c;
+  --text: #f2f2f3;
+  --text-secondary: #cbd5e1;
+  --muted: #b8b8bd;
+  --line: #ffffff1f;
+  --line-strong: #ffffff33;
+  --accent: #0a84ff;
+  --accent-hover: #60a5fa;
+  --accent-soft: #0a84ff26;
+  --neutral-rgb: 255 255 255;
+}
+:root[data-theme="light"] .az-table {
+  background: #102531;
+  border-radius: var(--radius);
+  padding: 12px;
+}
+:root[data-theme="light"] :is(.developer-code, .developer-article code, .developer-table th) {
+  background: var(--panel-raised);
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+:root[data-theme="light"] :is(.tutorial-guide, .model-toolbar, .guest-welcome-banner) {
+  background: var(--panel) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+:root[data-theme="light"] :is(.tutorial-guide h2, .tutorial-feedback) { color: var(--text) !important; }
+:root[data-theme="light"] .tutorial-guide progress::-webkit-progress-bar { background: var(--panel-raised); }
+:root[data-theme="light"] .model-status-badge.status-ready { color: var(--success); }
+:root[data-theme="light"] .model-status-badge.status-mock { color: var(--accent); }
+:root[data-theme="light"] .model-status-badge.status-missing-key { color: var(--warning); }
+
+/* Keep a readable caption on the intentionally shaded game artwork. */
+:root[data-theme="light"] .game-banner-content h1 { color: #fff !important; }
+:root[data-theme="light"] .game-detail-banner::after {
+  background: linear-gradient(90deg, #0b0f18f2, #0b0f18cc 50%, #0b0f1866) !important;
+}
+@media (forced-colors: active) {
+  .theme-select select { appearance: auto; }
+}

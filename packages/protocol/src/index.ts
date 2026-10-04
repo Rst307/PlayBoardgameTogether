@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { friendIdSchema } from './social.js';
 export * from './auth.js';
 export * from './admin.js';
 export * from './game-submissions.js';
@@ -91,6 +92,7 @@ export const lobbyRoomSchema = z.object({
   id:z.string().uuid(), name:z.string(), gameId:z.string(), gameVersion:z.string(),
   status:z.enum(['waiting','in_game','finished','closed']), seatCount:z.number().int(),
   occupiedCount:z.number().int(), hasPassword:z.boolean(), isMember:z.boolean(),
+  hostDisplayName: z.string(), hostFriendId: friendIdSchema,
 });
 export const lobbyPageSchema = z.object({items:lobbyRoomSchema.array(),nextCursor:z.string().nullable()});
 export const gameRulesSchema = z.object({gameId:z.string(),version:z.string(),rules:z.string()});

@@ -67,6 +67,9 @@ export function resolvePage(path: string): PageRoute {
     case '/login': return { title: '账户登录', page: <LoginPage /> };
     case '/register': return { title: '账号注册', page: <RegisterPage /> };
     case '/profile': return { title: '我的资料', page: <ProfilePage /> };
+    case '/profile/edit': return { title: '编辑资料', page: <ProfilePage section="edit" /> };
+    case '/profile/history': return { title: '对局记录', page: <ProfilePage section="history" /> };
+    case '/profile/identity': return { title: '管理好友 ID', page: <ProfilePage section="identity" /> };
     case '/friends/add': return { title: '添加好友', page: <FriendsPage section="add" /> };
     case '/friends/requests': return { title: '好友申请', page: <FriendsPage section="requests" /> };
     case '/friends/invitations': return { title: '房间邀请', page: <FriendsPage section="invitations" /> };

@@ -7,6 +7,19 @@
     <meta name="description" content="和朋友共享一张游戏桌：创建房间、邀请入座，在线完成桌游对局。" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>桌游平台</title>
+    <script>
+      // Resolve the first paint before downloading the application bundle.
+      (() => {
+        let preference = 'system';
+        try { preference = localStorage.getItem('boardgame.theme'); } catch {}
+        const theme = preference === 'light' || preference === 'dark'
+          ? preference
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f4f6fa' : '#1c1c1e';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

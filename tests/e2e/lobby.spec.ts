@@ -41,6 +41,7 @@ test('quick creation opens the room, copies invite, and exposes password rooms t
     const row=b.locator('article.room-row').filter({hasText:'周五密码桌'});
     await expect(row).toBeVisible();
     await expect(row).toContainText('1/3 人');
+    await expect(row).toContainText('房主：玩家 D · @stage3_a');
     await row.getByRole('button',{name:'加入房间'}).click();
     await b.getByLabel('加入房间密码',{exact:true}).fill('incorrect');
     await b.getByRole('button',{name:'确认加入'}).click();

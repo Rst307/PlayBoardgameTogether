@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {ApiError} from '@boardgame/client-sdk';
 import type {LobbyQuery,LobbyRoom} from '@boardgame/protocol';
+import { formatFriendId } from '@boardgame/protocol';
 import {api,command,navigate} from '../platform.js';
 import {loadGames,type AvailableGame} from './game-catalog.js';
 
@@ -65,7 +66,17 @@ export function Lobby({gameId,showHeading=true}:{gameId?:string;showHeading?:boo
     {needsLogin&&<p className="panel">登录后查看并加入公开房间。 <a href="/login">前往登录 →</a></p>}
     {error&&<p className="error-notice" role="alert">{error}</p>}
     {selected&&<form className="panel form-stack" onSubmit={submitPassword}><h3>加入 {selected.name}</h3><label>加入房间密码<input name="password" type="password" maxLength={128} required autoComplete="off"/></label><button disabled={busy}>确认加入</button><button type="button" className="secondary" onClick={()=>setSelected(undefined)}>取消</button></form>}
-    {rooms.map(room=><article className="room-row" key={room.id}><span><strong>{room.name}</strong><small>{games.find(game=>game.id===room.gameId)?.name??room.gameId} · {room.occupiedCount}/{room.seatCount} 人 · {room.hasPassword?'密码房':'无密码'} · {statusNames[room.status]}</small></span><button disabled={busy||(!room.isMember&&(room.status!=='waiting'||room.occupiedCount>=room.seatCount))} onClick={()=>room.hasPassword&&!room.isMember?setSelected(room):void join(room)}>{room.isMember?'进入房间':room.status!=='waiting'?'不可加入':room.occupiedCount>=room.seatCount?'已满':'加入房间'}</button></article>)}
+    {rooms.map(room => <article className="room-row" key={room.id}>
+      <span>
+        <strong>{room.name}</strong>
+        <small>房主：{room.hostDisplayName} · {formatFriendId(room.hostFriendId)}</small>
+        <small>{games.find(game => game.id === room.gameId)?.name ?? room.gameId} · {room.occupiedCount}/{room.seatCount} 人 · {room.hasPassword ? '密码房' : '无密码'} · {statusNames[room.status]}</small>
+      </span>
+      <button disabled={busy || (!room.isMember && (room.status !== 'waiting' || room.occupiedCount >= room.seatCount))}
+        onClick={() => room.hasPassword && !room.isMember ? setSelected(room) : void join(room)}>
+        {room.isMember ? '进入房间' : room.status !== 'waiting' ? '不可加入' : room.occupiedCount >= room.seatCount ? '已满' : '加入房间'}
+      </button>
+    </article>)}
     {!busy&&!error&&!needsLogin&&!rooms.length&&<p className="muted">没有符合筛选条件的房间。可以调整筛选，或创建自己的房间。</p>}
     {busy&&<p role="status">正在加载…</p>}
     {cursor&&<button className="secondary" disabled={busy} onClick={()=>void more()}>加载更多大厅房间</button>}

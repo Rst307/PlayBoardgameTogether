@@ -1,5 +1,73 @@
 # 开发进度
 
+## 亮色主题与全站外观切换（2026-10-04）
+
+先完成页面目标、常驻/低频功能、层级与操作步骤自检，外观选择收进「更多」菜单，页面原主任务及主要操作保持。新增亮色、深色、跟随系统三种选择；默认跟随系统，亮色采用浅灰背景、白色表面、深色正文和蓝色强调。适配平台共享面板、侧栏/手机菜单、表单/焦点、状态提示、目录、规则、开发文档、模型设置及教程。游戏图包/语义色与独立棋盘配色保留，隔离上传包 HTML 不被自动改写。
+
+偏好保存到当前浏览器 localStorage，刷新恢复、系统变化及标签页同步；存储不可用时本页切换可用。HTML 在主包下载前应用已保存主题并同步浏览器主题色，切换不重挂载页面、不清空输入或重启教程。系统/storage 监听有清理入口；没有业务 API、认证、数据库或规则变化。视觉检查发现手机更多菜单被路径栏部分遮挡，修正展开时层级并加入遮挡断言。界面说明同步到 ui-system.md。
+
+实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；后续主题标签 JSX 修正后 `pnpm --filter @boardgame/web typecheck` 和相关文件 ESLint 通过，最后补充主题测试后专项 ESLint 通过。
+- `pnpm test tests/unit/developer-publication.test.ts`：4/4 通过，无 skip。
+- `pnpm build` 通过，包含生产 bundle/API runtime 与隔离 ZIP 规则/AI worker 检查；后续首屏脚本、手机层级、棋盘兼容样式更新后 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm test:ui --output .data/theme-ui-final`：14/14 通过，包含原公开文档/导航/登录/失败恢复和主题桌面/手机用例。初次新增用例因包裹 label 的精确文本匹配失败，改为显式 htmlFor/id 关联后通过。
+- 最终 `pnpm exec playwright test --config playwright.ui.config.ts tests/e2e/theme.spec.ts --output .data/theme-ui-complete`：8/8 通过，无 skip。覆盖切换/表单保留、320/390/1440px 无横向溢出、手机设置标签无遮挡、跨路由/刷新、系统改变、显式偏好优先、跨标签页、禁用存储、阻断主包时首屏主题，以及真实花砖/宝石教程棋盘可读与切换不重启。实际查看亮色桌面/手机登录、文档和两款教程棋盘截图；测试只模拟公开目录响应，不算真实数据库整局验收。截图和临时诊断脚本仅留忽略目录 `.data`。
+- 确认 `TEST_DATABASE_URL` 为独立 `boardgame_test`，与开发库不同后，`pnpm test:e2e tests/e2e/theme.spec.ts` 在准备阶段被 `ECONNREFUSED 127.0.0.1:5434` 阻断；`pnpm db:up` 因 Docker Desktop Linux engine 管道不存在失败。未覆盖 `.env` 或清理开发库，真实数据库 E2E 未执行。本轮未改服务端，未运行集成和全量业务测试。
+
+下一步：恢复 PostgreSQL/Docker 后执行数据库 E2E，检查真实登录、房间及正式对局下的主题切换。本轮保留已有 AGENTS.md、README.md、architecture.md 用户改动，提交仅包含主题代码、测试和说明。
+
+## 简化个人资料、全局通知与桌面聊天浮窗（2026-10-04）
+
+先梳理资料页目标、常驻功能、次级入口、层级与用户流程，默认 `/profile` 只展示名片及一个编辑主入口；表单、ID 管理、完整对局记录分别进入 `/profile/edit`、`/profile/identity`、`/profile/history`，内部账户资料和退出登录收进账户操作。默认不请求对局历史，原保存/分页接口保持。手机标题和操作同行，320/390/768/1440px 无整页横向溢出。
+
+修复通知只在好友子页可见的问题：SocialProvider 在全局外壳统一每 5 秒认证 HTTP 同步，好友、ID、房间邀请和通知共享概要。右上角通知显示未读私聊、有效收到的房间邀请及好友申请，新到数据产生短暂站内提示，首载不弹历史提示。电脑从列表/通知打开右下角私聊，可最小化/关闭，站内切页和最小化保留草稿；最小化停止消息读取与已读，恢复后增量补取。DirectChat 继续复用同一发送去重/分页/水位，加入输入焦点与最新消息滚动。手机和原深链接保留独立聊天页。退出或失效清除社交数据/浮窗，没有新 API、数据库迁移、WS 或系统通知权限；资料和社交说明及架构同步。
+
+实际验证：
+
+- 最小复现 `pnpm exec playwright test --config playwright.social-ui.config.ts --project desktop --grep 'messages and invitations' --output .data/social-ui-red` 在修改前失败：资料页找不到通知入口。测试注入合法本人投影，验证真实 React 页面，不替代数据库集成。
+- 本轮最终逻辑 `pnpm typecheck`、`pnpm lint` 通过，20 个源目录 AST 边界通过；`pnpm test tests/unit/friend-handles.test.ts` 3 项通过，无 skip。
+- `pnpm build` 通过，含生产 bundle/API runtime、隔离 ZIP 规则及 AI worker 检查。最终未读角标样式调整后 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm exec playwright test --config playwright.social-ui.config.ts --output .data/social-ui-production` 在生产预览上资料/通知/浮窗共 4 项通过；随后补充邀请点击与密码门槛检查，桌面用例因测试选择器误匹配通知提示按钮失败，修正为明确通知入口。最终 `pnpm exec playwright test --config playwright.social-ui.config.ts --grep 'messages and invitations' --output .data/social-ui-production` 2 项通过，专项 ESLint 通过。覆盖全局接收、提示/未读、桌面浮窗与手机独立页、最小化新消息保持未读、展开增量恢复、跨页面草稿、关闭、资料子路由/保存/刷新、退出清理和布局。实际查看桌面/手机资料、通知菜单及桌面浮窗截图，生成产物只留忽略目录 `.data`。
+- `pnpm test:ui --output .data/public-ui-social` 10 项通过（桌面/手机公开文档、导航、登录及失败恢复），无 skip。
+- 确认 TEST_DATABASE_URL 对应独立 `boardgame_test`，与开发数据库不同。`pnpm test:e2e tests/e2e/profile.spec.ts tests/e2e/social.spec.ts` 在准备阶段被 `ECONNREFUSED 127.0.0.1:5434` 阻断，未进入清理测试数据/实际双账户流程；`pnpm db:up` 因 Docker Desktop Linux 引擎管道不存在失败。未重置开发库，未覆盖 `.env`，未把模拟 HTTP 测试当作真实双账户验收。
+
+下一步：启动本机 Docker/PostgreSQL 后重跑上述真实资料/好友 E2E，验证真实双账户发消息、确认邀请及刷新恢复。本轮无服务端事务/协议变更，未运行全量单测、集成或全量业务 E2E。通知使用站内轮询，浏览器后台/关闭后不承诺系统推送；浮窗草稿在关闭、切换对象或整页刷新时丢弃。
+
+## 大厅房间显示当前房主昵称与公开 ID（2026-10-04）
+
+用户确认展示当前房主。在既有公开房间列表的房间名下增加「房主：昵称 · @ID」次要文本，保留筛选、人数/状态和单一加入按钮，无新增页面或常驻设置。lobby 查询在同一条 SQL 中通过 rooms.host_account_id 关联 accounts，DTO 增加 hostDisplayName/hostFriendId（原始公开 ID 无 @），Web 复用 formatFriendId。昵称、公开 ID 修改及转让房主后，下次刷新反映最新身份；不暴露登录名、内部账户 UUID、成员名单或秘密。无数据库迁移，client-sdk 原 lobbyPageSchema 解析链路直接消费新字段；需同步更新 Web/API。房间与协议及公开开发者 API 文档同步。
+
+实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；`pnpm build` 通过，包含生产 bundle/API runtime 和在线包规则/AI 检查。
+- `pnpm test tests/unit`：31 文件、141 项，139 项通过，stage7-assets 的 2 项真实媒体解码失败（隔离 Docker 媒体运行环境不可用），无 skip。未改变媒体代码或断言，不记为全量通过。
+- `node .data/check-lobby-host.mjs` 在真实前端/模拟 HTTP 下验证 1440/390/320px 房主昵称与 @ID、加入按钮可用、刷新切换身份、长中文昵称与 36 位 ID 换行且无横向溢出；实际查看桌面/手机截图。临时脚本与截图仅留忽略目录 .data，此验证不能替代数据库集成。
+- 新增真实集成用例覆盖公开房主身份、昵称/公开 ID 修改后更新、房主转让及不返回登录名/内部账户 UUID/成员/秘密；既有大厅 E2E 增加当前房主展示断言。通过 `.data/lobby-host-validation.mjs` 与 `.data/lobby-host-e2e.mjs` 分别复用原 `pnpm test:integration` 和 prepare/migrate/sync/seed/E2E runner，均派生独立 `boardgame_lobby_host_test`；测试库准备阶段 `ECONNREFUSED 127.0.0.1:5434`，集成与 E2E 未执行。未改 .env 或清理开发库。
+
+下一步在 PostgreSQL/Docker 恢复后运行真实集成及 `tests/e2e/lobby.spec.ts` 的桌面/手机项目；当前限制已记录，不将模拟响应或历史结果计为本轮数据库通过。
+
+## 房间顶部退出入口（2026-10-03）
+
+「退出房间」从折叠的「更多操作」移到房间标题区，作为次要按钮，桌面/手机无需展开即可找到。复用原 leave 命令、requestId、expectedRoomRevision、服务端身份/事务及成功后返回大厅逻辑；断线和保存期间禁用。进行中仍禁止退出，房主强制关闭继续位于更多操作，没有改变业务规则、协议或数据库。页面主任务仍为入座、准备和开局，移除原位置的重复入口。
+
+实际验证：`pnpm typecheck`、`pnpm lint` 通过（20 个源目录依赖边界）；`pnpm test tests/unit/room-snapshot.test.ts` 1/1 通过。`node .data/check-room-leave.mjs` 在真实前端与模拟 HTTP/WS 下检查 1440px/390px，顶部入口可见、保存锁、revision/requestId、成功跳转与无横向溢出均通过，并实际查看桌面/手机截图；此检查不代替真实数据库验收。临时脚本/截图仅存忽略目录 .data。
+
+新增 `tests/e2e/room-leave.spec.ts` 覆盖成员退出释放席位与清除准备、最后成员退出关闭房间及释放建房名额。用隔离包装入口 `.data/room-leave-validation.mjs` 派生独立 `boardgame_room_leave_test`，复用原 prepare/migrate/sync/seed/E2E runner，尝试新用例和原 stage5-ai 进行中禁止退出回归；测试库准备因 `ECONNREFUSED 127.0.0.1:5434` 失败，`pnpm db:up` 因 Docker Desktop Linux engine 管道不存在失败。未修改 .env、未清理开发库，数据库 E2E 未执行；未跑数据库集成或全量 E2E，服务端逻辑未改。下一步在 PostgreSQL/Docker 恢复后运行这两个 E2E 文件的桌面/手机项目。
+
+## 花砖最后选砖的地板结算显示修复（2026-10-03）
+
+复现最后一次选择「全部放地板」后直接进入轮末结算：真实桌面组件应显示三块花砖与先手标记，实际显示零块。服务端已正确扣分并清空地板；客户端直接绘制结算后的 View，漏掉待扣分地板的表现。客户端有界保留最近两轮公开 View，结合已投影的最后选砖事件还原待结算地板，随原计分队列保留砖块至该玩家地板扣分节拍结束，然后显示最新权威地板。包含整组放地板、图案行溢出、先手标记和七格上限；已包含选砖的快照不重复追加。未改变服务端规则、计分、版本、存档、协议或数据库。
+
+实际验证：
+
+- `node .data/check-azul-floor.mjs` 修改前失败：`Last draft scoring floor: expected 3 tiles, received 0`。修复后在真实 React StrictMode/花砖组件、正式教程场景与项目样式下，1440px/390px、同时投递/快照先到而 live 事件后到四种情况全部通过；确认原分数、扣分归零、扣分期间保留三砖/标记、结束后清空和无水平溢出。查看两种布局截图，临时验证文件和截图留在忽略的 `.data`。
+- `pnpm test tests/unit/azul-scoring-presentation.test.ts tests/unit/azul.test.ts tests/unit/azul-tutorial.test.ts`：3 文件、22 项通过，无 skip；新增最后中央选砖、公开快照不重复追加、溢出与七格地板回归，保留真实规则/教程一致性与完整对局守恒检查。
+- `pnpm typecheck`、`pnpm lint`、`pnpm build` 全部通过，包含 20 源目录边界和生产 bundle/API runtime 检查。
+- 为原 `azul-tutorial.spec.ts` 增加相同地板时序断言。隔离包装入口 `.data/azul-floor-validation.mjs` 指向独立 `boardgame_azul_floor_test` 并复用原 prepare/migrate/sync/E2E；准备阶段 `ECONNREFUSED 127.0.0.1:5434`，`pnpm db:up` 因 Docker Desktop Linux engine 管道不存在失败。未执行数据库清理、未修改 `.env`，数据库 E2E 未通过；独立组件浏览器验证不能替代认证 HTTP/WS 整局验收。本轮仅客户端表现修改，未运行数据库集成或全量历史 E2E。
+
+下一步在 PostgreSQL/Docker 恢复后执行新增教程 E2E，并实玩确认轮末地板表现。本轮保留原有 AGENTS.md、README.md、architecture.md 用户修改，提交仅包含本轮修复、测试和说明。
+
 ## UNO 上传包 AI 与原创展示图（2026-10-03）
 
 用户上传 1.0.0 后遇到 AI_NOT_SUPPORTED 和空白封面。先建立失败回归：QuickJS 适配器未保留可选 getDecisionContext、包描述不接受展示图、UNO 未提供决策。新增可选严格有界决策上下文；基础 worker 按需加载内置策略，在线包 basic-v1 使用包内有序合法候选，不加载规则源码或秘密 State。UNO 1.1.0 用本人 View 排序出牌/选色，脚本和模型复用原 AiScheduler、控制权、revision、事务和动作校验；原真人玩法不变。
