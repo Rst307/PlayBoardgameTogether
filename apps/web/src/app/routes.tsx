@@ -11,6 +11,7 @@ const NewRoomPage = lazy(() => import('../pages/NewRoomPage.js').then(module => 
 const GameDetailPage = lazy(() => import('../pages/GameDetailPage.js').then(module => ({ default: module.GameDetailPage })));
 const TutorialPage = lazy(() => import('../pages/TutorialPage.js').then(module => ({ default: module.TutorialPage })));
 const RoomPage = lazy(() => import('../pages/RoomPage.js').then(module => ({ default: module.RoomPage })));
+const ReplayPage = lazy(() => import('../pages/ReplayPage.js').then(module => ({ default: module.ReplayPage })));
 const MatchPage = lazy(() => import('../pages/MatchPage.js').then(module => ({ default: module.MatchPage })));
 const AssetAdminPage = lazy(() => import('../pages/AssetAdminPage.js').then(module => ({ default: module.AssetAdminPage })));
 const GamePresentationAdminPage = lazy(() => import('../pages/GamePresentationAdminPage.js').then(module => ({ default: module.GamePresentationAdminPage })));
@@ -60,6 +61,8 @@ export function resolvePage(path: string): PageRoute {
   }
   const room = /^\/rooms\/([0-9a-f-]+)$/i.exec(path);
   if (room) return { title: '房间', page: <RoomPage key={room[1]} id={room[1]!} /> };
+  const replay = /^\/matches\/([0-9a-f-]+)\/replay$/i.exec(path);
+  if (replay) return { title: '对局回放', game: true, page: <ReplayPage key={replay[1]} id={replay[1]!} /> };
   const match = /^\/matches\/([0-9a-f-]+)$/i.exec(path);
   if (match) return { title: '游戏桌', game: true, page: <MatchPage key={match[1]} id={match[1]!} /> };
   const chat = /^\/friends\/chat\/([0-9a-f-]{36})$/i.exec(path);

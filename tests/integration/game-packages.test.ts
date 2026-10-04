@@ -147,6 +147,13 @@ describe('administrator instant game installation', () => {
       expect((await write(`/api/v1/matches/${matchId}/actions`, player, command)).json().data.revision).toBe(action.json().data.revision);
     }
     expect((await read()).json().data.status).toBe('finished');
+    const finalView = (await read()).json().data;
+    const replay = await app.inject({ url: `/api/v1/matches/${matchId}/replay?revision=${finalView.revision}`, headers: alice });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().data.view).toEqual(finalView.view);
+    const initialReplay = await app.inject({ url: `/api/v1/matches/${matchId}/replay?revision=0`, headers: bob });
+    expect(initialReplay.statusCode).toBe(200);
+    expect(initialReplay.json().data).toMatchObject({ gameId: 'online.score-race', firstRevision: 0 });
     expect((await db.query('SELECT status FROM rooms WHERE id=$1', [roomId])).rows[0].status).toBe('waiting');
     const status = (await app.inject({ url: '/api/v1/admin/games', headers: admin })).json().data.find((game: { id: string; version: string }) => game.id === 'online.score-race' && game.version === '1.0.0');
     expect((await write('/api/v1/admin/games/online.score-race/versions/1.0.0/status', admin, { requestId: randomUUID(), expectedRevision: status.revision, enabled: false }, 'PUT')).statusCode).toBe(200);

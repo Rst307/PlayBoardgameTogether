@@ -126,7 +126,7 @@ export function ProfilePage({ section = 'summary' }: { section?: 'summary' | 'ed
     {section === 'history' && history && <section className="room-list"><p className="muted">按开局时间排列，包含已结束与中止的对局。</p>
       {history.items.length === 0 ? <p className="muted">还没有对局记录。<a href="/">去游戏大厅开始第一局</a></p> : history.items.map(match =>
         <article className="room-row" key={match.id}><span><strong>{match.roomName}</strong><small>{match.gameId} · {match.gameVersion} · {date(match.createdAt)}</small></span>
-          <span>{statuses[match.status]}</span><a className="button-link secondary" href={`/matches/${match.id}`}>{match.status === 'active' ? '继续对局' : '查看对局'}</a>
+          <span>{statuses[match.status]}</span><a className="button-link secondary" href={`/matches/${match.id}${match.status === 'active' ? '' : '/replay'}`}>{match.status === 'active' ? '继续对局' : '查看回放'}</a>
         </article>)}
       {history.nextCursor && <button className="secondary" disabled={loadingMore} onClick={() => void more()}>{loadingMore ? '加载中…' : '加载更多对局'}</button>}
     </section>}

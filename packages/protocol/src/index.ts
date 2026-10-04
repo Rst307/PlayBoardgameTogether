@@ -161,3 +161,19 @@ export const matchSnapshotMessageSchema = z.object({
 }).strict();
 
 export * from './game-packages.js';
+
+// Replay responses contain only the authenticated participant's projection.
+export const matchReplayQuerySchema = z.object({
+  revision: z.coerce.number().int().nonnegative().max(2147483647).optional(),
+}).strict();
+export const matchReplaySchema = z.object({
+  matchId: z.string().uuid(), gameId: z.string(), gameVersion: z.string(),
+  status: z.enum(['finished', 'aborted']),
+  firstRevision: z.number().int().nonnegative(), lastRevision: z.number().int().nonnegative(),
+  revision: z.number().int().nonnegative(), seatIndex: z.number().int().nonnegative(),
+  actorSeatId: z.string().uuid().nullable(), recordedAt: z.string().datetime(),
+  players: matchViewSchema.shape.players.unwrap(),
+  assetBinding: assetBindingSchema.nullable(),
+  view: z.unknown(), events: z.array(z.unknown()),
+}).strict();
+export type MatchReplay = z.infer<typeof matchReplaySchema>;

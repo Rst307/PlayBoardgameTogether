@@ -1,5 +1,11 @@
 # HTTP API
 
+## 对局回放（2026-10-04）
+
+GET `/matches/:id/replay?revision=N`：活跃 session 的原固定参与者只读已结束/中止对局的本人历史视角。省略 revision 取最早可用帧；严格拒绝 seatId 等额外 query，非负整数最大 2147483647。返回 matchId/gameId/gameVersion、finished/aborted status、firstRevision/lastRevision/revision、seatIndex、actorSeatId、recordedAt、公开 players、assetBinding、本人 view 及已投影 events。无 State/RNG/原动作/内部事件；no-store。非参与者 404，进行中 422，无对应步骤 400，精确版本/存档不可恢复 503。client-sdk `matchReplay` 解析共享 schema。
+
+迁移 029 后新局从初始步骤保存，旧局只有当前步骤起的帧。客户端桌面 busy=true，只读静音，不发送动作或重放计分动画。
+
 ## 公共聊天
 
 以下路径均带 `/api/v1` 前缀并需要活跃 session，响应 no-store。GET `/social/public/messages` 接收互斥的 before/after UUID，每页 30 条正序，返回 `{items,nextCursor}`；消息包含 id、sequence 字符串、senderId、text、createdAt 和 sender（账户 UUID、好友 ID、昵称、内置头像）。after 为连续补取，nextCursor 非空时继续读取；公共和私聊游标分离。

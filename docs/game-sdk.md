@@ -1,5 +1,9 @@
 # 游戏扩展 SDK
 
+## 统一回放（2026-10-04）
+
+内置和在线 ZIP 扩展自动接入回放，无需额外规则接口；平台通过原精确版本 deserialize/getView/projectEvents 保持本人历史视角。客户端继续遵守 busy=true 禁止动作，宿主丢弃 onAction 且不提供 live 音效。当前逐步切换局面，不重放计分/移动动画。详见 [回放](replays.md)。
+
 ## 可选玩家名称（2026-10-04）
 
 Web GameBoard 第七个可选参数 playerNames 为公开 seatId→displayName 映射，来自身份化 MatchView.players，独立于规则 View。扩展可用 @boardgame/game-sdk/presentation 的 PlayerNames 与 playerLabel 显示昵称，本人附加「（你）」；未提供名称时保留匿名标签，教程和图包预览不需要账户。花砖物语及璀璨宝石在玩家区、等待/先手提示、公开行动与结算中消费此参数。规则身份仍来自服务端 session 和固定 participant，名称不能授权动作。

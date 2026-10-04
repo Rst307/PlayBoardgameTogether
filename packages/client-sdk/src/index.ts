@@ -1,5 +1,5 @@
 import { modelProfileSchema, modelEndpointSchema, modelProfileSavedSchema, modelConnectionTestSchema, modelSettingsStatusSchema, modelDeletedSchema, modelCredentialSavedSchema, modelCredentialRevokedSchema, type ModelProfileInput, type ModelProfileUpdate } from '@boardgame/protocol';
-import { apiEnvelopeSchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
+import { apiEnvelopeSchema, matchReplaySchema, matchReplayQuerySchema, matchCommandReceiptSchema, matchViewSchema, pongMessageSchema } from '@boardgame/protocol';
 import { createRoomInputSchema, createRoomResultSchema, lobbyPageSchema, gameRulesSchema, type CreateRoomInput, type LobbyQuery } from '@boardgame/protocol';
 import { AssetClient } from './assets.js';
 import { gamePackageResultSchema, gamePackageReviewSchema } from '@boardgame/protocol';
@@ -205,6 +205,11 @@ export class ApiClient {
   createRoom<T>(body:unknown){return this.request<T>('/rooms',{method:'POST',body:JSON.stringify(body)});}
   joinRoom<T>(body:unknown){return this.request<T>('/rooms/join',{method:'POST',body:JSON.stringify(body)});}
   roomCommand<T>(id:string,path:string,method:string,body:unknown){return this.request<T>(`/rooms/${encodeURIComponent(id)}/${path}`,{method,body:JSON.stringify(body)});}
+  async matchReplay(id: string, revision?: number) {
+    const query = matchReplayQuerySchema.parse(revision === undefined ? {} : { revision });
+    const suffix = query.revision === undefined ? '' : `?revision=${query.revision}`;
+    return matchReplaySchema.parse(await this.request<unknown>(`/matches/${encodeURIComponent(id)}/replay${suffix}`, { signal: AbortSignal.timeout(10000) }));
+  }
   matchView<T>(id:string){return this.request<T>(`/matches/${encodeURIComponent(id)}/view`);}
   async matchSnapshot(id:string){return matchViewSchema.parse(await this.request<unknown>(`/matches/${encodeURIComponent(id)}/view`,{signal:AbortSignal.timeout(10000)}));}
   async matchCommandReceipt(id:string,requestId:string){return matchCommandReceiptSchema.parse(await this.request<unknown>(`/matches/${encodeURIComponent(id)}/commands/${encodeURIComponent(requestId)}`,{signal:AbortSignal.timeout(10000)}));}

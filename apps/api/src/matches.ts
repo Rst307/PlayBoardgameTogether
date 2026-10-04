@@ -60,6 +60,64 @@ export class MatchService {
     return extension;
   }
 
+  async replay(accountId: string, matchId: string, requestedRevision?: number) {
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const found = await client.query<MatchRow & { seat_id: string; seat_index: number }>(`
+        SELECT m.*, p.seat_id, p.seat_index FROM matches m
+        JOIN match_participants p ON p.match_id=m.id
+        WHERE m.id=$1 AND p.account_id=$2`, [matchId, accountId]);
+      if (!found.rowCount) throw new AppError('MATCH_NOT_FOUND', '对局不存在', 404);
+      const match = found.rows[0]!;
+      if (match.status === 'active') throw new AppError('ACTION_NOT_ALLOWED', '对局结束后可以查看回放', 422);
+      const bounds = (await client.query<{ first: number; last: number }>(`
+        SELECT min(revision) AS first, max(revision) AS last
+        FROM match_replay_frames WHERE match_id=$1`, [matchId])).rows[0]!;
+      if (bounds.first === null || bounds.last !== match.revision) {
+        throw new AppError('RECOVERY_BLOCKED', '回放存档不完整', 503);
+      }
+      const revision = requestedRevision ?? bounds.first;
+      const frame = (await client.query<{
+        state: unknown; internal_events: unknown[]; actor_seat_id: string | null; created_at: Date;
+      }>('SELECT * FROM match_replay_frames WHERE match_id=$1 AND revision=$2', [matchId, revision])).rows[0];
+      if (!frame) throw new AppError('VALIDATION_ERROR', '该步骤没有回放存档', 400);
+      const extension = this.extension(match);
+      const viewer = { kind: 'seat' as const, seatId: match.seat_id };
+      let view: unknown;
+      let events: unknown[];
+      try {
+        view = extension.getView(extension.deserialize(frame.state), viewer);
+        events = extension.projectEvents(frame.internal_events, viewer).map((event: Record<string, unknown>, index: number) => ({
+          ...event, eventId: `${matchId}:${revision}:${index}`,
+        }));
+      } catch {
+        throw new AppError('RECOVERY_BLOCKED', '此游戏版本的回放无法恢复', 503);
+      }
+      const players = await client.query<{ seat_id: string; seat_index: number; display_name: string | null; occupant_kind: 'human' | 'bot' }>(`
+        SELECT p.seat_id,p.seat_index,p.occupant_kind,COALESCE(a.display_name,p.display_name) AS display_name
+        FROM match_participants p LEFT JOIN accounts a ON a.id=p.account_id
+        WHERE p.match_id=$1 ORDER BY p.seat_index`, [matchId]);
+      await client.query('COMMIT');
+      return {
+        matchId, gameId: match.game_id, gameVersion: match.game_version, status: match.status,
+        firstRevision: bounds.first, lastRevision: bounds.last, revision, seatIndex: match.seat_index,
+        actorSeatId: frame.actor_seat_id, recordedAt: frame.created_at.toISOString(),
+        assetBinding: match.asset_version_id ? {
+          versionId: match.asset_version_id, manifestHash: match.asset_manifest_hash!, contractVersion: match.asset_contract_version!,
+        } : null,
+        players: players.rows.map(player => ({ seatId: player.seat_id, seatIndex: player.seat_index,
+          displayName: player.display_name ?? `AI ${player.seat_index + 1}`, occupantKind: player.occupant_kind })),
+        view, events,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async commandReceipt(accountId: string, matchId: string, requestId: string) {
     const participant = await this.db.query('SELECT 1 FROM match_participants WHERE match_id=$1 AND account_id=$2', [matchId, accountId]);
     if (!participant.rowCount) throw new AppError('MATCH_NOT_FOUND', 'Match not found', 404);
@@ -207,6 +265,8 @@ export class MatchService {
         const actionId = randomUUID();
         await client.query(`UPDATE matches SET state=$2, rng_state=$3, revision=$4, status=$5 WHERE id=$1`,
           [matchId, serialized, rng.snapshot(), revision, finished ? 'finished' : 'active']);
+        await client.query('UPDATE match_replay_frames SET internal_events=$3,actor_seat_id=$4 WHERE match_id=$1 AND revision=$2',
+          [matchId, revision, JSON.stringify(applied.events), player.seat_id]);
         if (finished) roomChanged = await this.finishRoom(client, roomId, matchId);
         await client.query(`INSERT INTO match_actions(id,match_id,account_id,principal_key,seat_id,revision,action,actor_view,actor_events)
           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [actionId, matchId, accountId, `human:${accountId}`, player.seat_id, revision, action, actorView, JSON.stringify(actorEvents)]);
@@ -284,6 +344,8 @@ export class MatchService {
       const extension=this.extension(match);let state;let rng;let action;let applied;try{state=extension.deserialize(match.state);rng=DeterministicRng.restore(match.rng_state);action=extension.parseAction(task.proposed_action);extension.validateAction(state,{kind:'seat',seatId:player.seat_id,controllerEpoch:player.controller_epoch},action);applied=extension.applyAction(state,{kind:'seat',seatId:player.seat_id,controllerEpoch:player.controller_epoch},action,rng);}catch{throw new AppError('AI_TASK_STALE','AI proposal is no longer legal',409);}
       const serialized=extension.serialize(applied.state);extension.deserialize(serialized);const outcome=extension.getOutcome(applied.state);const finished=typeof outcome==='object'&&outcome!==null&&!Array.isArray(outcome)&&outcome.status==='finished';revision=match.revision+1;const viewer={kind:'seat' as const,seatId:player.seat_id};const actorView=extension.getView(applied.state,viewer);const actorEvents=extension.projectEvents(applied.events,viewer).map((event:Record<string,unknown>,index:number)=>({...event,eventId:`${matchId}:${revision}:${index}`}));const actionId=randomUUID();
       await client.query('UPDATE matches SET state=$2,rng_state=$3,revision=$4,status=$5 WHERE id=$1',[matchId,serialized,rng.snapshot(),revision,finished?'finished':'active']);
+      await client.query('UPDATE match_replay_frames SET internal_events=$3,actor_seat_id=$4 WHERE match_id=$1 AND revision=$2',
+        [matchId, revision, JSON.stringify(applied.events), player.seat_id]);
       if (finished) roomChanged = await this.finishRoom(client, roomId, matchId);
       await client.query('INSERT INTO match_actions(id,match_id,account_id,principal_key,seat_id,revision,action,actor_view,actor_events) VALUES($1,$2,NULL,$3,$4,$5,$6,$7,$8)',[actionId,matchId,principal,player.seat_id,revision,action,actorView,JSON.stringify(actorEvents)]);
       await client.query("INSERT INTO command_receipts(account_id,principal_key,operation,request_id,request_hash,room_id,result_ref,expires_at) VALUES(NULL,$1,$2,$3,$4,$5,$6,'infinity')",[principal,operation,task.request_id,hash,roomId,{actionId,status:finished?'finished':'active'}]);

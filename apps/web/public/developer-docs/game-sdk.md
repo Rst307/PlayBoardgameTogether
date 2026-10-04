@@ -1,5 +1,9 @@
 # 游戏 SDK
 
+## 统一回放（2026-10-04）
+
+内置和在线 ZIP 游戏自动保存已提交局面，无需新规则接口；回放页按原版本读取本人 View，桌面应遵守 busy=true 禁止动作。当前按步骤切换局面，静音，不重放计分或移动动画。原参与者从对局记录进入；进行中的对局不开放回放。
+
 ## 可选玩家显示名称
 
 平台 Web 注册的 GameBoard 第七个可选参数 playerNames 是 seatId→displayName 的公开名称映射，不属于游戏 State 或规则 View。@boardgame/game-sdk/presentation 导出 PlayerNames 与 playerLabel(seatId, seats, viewingSeatId, names?, fallback?)；有名称时本人附加「（你）」，未传名称时本人为「你」、其他为编号标签。昵称不提供动作权限，教程可不传。当前花砖物语与璀璨宝石已接入，在线 ZIP 消息桥尚未增加该参数。

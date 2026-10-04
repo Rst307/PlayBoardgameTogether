@@ -1,5 +1,23 @@
 # 开发进度
 
+## 全游戏身份化对局回放（2026-10-04）
+
+编码前完成页面目标、信息架构、用户流程与棋桌/底部播放栏布局；比较俱乐部、游戏平台、数字棋桌三方向，选择数字棋桌并沿用原 Token/游戏 Artwork。新增独立 `/matches/:id/replay`，历史记录与已结束对局提供入口。支持逐步、开头/末尾、进度拖动、播放/暂停、0.5–4 倍速、末尾重新播放。内置和在线 ZIP 共用原桌面，只读静音，当前不重放移动/计分动画。实际截图检查后移除标题意外继承的白色背景，修正全局 nav 布局冲突与聊天浮窗遮挡，不增加设置卡片或规则区域。
+
+029 在 matches INSERT/状态 revision 更新的原事务保存服务端完整帧，真人/automation 附加内部事件与行动座位，后续持久化失败一起回滚，成功重试不增加帧。读取仅开放 finished/aborted 原固定参与者本人视角，在 REPEATABLE READ 内按精确规则 deserialize/getView/projectEvents；秘密 State/动作/RNG/内部事件不出接口，no-store，不续期房间。图包复用原绑定/hash，缺失使用默认画面。旧局只补迁移时当前帧，明确可用起点，不伪造早期过程。协议/client-sdk、数据模型、架构、SDK、公开开发指南与 README 已同步；说明见 [回放](replays.md)。
+
+本轮实际验证：
+
+- `pnpm typecheck` 通过。初次 Web 可选参数 undefined 类型错误修正后全 workspace 通过；最终 UI 改动后 `pnpm --filter @boardgame/web typecheck` 通过。
+- `pnpm lint` 通过，20 个依赖边界目录；最终代码与测试批次复验通过。沙箱内 tsx 的 Windows 用户信息读取 ENOMEM，沙箱外原命令通过。
+- `pnpm test tests/unit` 初次 157/160：媒体解码两项受沙箱影响，公开 API 文档遗漏回放路由一项失败。沙箱外 `pnpm test tests/unit/stage7-assets.test.ts tests/unit/developer-publication.test.ts` 媒体 6/6 通过；补齐实际 api.md 后 `pnpm test tests/unit/developer-publication.test.ts` 4/4 通过，无 skip。没有把初次失败记为整套通过。
+- `pnpm test:integration`（忽略目录内 wrapper 仅覆盖进程 TEST_DATABASE_URL）：独立 `boardgame_replay_20261004` 经原保护脚本创建、迁移至 029、同步和资源种子后，22 文件/160 项通过，无 skip。覆盖初始/后续/终局帧、重复/冲突/回滚、本人及非成员权限、手牌隐藏、Grid Garden 历史未公开选择、AI 存档、在线 ZIP 精确版本、旧局范围与摘要不符阻塞。未覆盖 .env，未迁移/清理开发库；没有与 E2E 同时清理测试库。
+- `pnpm test:e2e tests/e2e/replay.spec.ts tests/e2e/room-close.spec.ts --output .data/replay-e2e`：真实桌面/手机 6/6 通过，无 skip；关闭房间测试同步为历史回放入口。最终播放栏修正及暂停/重新播放/聊天避让断言后，`pnpm test:e2e tests/e2e/replay.spec.ts --output .data/replay-verified-e2e` 2/2 通过，无 skip。查看 1440px、1024px、390px 截图，无页面水平溢出，播放不发送动作。没有重复全游戏 E2E。
+- `pnpm build` 通过，包含生产 bundle、API runtime、隔离 ZIP 与 AI worker 检查；最终 UI/公开文档改动后 `pnpm --filter @boardgame/web build` 通过。
+- 本轮文件 `git diff --check -- . ':!AGENTS.md'` 通过；用户已有 AGENTS.md 修改及其空白差异保留，不纳入提交。截图、构建、测试 wrapper 均在忽略目录。
+
+未部署线上。上线需应用 029 并加载新版 API/Web。当前不提供公开分享、旁观、切换他人秘密视角、历史移动/计分动画、压缩或独立回放清理；存储随完整 State 大小与动作数增长，按对局生命周期保留。下一步如需这些能力，应先定义信息公开政策和专用回放表现契约。
+
 ## 房间回收补丁版本 0.2.1（2026-10-04）
 
 补齐上一轮遗漏的发布版本：根目录 package.json 从 0.2.0 更新为 0.2.1，页脚沿用 Vite 从根版本注入的配置，README 同步补丁内容与截至 028 的迁移要求。独立游戏/SDK 包版本保持原值，不修改此前 0.2.0 历史记录。

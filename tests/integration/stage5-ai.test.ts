@@ -67,6 +67,7 @@ describe.skipIf(!url)('stage 5 script AI and delegation',()=>{
     const task=await waitFor(async()=>{const result=await db.query<{status:string;safe_error_code:string|null;applied_revision:number|null}>("SELECT status,safe_error_code,applied_revision FROM ai_tasks WHERE match_id=$1 AND seat_id=$2 AND source_revision=1 LIMIT 1",[matchId,botSeat.seatId]);return result.rows[0];},value=>value?.status==='succeeded',5000);
     expect(task).toMatchObject({status:'succeeded',safe_error_code:'AI_FALLBACK_USED',applied_revision:2});
     expect((await db.query<{count:string}>('SELECT count(*) FROM match_actions WHERE match_id=$1 AND revision=2',[matchId])).rows[0]!.count).toBe('1');
+    expect((await db.query('SELECT actor_seat_id,internal_events FROM match_replay_frames WHERE match_id=$1 AND revision=2',[matchId])).rows[0]).toMatchObject({actor_seat_id:botSeat.seatId});
   },10000);
 
   it('restarts from one frozen proposal and keeps its action and request id',async()=>{

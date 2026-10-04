@@ -76,6 +76,52 @@ describe.skipIf(!url)('Color Match formal action flow', () => {
     expect(launched.statusCode).toBe(200);
     return { alice, bob, carol, sessions, roomId, matchId: launched.json().data.matchId as string };
   }
+  it('replays committed frames only to original participants without revealing opposing hands', async () => {
+    const { alice, bob, carol, roomId, matchId } = await start();
+    const endpoint = `/api/v1/matches/${matchId}`;
+    const initialA = (await read(`${endpoint}/view`, alice)).json().data.view;
+    const initialB = (await read(`${endpoint}/view`, bob)).json().data.view;
+    expect((await read(`${endpoint}/replay`, alice)).statusCode).toBe(422);
+    expect((await read(`${endpoint}/replay`, carol)).statusCode).toBe(404);
+    const command = { requestId: 'replay-draw', expectedRevision: 0, action: { type: 'draw_card' } };
+    const changed = await write(`${endpoint}/actions`, alice, command);
+    expect(changed.statusCode).toBe(200);
+    expect((await write(`${endpoint}/actions`, alice, command)).statusCode).toBe(200);
+    expect((await write(`${endpoint}/actions`, alice, { ...command, requestId: 'stale-replay' })).statusCode).toBe(409);
+    expect((await db.query('SELECT revision FROM match_replay_frames WHERE match_id=$1 ORDER BY revision', [matchId])).rows)
+      .toEqual([{ revision: 0 }, { revision: 1 }]);
+    const afterB = (await read(`${endpoint}/view`, bob)).json().data.view;
+    const room = (await read(`/api/v1/rooms/${roomId}`, alice)).json().data;
+    expect((await write(`/api/v1/rooms/${roomId}/close`, alice, {
+      requestId: 'replay-close', expectedRoomRevision: room.roomRevision,
+    })).statusCode).toBe(200);
+    const a = await read(`${endpoint}/replay`, alice);
+    expect(a.statusCode).toBe(200);
+    expect(a.headers['cache-control']).toBe('no-store');
+    expect(a.json().data).toMatchObject({ firstRevision: 0, lastRevision: 1, revision: 0, status: 'aborted', view: initialA });
+    expect((await read(`${endpoint}/replay?revision=0`, bob)).json().data.view).toEqual(initialB);
+    expect((await read(`${endpoint}/replay?revision=1`, alice)).json().data.view).toEqual(changed.json().data.view);
+    const b = (await read(`${endpoint}/replay?revision=1`, bob)).json().data;
+    expect(b.view).toEqual(afterB);
+    expect(b.events.every((event: { eventId: string }) => event.eventId.startsWith(`${matchId}:1:`))).toBe(true);
+    expect(b).not.toHaveProperty('state');
+    expect(b).not.toHaveProperty('action');
+    expect(b).not.toHaveProperty('internal_events');
+    expect(b.view).not.toHaveProperty('deck');
+    expect(JSON.stringify(b)).not.toContain(changed.json().data.view.myHand.at(-1).id);
+    for (const query of ['revision=2', 'revision=-1', 'revision=1.5', 'seatId=other']) {
+      expect((await read(`${endpoint}/replay?${query}`, alice)).statusCode).toBe(400);
+    }
+    expect((await read(`${endpoint}/replay`, carol)).statusCode).toBe(404);
+    expect((await app.inject({ url: `${endpoint}/replay` })).statusCode).toBe(401);
+    // Emulate a legacy retained frame: report the actual available range.
+    await db.query('DELETE FROM match_replay_frames WHERE match_id=$1 AND revision=0', [matchId]);
+    expect((await read(`${endpoint}/replay`, alice)).json().data).toMatchObject({ firstRevision: 1, lastRevision: 1, revision: 1 });
+    // Exact version integrity remains mandatory for historical reads.
+    await db.query("UPDATE matches SET rule_digest='changed' WHERE id=$1", [matchId]);
+    expect((await read(`${endpoint}/replay`, alice)).json().error.code).toBe('RECOVERY_BLOCKED');
+  });
+
   it('updates with an active match and restores sessions, private views, RNG and command receipts', async () => {
     const { alice, bob, matchId } = await start();
     const endpoint = `/api/v1/matches/${matchId}`;
@@ -151,6 +197,10 @@ describe.skipIf(!url)('Color Match formal action flow', () => {
     const ended = (await read(`${endpoint}/view`, alice)).json().data;
     expect(ended.status).toBe('finished');
     expect(ended.view.winner).toBeTruthy();
+    const finalReplay = await read(`${endpoint}/replay?revision=${ended.revision}`, alice);
+    expect(finalReplay.statusCode).toBe(200);
+    expect(finalReplay.json().data.view).toEqual(ended.view);
+    expect((await db.query('SELECT count(*)::int AS count FROM match_replay_frames WHERE match_id=$1', [matchId])).rows[0].count).toBe(ended.revision + 1);
     expect((await db.query<{status:string;revision:number}>('SELECT status,revision FROM matches WHERE id=$1',[matchId])).rows[0]!.status).toBe('finished');
     const finalAction = await db.query<{actor_events:Array<{type:string}>}>(
       'SELECT actor_events FROM match_actions WHERE match_id=$1 ORDER BY revision DESC LIMIT 1', [matchId]);
@@ -493,6 +543,7 @@ describe.skipIf(!url)('Color Match formal action flow', () => {
       const after = (await db.query<{state:unknown;rng_state:unknown;revision:number}>(
         'SELECT state,rng_state,revision FROM matches WHERE id=$1', [matchId])).rows[0]!;
       expect(after).toEqual(before);
+      expect((await db.query('SELECT revision FROM match_replay_frames WHERE match_id=$1', [matchId])).rows).toEqual([{ revision: 0 }]);
       expect((await read(`/api/v1/rooms/${roomId}`, alice)).json().data).toEqual(roomBefore);
       expect((await read(`/api/v1/matches/${matchId}/commands/failed-storage`, alice)).json().data.outcome).toBe('not_found');
       expect((await db.query<{count:string}>('SELECT count(*) FROM match_actions WHERE match_id=$1', [matchId])).rows[0]!.count).toBe('0');

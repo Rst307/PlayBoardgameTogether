@@ -53,7 +53,7 @@ describe.skipIf(!url)('Grid Garden formal action flow', () => {
     return { sessions, roomId, matchId: launched.json().data.matchId as string };
   }
   it('isolates unrevealed choices and serializes same-revision submissions', async () => {
-    const { sessions, matchId } = await start();
+    const { sessions, roomId, matchId } = await start();
     const endpoint = `/api/v1/matches/${matchId}`;
     const [a0, b0] = await Promise.all(sessions.slice(0, 2).map(session => read(`${endpoint}/view`, session)));
     expect(a0.json().data.view.boards[a0.json().data.view.viewingSeatId].energy).toBe(3);
@@ -79,6 +79,17 @@ describe.skipIf(!url)('Grid Garden formal action flow', () => {
     expect(hidden.view.boards[hidden.view.viewingSeatId].energy).not.toBe(3);
     expect(JSON.stringify(hidden.view.revealedChoices)).toContain(first.statusCode === 200 ? 'build' : 'harvest');
     expect(b0.statusCode).toBe(200);
+    const room = (await read(`/api/v1/rooms/${roomId}`, sessions[0]!)).json().data;
+    expect((await write(`/api/v1/rooms/${roomId}/close`, sessions[0]!, {
+      requestId: 'close-for-replay', expectedRoomRevision: room.roomRevision,
+    })).statusCode).toBe(200);
+    const replay = await read(`${endpoint}/replay?revision=1`, other);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json().data.view).toEqual(visible.view);
+    expect(replay.json().data.view.myChoice).toBeNull();
+    expect(replay.json().data.view.revealedChoices).toBeNull();
+    expect(JSON.stringify(replay.json().data.events)).not.toContain('build');
+    expect(JSON.stringify(replay.json().data.events)).not.toContain('harvest');
   });
 
   it('enumerates all simultaneous AI requests, keeps boards independent, and persists placements', async () => {

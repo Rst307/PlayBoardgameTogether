@@ -1,5 +1,9 @@
 # 协议
 
+## 对局回放（2026-10-04）
+
+新增认证 GET `/api/v1/matches/:id/replay?revision=N`，严格 query 和本人投影响应由 matchReplayQuerySchema/matchReplaySchema 定义。仅固定参与者读取 finished/aborted 对局，no-store；未指定 revision 从可用起点开始。完整 DTO、错误与隐私约束见 [回放协议](replays.md#协议)。
+
 ## 无人房间关闭（2026-10-04）
 
 无需新增 DTO 或客户端命令。认证房间读取、active 对局读取和健康 WS 房间订阅续期；约 30 分钟无人访问后沿用 closed 快照、room.closed 通知与 aborted 对局状态。续期不改变业务 revision。新增服务端 WebSocket 控制帧 ping/pong 存活探测，浏览器自动回复，现有 JSON ping/pong 保留。

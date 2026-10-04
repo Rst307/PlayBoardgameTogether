@@ -1,5 +1,9 @@
 # 架构
 
+## 平台统一回放（2026-10-04）
+
+MatchService.replay 在只读 REPEATABLE READ 事务读取固定参与者、帧范围/指定帧/名称，再调用原精确扩展 getView/projectEvents。029 在开局和动作原事务捕获 State，真人/automation 附加事件，不增加规则执行或第二套动作入口。Web 独立 ReplayPage 复用原桌面和图包，只有历史身份化 View，禁用动作与 live 音频。详情见 [回放](replays.md)。
+
 ## 无人房间生命周期（2026-10-04）
 
 RoomService 拥有持久活动续期和有界超时关闭事务；app 在认证房间/active 对局读取、健康 WS 订阅时调用续期，大厅、内部广播和 AI 行动不续期。app 装配每分钟单飞扫描，服务关闭时停止计时器并等待在途清理再关闭数据库；WS 控制帧心跳清理半开连接。沿用 room → match 锁序与提交后 room changed 通知，不增加运行单元或游戏规则分支。028 活动时间跨重启保存，presence 仍为单实例，不宣称多副本实时协调。

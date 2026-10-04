@@ -3,7 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { ZodError, z } from 'zod';
-import { createLabMatchSchema, labActionSchema, pingMessageSchema, PROTOCOL_VERSION, type ErrorCode } from '@boardgame/protocol';
+import { matchReplayQuerySchema, matchReplaySchema, createLabMatchSchema, labActionSchema, pingMessageSchema, PROTOCOL_VERSION, type ErrorCode } from '@boardgame/protocol';
 import { normalizeConfig, type ApiConfigInput } from './config.js';
 import { databaseStatus, listInstalledGames, type Database } from './db/index.js';
 import { type GameRegistry } from './registry/index.js';
@@ -180,6 +180,12 @@ export async function createApp(deps:AppDeps):Promise<FastifyInstance>{
   });
   app.delete('/api/v1/rooms/:id/seats/:seatId/bot',async request=>{const a=await protectedWrite(request);const p=request.params as{id:string;seatId:string};return ok(request,await rooms.removeBot(a.account.id,p.id,p.seatId,request.body));});
   app.post('/api/v1/rooms/:id/close',async request=>{const a=await protectedWrite(request);return ok(request,await rooms.closeRoom(a.account.id,(request.params as any).id,request.body));});
+  app.get('/api/v1/matches/:id/replay', async request => {
+    const account = await requireAuth(request);
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    const query = matchReplayQuerySchema.parse(request.query);
+    return ok(request, matchReplaySchema.parse(await matches.replay(account!.account.id, id, query.revision)));
+  });
   app.get('/api/v1/matches/:id/view', async request => {
     const a = await requireAuth(request);
     const snapshot = await matches.view(a!.account.id, (request.params as { id: string }).id);

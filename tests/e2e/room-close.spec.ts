@@ -48,15 +48,15 @@ for(const started of [false,true])test(`host closes ${started?'active':'waiting'
     await expect(a).toHaveURL(/\/$/);
     await expect(a.getByRole('heading',{name:'游戏大厅',exact:true})).toBeVisible();
     if (started) {
-      await a.getByRole('link', { name: '我的资料', exact: true }).click();
+      await a.goto('/profile/history');
       const history = a.locator('article.room-row');
       await expect(history).toContainText('已中止');
-      await history.getByRole('link', { name: '查看对局' }).click();
+      await history.getByRole('link', { name: '查看回放' }).click();
       await expect(a).toHaveURL(/\/matches\//);
-      await expect(a.getByRole('button', { name: '返回我的资料' })).toBeVisible();
-      await expect(a.getByText(/你的座位.*已终止/)).toBeVisible();
+      await expect(a.getByRole('link', { name: '返回对局记录' })).toBeVisible();
+      await expect(a.getByText(/你的视角.*已中止/)).toBeVisible();
       await a.reload();
-      await expect(a.getByRole('button', { name: '返回我的资料' })).toBeVisible();
+      await expect(a.getByRole('link', { name: '返回对局记录' })).toBeVisible();
     }
   }finally{await host.close();await guest.close();}
 });

@@ -453,6 +453,7 @@ export function MatchPage({ id }: { id: string }) {
       </section>
       <aside className="match-support" aria-label="对局辅助">
         <h2>对局工具</h2>
+        {data.status !== 'active' && <a className="button-link secondary" href={`/matches/${id}/replay`}>查看回放</a>}
         <p className="muted">返回房间不会退出对局。规则、声音与托管设置可按需展开。</p>
     {data.status==='active'&&<details className="panel controller-panel"><summary>控制方式 · {data.controller.type === 'human' ? '由你操作' : '托管中'}</summary><h2>控制方式</h2><p>{data.controller.type==='script'||data.controller.type==='model'?`托管中 · ${aiNames[data.aiStatus.status]}`:'由你操作'}</p>{data.controller.type==='human'?<><p className="muted">真人座位不能开启脚本托管；脚本 AI 请在开局前添加至专用座位。</p>{modelProfiles.filter(profile=>profile.has_credential||profile.endpoint_id==='mock').map(profile=><button className="secondary" key={profile.id} disabled={busy||!!pending||connection!=='online'} onClick={()=>void setController('model',profile.id)}>启用模型 · {profile.name}</button>)}</>:<button disabled={busy||!!pending||connection!=='online'} onClick={()=>void setController('human')}>收回控制</button>}<p className="muted">托管会持续到主动收回，关闭页面不会停止。外部模型会收到此座位可见的游戏信息。</p></details>}
     <GameRules gameId={data.gameId} version={data.gameVersion}/>
