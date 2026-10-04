@@ -33,16 +33,16 @@ afterAll(async () => {
   if (app) await app.close();
 });
 it('installs the real artwork ZIP, persists atomic/private/deduplicated turns, restarts and completes a replayable match', async () => {
-  const zip = await readFile('dist/game-packages/rummikub-1.0.1.zip');
+  const zip = await readFile('dist/game-packages/rummikub-1.0.2.zip');
   const uploadHeaders = { ...admin, 'content-type': 'application/zip' };
   const reviewed = await app.inject({ method: 'POST', url: '/api/v1/admin/game-packages/review', headers: uploadHeaders, payload: zip });
   expect(reviewed.statusCode).toBe(200);
   const installed = await app.inject({ method: 'POST', url: `/api/v1/admin/game-packages?requestId=${randomUUID()}&expectedCatalogHash=${reviewed.json().data.catalogHash}`, headers: uploadHeaders, payload: zip });
   expect(installed.statusCode).toBe(200);
-  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.rummikub', version: '1.0.1' })]));
-  const art = await app.inject({ url: '/api/v1/game-packages/online.rummikub/versions/1.0.1/art/cover.png' });
+  expect((await app.inject({ url: '/api/v1/games' })).json().data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'online.rummikub', version: '1.0.2' })]));
+  const art = await app.inject({ url: '/api/v1/game-packages/online.rummikub/versions/1.0.2/art/cover.png' });
   expect(art.statusCode).toBe(200); expect(art.headers['content-type']).toContain('image/png');
-  const created = await write('/api/v1/rooms', alice, { requestId: randomUUID(), name: '拉密验收', gameId: 'online.rummikub', version: '1.0.1', options: {}, seatCount: 2 });
+  const created = await write('/api/v1/rooms', alice, { requestId: randomUUID(), name: '拉密验收', gameId: 'online.rummikub', version: '1.0.2', options: {}, seatCount: 2 });
   expect(created.statusCode).toBe(200);
   const { roomId, inviteCode } = created.json().data;
   const joined = await write('/api/v1/rooms/join', bob, { requestId: randomUUID(), inviteCode });

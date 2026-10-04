@@ -13,7 +13,7 @@ const id = (color: number, number: number) => color * 26 + (number - 1) * 2;
 const run = (color: number, number: number, length = 3) => Array.from({ length }, (_, i) => id(color, number + i));
 
 test('catalog artwork fits the real cover and small icon without letterboxing or cropping', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.1.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.2.zip'));
   const css = await readFile(new URL('../../apps/web/src/styles/catalog.css', import.meta.url), 'utf8');
   await page.setContent(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><style>
@@ -43,7 +43,7 @@ test('catalog artwork fits the real cover and small icon without letterboxing or
 });
 
 test('real sandbox tile drafting, atomic play, privacy, recovery and responsive motion', async ({ page }, info) => {
-  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.1.zip'));
+  const parsed = readGamePackage(await readFile('dist/game-packages/rummikub-1.0.2.zip'));
   expect(Object.keys(parsed.presentation).sort()).toEqual(['background', 'cover', 'icon']);
   const game = (await PackageRuntime.create()).extension(parsed.server);
   const rng = new DeterministicRng(7);
@@ -75,7 +75,7 @@ test('real sandbox tile drafting, atomic play, privacy, recovery and responsive 
     import { PackageBoard } from './src/games/PackageBoard.tsx';
     const root = createRoot(document.getElementById('root'));
     const render = (view, busy = false, events = []) => root.render(<PackageBoard
-      id="online.rummikub" version="1.0.1" view={view} busy={busy} events={events}
+      id="online.rummikub" version="1.0.2" view={view} busy={busy} events={events}
       onAction={action => window.acceptAction(action)} />);
     addEventListener('message', event => {
       if (event.data?.type === 'fixture:view') render(event.data.view, event.data.busy, event.data.events);
@@ -146,8 +146,10 @@ test('real sandbox tile drafting, atomic play, privacy, recovery and responsive 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await frame.locator('#sort-number').click();
   expect(await child.evaluate(() => document.getAnimations().length)).toBe(0);
-  // Suggestion previews do not send an action. Return selected new tiles to rack.
-  await frame.locator('#hint').click();
+  // Players form their own combinations; the removed suggestion control is absent.
+  await expect(frame.getByRole('button', { name: '组合建议' })).toHaveCount(0);
+  for (const number of [1, 2, 3]) await frame.locator('#rack').getByRole('button', { name: '蓝 ' + number, exact: true }).click();
+  await frame.locator('#new-row').click();
   await expect(frame.locator('#play')).toBeEnabled();
   expect(received).toHaveLength(1);
   await frame.locator('#reset').click();
@@ -162,7 +164,7 @@ test('real sandbox tile drafting, atomic play, privacy, recovery and responsive 
   seatId = 'b'; await publish();
   await expect(frame.locator('#rack .tile')).toHaveCount(15);
   await expect(frame.locator('#rack').getByRole('button', { name: '百搭牌 1', exact: true })).toHaveCount(0);
-  await publish(true); await expect(frame.locator('#hint')).toBeDisabled();
+  await publish(true); await expect(frame.locator('#play')).toBeDisabled();
   expect(await child.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
   await page.screenshot({ path: info.outputPath('table.png') });

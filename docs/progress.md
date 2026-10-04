@@ -1,5 +1,11 @@
 # 开发进度
 
+## 拉密 1.0.2 移除组合建议（2026-10-04）
+
+按用户要求删除玩家端「组合建议」按钮、点击预览逻辑、按钮状态更新及玩法文案。保留手动组牌、拆分、排序、撤销、还原和合法性反馈；服务端候选仍用于脚本/模型 AI，不改变权威规则。包版本升级 1.0.2，输出 `dist/game-packages/rummikub-1.0.2.zip`（543502 字节），更新当前说明和测试版本引用，保留历史验收记录。未在开发/生产环境上架，须管理员上传新版；旧局继续使用原精确版本。
+
+实际验证：打包成功；`pnpm typecheck` 通过；`pnpm test tests/unit/rummikub-package.test.ts` 8/8 通过（包括完整 AI 对局）；四尺寸浏览器专项 `node node_modules/@playwright/test/cli.js test --config playwright.rummikub-ui.config.ts --output .data/rummikub-no-hint-ui` 8/8 通过，明确断言组合建议按钮不存在，使用手动组牌完成原流程，已检查 320px 最终截图。通过忽略目录 wrapper 的进程变量在已准备的独立 `boardgame_rummikub_20261004` 执行 `pnpm test tests/integration/rummikub-package.test.ts`，1/1 通过，无 skip，覆盖 1.0.2 安装、完整对局和恢复。`pnpm lint` 全库未通过：另一批卡坦岛新增脚本的 URL 未声明及测试 prefer-const 共 10 项错误；未修改这些无关文件。改用 `node node_modules/eslint/bin/eslint.js scripts/package-rummikub.mjs tests/e2e/rummikub-package-ui.spec.ts tests/integration/rummikub-package.test.ts` 本轮文件通过，`node node_modules/tsx/dist/cli.mjs scripts/check-boundaries.ts` 20 目录通过。未重复不受影响的全量业务测试/生产构建。
+
 ## 拉密 1.0.1 封面适配（2026-10-04）
 
 截图确认原 3:2 封面在大厅 16:9 容器内上下裁切，小字和复用封面的方形图标不可读。封面 SVG 改为原生 16:9，移除顶部英文小字，放大数字牌并保持标题/副标题在安全区域；新增独立方形三牌图标，打包输出封面/背景 960×540、图标 256×256，不改其他游戏的全局展示样式。manifest 升级 1.0.1，contentVersion 和全部规则行为保留，输出 `dist/game-packages/rummikub-1.0.1.zip`（543602 字节）。已安装版本不可覆盖，管理员需上传审核新版；尚未在开发/生产库安装。
