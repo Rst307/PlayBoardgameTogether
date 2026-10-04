@@ -118,3 +118,7 @@ HTTP envelope 为 `{ok:true,data,traceId}` 或 `{ok:false,error:{code,message,re
 - room.snapshot 增加 visibility、hasPassword、matchStatus；进行中退出返回 ROOM_ALREADY_STARTED/409；关闭仅限房主，允许终止 active 对局，非房主返回 FORBIDDEN/403。关闭与终止同事务提交，成功后广播关闭快照/通知。导航不改变成员资格。
 
 新大厅/创建结果/规则的客户端响应均经共享 schema 校验。控制器仍保留协议 script 枚举用于专用 bot 与历史回执；真人新请求无法开启脚本。
+
+## 在线游戏包审核与替换（2026-10-04）
+
+POST `/api/v1/admin/game-packages/review` 接收 application/zip 字节，沿用管理员 session/Origin/CSRF/大小及限流保护，只检查不写库。共享 gamePackageReviewSchema 返回 gameId/version/name/hash/kind/installedVersions/catalogHash；kind 为 new/update/installed，按 manifest.id 识别。安装 query 新增可选 expectedCatalogHash，已有游戏的新版本必须提供审核时 catalogHash。事务内目录哈希冲突返回 STATE_CONFLICT；重复成功回执优先返回。新版本与旧版本下架及安装回执原子提交，旧精确规则不改写。同版本相同包不改变上架状态。

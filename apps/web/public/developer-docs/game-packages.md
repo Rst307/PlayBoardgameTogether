@@ -1,6 +1,6 @@
 # 在线游戏 ZIP
 
-管理员在「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」选择包并点击「安装并上架」。成功后立即出现在大厅，支持创建房间、真人完整对局、刷新与 API 重启恢复。下载 [可玩示例 ZIP](/api/v1/game-packages/example.zip)，解压即可查看全部规则和桌面代码。
+管理员在「更多 → 管理员后台 → 游戏管理 → 上传游戏 ZIP」选择包，点击「检查游戏包」，查看识别结果并审核通过后上架或更新。成功后立即出现在大厅，支持创建房间、真人完整对局、刷新与 API 重启恢复。下载 [可玩示例 ZIP](/api/v1/game-packages/example.zip)，解压即可查看全部规则和桌面代码。
 
 ## 包格式 v1
 
@@ -57,7 +57,9 @@ parent.postMessage({type:'boardgame:action', action:{type:'your-action'}}, '*');
 
 ## 安装 API 与版本
 
-`POST /api/v1/admin/game-packages?requestId=UUID`，正文为 ZIP 字节，Content-Type 为 application/zip；需要管理员 session、同源 Origin 和 X-CSRF-Token。共享返回为 `{ok:true,data:{gameId,version,name,hash},traceId}`。client-sdk 提供 `installGamePackage(file,requestId,signal)`。
+先 POST `/api/v1/admin/game-packages/review`（相同 ZIP 正文和身份保护）执行格式及规则生命周期检查，不持久化或改变上架状态。返回 gameId/version/name/hash、kind（new/update/installed）、installedVersions 和 catalogHash。按 manifest.id 判断同一游戏，名称不参与身份判断。管理员人工审核来源、规则及私密投影后发布。更新必须在安装请求 query 传 expectedCatalogHash；审核后的安装版本或上架状态变化返回 STATE_CONFLICT，需重新检查。同 ID 新版本原子下架所有旧版本并上架上传版本，大厅只显示新版；等待中的旧版本房间无法开局，进行中/历史对局继续使用旧规则。旧源码与桌面不删除，同版本不同内容仍须提升版本号。相同包重传不改变目录状态，也不重复覆盖。
+
+`POST /api/v1/admin/game-packages?requestId=UUID`，正文为 ZIP 字节，Content-Type 为 application/zip；需要管理员 session、同源 Origin 和 X-CSRF-Token。共享返回为 `{ok:true,data:{gameId,version,name,hash},traceId}`。client-sdk 提供 `reviewGamePackage(file,signal)` 和 `installGamePackage(file,requestId,signal,expectedCatalogHash)`。
 
 上传前检查身份及 CSRF，事务内再次检查活跃管理员和未撤销 session。安装元数据、源码、桌面及回执一起原子提交；只有提交后注册并返回成功。同一账户/requestId/ZIP 重试返回原结果，不重复安装；不同字节复用 ID 为 REQUEST_ID_CONFLICT。同版本不同包为 STATE_CONFLICT，必须提升版本，不能覆盖内置或旧版本。相同包重传不会重新上架已下架版本。
 

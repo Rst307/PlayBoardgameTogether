@@ -178,3 +178,7 @@ RoomService 复用原房间写事务添加和修改 bot 的脚本/模型配置�
 ## 在线包 AI 与默认展示图（2026-10-03）
 
 registry/PackageRuntime 对可选 getDecisionContext 做严格有界 JSON 适配，基础 worker 按需加载内置策略、其他 basic-v1 使用包的有序合法候选；不在宿主加载包 JS，不新增 gameId 规则分支。脚本/模型仍使用 AiScheduler、matches 权限/事务。catalog/package-art 校验 PNG 数据，025 在包表保存不可变默认图，package-routes 提供公开 PNG，presentations.list 以管理员 URL 优先、包默认次之。浏览器复用既有 GameArtwork，不接触 State、图片 base64 或数据库。UNO 1.1.0 在 ZIP 中携带原创图标/封面/背景和自己的私密 View 候选排序。
+
+## 在线游戏更新审核（2026-10-04）
+
+catalog/package-service 复用同一隔离规则生命周期检查生成只读审核摘要，按 gameId 查询安装版本及启停 revision。发布在原安装 advisory lock、管理员/session 重验与回执事务中校验 catalogHash，再原子下架同 ID 旧版本并插入新版本。registry 保留全部不可变规则，旧 matches 不迁移；没有新增认证、数据库表或运行单元。上传弹窗以检查/审核发布两步消费 protocol/client-sdk，不解析 ZIP 或秘密 State。

@@ -13,7 +13,8 @@ test('UNO ZIP includes visible art and completes a real human/script-AI game', a
     await page.getByRole('button', { name: '上传游戏 ZIP' }).click();
     const bytes = await readFile('dist/game-packages/uno-1.1.0.zip');
     await page.getByLabel('游戏 ZIP 文件').setInputFiles({ name: 'uno-1.1.0.zip', mimeType: 'application/zip', buffer: bytes });
-    await page.getByRole('button', { name: '安装并上架', exact: true }).click();
+    await page.getByRole('button', { name: '检查游戏包', exact: true }).click();
+    await page.getByRole('button', { name: /^(审核通过并上架|确认已安装版本)$/, exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '已安装并上架' })).toBeVisible();
     await page.goto('/');
     const card = page.locator('a.game-card[href="/games/online.uno/1.1.0"]');

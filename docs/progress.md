@@ -1,5 +1,21 @@
 # 开发进度
 
+## 在线上传识别新游戏与审核更新（2026-10-04）
+
+按 manifest.id 而非名称识别游戏，现有上传弹窗采用选文件 → 检查 → 人工审核发布两步；检查展示新游戏/已有游戏更新/已安装、精确 ID 和版本。检查不持久化、不改变目录。更新审核后在原安装事务中锁定旧版本行、校验目录版本/启停 revision 摘要、上架新版并下架同 ID 旧版本，大厅只显示新版。并发状态变化要求重新检查；失败原子回滚，重复成功先返回回执。同版本不同内容仍要求提升版本；相同包重传不重新上架。进行中及历史对局继续按旧精确规则和桌面恢复，等待中的旧版本房间不能开局，审核界面明确提示。没有新数据库迁移，管理员承担来源/规则/私密投影的人工审核。
+
+实际验证：
+
+- pnpm typecheck、pnpm lint 通过，20 个源目录边界通过；最终增加安装行锁后 pnpm --filter @boardgame/api typecheck/build 和 pnpm lint 再通过。
+- pnpm test tests/unit/package-enhancements.test.ts tests/unit/uno-package.test.ts tests/unit/developer-publication.test.ts：3 文件 19 项通过，无 skip。
+- pnpm build 通过，含生产 bundle/API runtime、隔离 ZIP 规则与 AI worker 检查；前端/协议与 SDK 均构建成功。
+- pnpm test:integration 和 pnpm test:e2e tests/e2e/game-packages.spec.ts tests/e2e/uno-package.spec.ts 均在 seed-assets 阶段因既有 Built-in bytes differ from saved hash; restore original backup 失败。原脚本确认独立 boardgame_test、完成迁移与游戏同步；没有改写资源字节/哈希、环境配置或开发数据库。
+- 在上述已准备的隔离测试库上，pnpm test tests/integration/game-packages.test.ts：2 项真实数据库回归通过，无 skip。覆盖新旧识别、Origin/CSRF/管理员权限、审核无副作用、缺失/过期审核摘要、启停变化后恢复原状态仍过期、并发重复、失败回滚旧上架状态、新版大厅唯一、旧局状态/RNG/revision 不变、API 重启后旧局继续完成和源码损坏阻断。首次新增故障注入函数的 SQL 定界符写错，修正后通过；最终安装行锁改动后再次通过。
+- pnpm exec tsx --env-file=.env scripts/run-e2e.ts tests/e2e/game-packages.spec.ts tests/e2e/uno-package.spec.ts --output .data/package-update/real-e2e：原 runner 专项桌面/手机 4 项通过，真实登录、管理员检查/审核上传、隔离 iframe 双人完整对局/刷新恢复、UNO 图片及真人/脚本 AI 完整对局。此专项不依赖损坏的内置媒体，没有跳过任何用例或削弱隔离。
+- pnpm exec playwright test --config playwright.packages-ui.config.ts --output .data/package-update/ui：生产前端桌面/手机 2 项通过，无 skip。以模拟 API 验证检查前不发布、取消无发布、识别新旧、审核冲突重检和发布关闭，检查无横向溢出；实际查看两端审核截图。该检查不替代真实数据库回归。临时备份、脚本、补丁及截图仅在忽略的 .data/package-update。
+
+README、管理员说明、公开 ZIP 指南、协议与架构同步。保留工作区其他修改，仅提交本轮差异。下一步从原备份恢复测试库对应内置媒体后再运行全套集成/E2E；专项已通过不代表全套通过。
+
 ## 好友菜单、头像与开桌邀请视觉修复（2026-10-04）
 
 完成好友/邀请页面目标、功能去留、层级与流程自检，保留原分栏路由。原「更多」展开把私聊按钮从 44px 撑到 96px；改成独立浮层，支持 Esc 回焦、点击外部/Tab 离开关闭，删除保留确认和原命令。服务端已投影 avatar，原列表误渲染昵称首字；好友列表、搜索、申请及房间邀请现在与资料页共享六种头像定义，概要刷新同步选择。
