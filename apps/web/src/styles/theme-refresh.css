@@ -17,8 +17,8 @@
   --muted-dark: #64748b;
   
   /* Modern borders */
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  --line: rgb(var(--neutral-rgb, 255 255 255) / 0.08);
+  --line-strong: rgb(var(--neutral-rgb, 255 255 255) / 0.16);
   --control-line: #858589;
   --control-line-focus: #0a84ff;
   
@@ -43,7 +43,7 @@
   --radius: 14px;
   --radius-lg: 20px;
   --shadow-sm: 0 2px 8px -1px rgba(0, 0, 0, 0.3);
-  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgb(var(--neutral-rgb, 255 255 255) / 0.07);
   --shadow-card-hover: 0 12px 32px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(59, 130, 246, 0.35), 0 0 24px -4px rgba(59, 130, 246, 0.25);
   
   /* Modern font stack */
@@ -96,11 +96,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.16);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.28);
 }
 
 body {
@@ -161,7 +161,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .site-header {
-  background: rgba(12, 16, 25, 0.88) !important;
+  background: rgb(var(--surface-rgb, 12 16 25) / 0.88) !important;
   backdrop-filter: blur(28px) !important;
   -webkit-backdrop-filter: blur(28px) !important;
   border-right: 1px solid var(--line) !important;
@@ -260,7 +260,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: transform 180ms ease, opacity 180ms ease;
 }
 .site-header nav > a:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   color: #ffffff !important;
   transform: translateX(2px);
 }
@@ -295,12 +295,12 @@ h1, h2, h3, h4, h5, h6 {
   transition: background-color 160ms, color 160ms;
 }
 .nav-tools summary:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   color: #ffffff !important;
 }
 .nav-tools > div {
   padding: 8px !important;
-  background: rgba(18, 24, 38, 0.95) !important;
+  background: rgb(var(--surface-rgb, 18 24 38) / 0.95) !important;
   backdrop-filter: blur(24px) !important;
   border: 1px solid var(--line-strong) !important;
   border-radius: 12px !important;
@@ -317,7 +317,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: all 140ms ease;
 }
 .nav-tools a:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   color: #ffffff !important;
   transform: translateX(2px);
 }
@@ -347,7 +347,7 @@ h1, h2, h3, h4, h5, h6 {
 .workspace-toolbar {
   min-height: 56px !important;
   padding: 12px 32px !important;
-  background: rgba(13, 17, 26, 0.7) !important;
+  background: rgb(var(--surface-rgb, 13 17 26) / 0.7) !important;
   backdrop-filter: blur(16px) !important;
   border-bottom: 1px solid var(--line) !important;
   font-size: 13px !important;
@@ -361,7 +361,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600 !important;
 }
 .toolbar-detail {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.05);
   border: 1px solid var(--line);
   padding: 3px 8px;
   border-radius: 6px;
@@ -379,17 +379,17 @@ footer {
    Panels, Cards & Modern Frosted Surfaces
    ========================================================================== */
 .panel {
-  background: rgba(19, 25, 38, 0.72) !important;
+  background: rgb(var(--surface-rgb, 19 25 38) / 0.72) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-card) !important;
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .dashboard-grid > .panel {
-  background: rgba(19, 25, 38, 0.75) !important;
+  background: rgb(var(--surface-rgb, 19 25 38) / 0.75) !important;
   border-radius: 16px !important;
 }
 
@@ -416,7 +416,7 @@ button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-
 .button-link:not(.secondary) {
   background: var(--accent-gradient) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.16) !important;
   box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.45) !important;
 }
 button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-cell):not(.sp-table button):not(.az-table button):hover:not(:disabled),
@@ -433,14 +433,14 @@ button:not(.secondary):not(.danger):not(.room-row):not(.color-card):not(.garden-
 
 /* Secondary buttons */
 button.secondary, .button-link.secondary {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   color: var(--text) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
   box-shadow: none !important;
 }
 button.secondary:hover:not(:disabled), .button-link.secondary:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.22) !important;
   color: #ffffff !important;
   transform: translateY(-1px) !important;
 }
@@ -474,8 +474,8 @@ button:disabled, .button-link:disabled {
    Form Controls, Inputs, Selects
    ========================================================================== */
 input, select, textarea, .form-stack select, .form-stack textarea, .lobby-filters select {
-  background: rgba(14, 19, 30, 0.8) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgb(var(--surface-rgb, 14 19 30) / 0.8) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
   border-radius: 10px !important;
   color: var(--text) !important;
   padding: 10px 14px !important;
@@ -485,8 +485,8 @@ input, select, textarea, .form-stack select, .form-stack textarea, .lobby-filter
 }
 
 input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.25) !important;
-  background: rgba(18, 24, 38, 0.9) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.25) !important;
+  background: rgb(var(--surface-rgb, 18 24 38) / 0.9) !important;
 }
 
 :where(button, a, input, select, textarea, summary):focus-visible,
@@ -498,8 +498,8 @@ input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:dis
 
 /* Checkbox & radio */
 input[type="checkbox"], input[type="radio"] {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  background: rgba(14, 19, 30, 0.8) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.2) !important;
+  background: rgb(var(--surface-rgb, 14 19 30) / 0.8) !important;
   transition: all 160ms ease !important;
 }
 input[type="checkbox"]:checked, input[type="radio"]:checked {
@@ -559,7 +559,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 .status--idle {
   background: rgba(148, 163, 184, 0.12) !important;
   color: var(--muted) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
 }
 
 .error-notice {
@@ -582,7 +582,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 
 /* Skeleton Loading Shimmer */
 .loading-placeholder {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.04) 75%) !important;
+  background: linear-gradient(90deg, rgb(var(--neutral-rgb, 255 255 255) / 0.04) 25%, rgb(var(--neutral-rgb, 255 255 255) / 0.09) 50%, rgb(var(--neutral-rgb, 255 255 255) / 0.04) 75%) !important;
   background-size: 200% 100% !important;
   animation: shimmer 1.6s infinite !important;
   border-radius: 12px !important;
@@ -602,7 +602,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   font-size: 21px !important;
 }
 .catalog-section-heading > span {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.06);
   border: 1px solid var(--line);
   padding: 4px 12px;
   border-radius: 9999px;
@@ -616,12 +616,12 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
    ========================================================================== */
 .game-detail-banner {
   border-radius: 20px !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
   box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6) !important;
   background: #111728 !important;
 }
 .game-detail-banner::after {
-  background: linear-gradient(90deg, rgba(11, 15, 24, 0.95) 0%, rgba(11, 15, 24, 0.82) 50%, rgba(11, 15, 24, 0.4) 100%) !important;
+  background: linear-gradient(90deg, rgb(var(--surface-rgb, 11 15 24) / 0.95) 0%, rgb(var(--surface-rgb, 11 15 24) / 0.82) 50%, rgb(var(--surface-rgb, 11 15 24) / 0.4) 100%) !important;
 }
 .game-banner-content {
   padding: 32px 36px !important;
@@ -632,7 +632,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   width: 96px !important;
   height: 96px !important;
   border-radius: 22px !important;
-  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border: 2px solid rgb(var(--neutral-rgb, 255 255 255) / 0.2) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55) !important;
 }
 .game-banner-content h1 {
@@ -654,8 +654,8 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   align-items: center !important;
   justify-content: space-between !important;
   padding: 16px 20px !important;
-  background: rgba(20, 26, 42, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--surface-rgb, 20 26 42) / 0.65) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   border-radius: 14px !important;
   margin: 10px 0 !important;
   transition: all 180ms ease !important;
@@ -664,7 +664,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   text-decoration: none;
 }
 .room-row:hover:not(:disabled) {
-  background: rgba(28, 38, 62, 0.85) !important;
+  background: rgb(var(--surface-rgb, 28 38 62) / 0.85) !important;
   border-color: rgba(59, 130, 246, 0.35) !important;
   transform: translateX(3px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -680,8 +680,8 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 .game-room-page .lobby-filters {
-  background: rgba(19, 25, 38, 0.7) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--surface-rgb, 19 25 38) / 0.7) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   border-radius: 14px !important;
   padding: 18px 20px !important;
 }
@@ -695,15 +695,15 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   gap: 20px !important;
   align-items: start !important;
   margin-top: 36px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   padding-top: 26px !important;
 }
 
 .detail-support-card {
-  background: rgba(19, 25, 38, 0.72) !important;
+  background: rgb(var(--surface-rgb, 19 25 38) / 0.72) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
   border-radius: 16px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
   margin: 0 !important;
@@ -713,13 +713,13 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 .detail-support-card:hover {
-  border-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.16) !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35) !important;
 }
 
 .detail-support-card[open] {
   border-color: rgba(59, 130, 246, 0.35) !important;
-  background: rgba(20, 27, 42, 0.88) !important;
+  background: rgb(var(--surface-rgb, 20 27 42) / 0.88) !important;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45) !important;
 }
 
@@ -741,7 +741,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 .detail-support-card > summary:hover {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.03) !important;
 }
 
 .detail-support-card > summary:focus-visible {
@@ -819,14 +819,14 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   border-radius: 8px !important;
   color: var(--muted) !important;
   flex-shrink: 0 !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.04) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), background-color 160ms, color 160ms !important;
 }
 
 .detail-support-card:hover .detail-support-chevron {
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
 }
 
 .detail-support-card[open] .detail-support-chevron {
@@ -838,7 +838,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 
 .detail-support-body {
   padding: 20px 22px 24px 22px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-top: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   animation: content-reveal 240ms cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -850,8 +850,8 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 .rules-content-box {
-  background: rgba(11, 15, 24, 0.6) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--surface-rgb, 11 15 24) / 0.6) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.06) !important;
   border-radius: 12px !important;
   padding: 16px 18px !important;
   margin-bottom: 16px !important;
@@ -924,8 +924,8 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   margin: 24px 0 !important;
 }
 .seat-card {
-  background: rgba(20, 26, 42, 0.78) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  background: rgb(var(--surface-rgb, 20 26 42) / 0.78) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.09) !important;
   border-radius: 16px !important;
   padding: 22px !important;
   min-height: 190px !important;
@@ -936,7 +936,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   transition: all 200ms ease !important;
 }
 .seat-card:hover {
-  border-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.16) !important;
   transform: translateY(-2px);
 }
 .seat-card h2 {
@@ -951,7 +951,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 
 .room-actions {
-  background: rgba(20, 26, 42, 0.8) !important;
+  background: rgb(var(--surface-rgb, 20 26 42) / 0.8) !important;
   border-radius: 16px !important;
   padding: 24px !important;
 }
@@ -966,9 +966,9 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 .auth-card {
   width: min(440px, 100%) !important;
-  background: rgba(18, 24, 38, 0.88) !important;
+  background: rgb(var(--surface-rgb, 18 24 38) / 0.88) !important;
   backdrop-filter: blur(28px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
   border-radius: 20px !important;
   padding: 36px 32px !important;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
@@ -1014,7 +1014,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 .avatar-options {
   border: 1px solid var(--line) !important;
   border-radius: 12px !important;
-  background: rgba(15, 20, 32, 0.5) !important;
+  background: rgb(var(--surface-rgb, 15 20 32) / 0.5) !important;
   padding: 12px !important;
   gap: 10px !important;
 }
@@ -1022,12 +1022,12 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   border: 1px solid var(--line) !important;
   border-radius: 10px !important;
   padding: 8px 12px !important;
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.03) !important;
   transition: all 160ms ease !important;
 }
 .avatar-options label:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.08) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.2) !important;
 }
 .avatar-options label:has(input:checked) {
   border-color: var(--accent) !important;
@@ -1040,7 +1040,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
    ========================================================================== */
 .color-card {
   border-radius: 14px !important;
-  border: 2px solid rgba(255, 255, 255, 0.18) !important;
+  border: 2px solid rgb(var(--neutral-rgb, 255 255 255) / 0.18) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
   font-weight: 700 !important;
   transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), outline 160ms !important;
@@ -1084,7 +1084,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
     justify-content: space-between !important;
     border-right: none !important;
     border-bottom: 1px solid var(--line) !important;
-    background: rgba(13, 17, 26, 0.95) !important;
+    background: rgb(var(--surface-rgb, 13 17 26) / 0.95) !important;
   }
   .site-header nav {
     width: 100% !important;
@@ -1249,7 +1249,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 .status-service-card:hover {
   transform: translateY(-3px) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgb(var(--neutral-rgb, 255 255 255) / 0.18) !important;
   box-shadow: var(--shadow-card-hover) !important;
 }
 .status-service-header {
@@ -1264,7 +1264,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.05);
   border: 1px solid var(--line);
 }
 .status-service-card h2 {
@@ -1297,7 +1297,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   color: var(--muted);
 }
 .game-form-desc {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.03);
   border-left: 3px solid var(--accent);
   padding: 10px 14px;
   border-radius: 0 8px 8px 0;
@@ -1320,7 +1320,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 }
 .advanced-options-details summary:hover {
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.03);
 }
 .advanced-options-body {
   padding: 14px 16px 16px !important;
@@ -1334,7 +1334,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
 .guest-welcome-banner {
   margin-top: 32px !important;
   padding: 24px 30px !important;
-  background: linear-gradient(135deg, rgba(20, 26, 42, 0.88) 0%, rgba(30, 42, 68, 0.75) 100%) !important;
+  background: linear-gradient(135deg, rgb(var(--surface-rgb, 20 26 42) / 0.88) 0%, rgba(30, 42, 68, 0.75) 100%) !important;
   border: 1px solid rgba(59, 130, 246, 0.25) !important;
   border-radius: 18px !important;
   display: flex !important;
@@ -1439,7 +1439,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   height: 6px !important;
   border-radius: 3px !important;
   padding: 0 !important;
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.12) !important;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -1489,7 +1489,7 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   gap: 8px !important;
   margin-top: 14px !important;
   padding: 12px 14px !important;
-  background: rgba(14, 19, 30, 0.6) !important;
+  background: rgb(var(--surface-rgb, 14 19 30) / 0.6) !important;
   border: 1px solid var(--line) !important;
   border-radius: 12px !important;
 }
@@ -1497,9 +1497,9 @@ input[type="checkbox"]:checked, input[type="radio"]:checked {
   font-size: 12px !important;
   padding: 4px 10px !important;
   border-radius: 6px !important;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgb(var(--neutral-rgb, 255 255 255) / 0.05);
   color: var(--text-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgb(var(--neutral-rgb, 255 255 255) / 0.06);
 }
 
 /* 9. Profile Page Avatar Radio Grid */

@@ -11,3 +11,4 @@ import './styles/tutorial.css';
 import './styles/model-settings.css';
 import './styles/theme-refresh.css';
 import './styles/rooms.css';
+import './styles/themes.css';

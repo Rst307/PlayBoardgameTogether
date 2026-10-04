@@ -5,6 +5,7 @@ import { PageBoundary } from './PageBoundary.js';
 import { resolvePage } from './routes.js';
 import { SocialProvider, useSocialContext } from '../social/SocialProvider.js';
 import { ChatDock, SocialNotifications } from '../social/SocialNotifications.js';
+import { ThemeSelect } from './ThemeSelect.js';
 
 export function App() {
   const path = usePageNavigation();
@@ -42,6 +43,7 @@ function AppShell({ path }: { path: string }) {
         <a href="/friends" aria-current={(path === '/friends' || path.startsWith('/friends/')) ? 'page' : undefined}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 3 5" /></svg>好友</a>
         <a href="/developers" aria-current={route.developer ? 'page' : undefined}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 3l-4 18" /></svg>开发者文档</a>
         <details className="nav-tools"><summary>更多</summary><div>
+          <ThemeSelect />
           <a href="/admin" aria-current={path === '/admin' || path.startsWith('/admin/') ? 'page' : undefined}>管理员后台</a>
           <a href="/settings/models" aria-current={path === '/settings/models' ? 'page' : undefined}>模型设置</a>
           {labEnabled && <><a href="/dev/lab" aria-current={path === '/dev/lab' ? 'page' : undefined}>扩展实验台</a><a href="/dev/ui" aria-current={path === '/dev/ui' ? 'page' : undefined}>界面场景</a></>}

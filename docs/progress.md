@@ -1,5 +1,22 @@
 # 开发进度
 
+## 亮色主题与全站外观切换（2026-10-04）
+
+先完成页面目标、常驻/低频功能、层级与操作步骤自检，外观选择收进「更多」菜单，页面原主任务及主要操作保持。新增亮色、深色、跟随系统三种选择；默认跟随系统，亮色采用浅灰背景、白色表面、深色正文和蓝色强调。适配平台共享面板、侧栏/手机菜单、表单/焦点、状态提示、目录、规则、开发文档、模型设置及教程。游戏图包/语义色与独立棋盘配色保留，隔离上传包 HTML 不被自动改写。
+
+偏好保存到当前浏览器 localStorage，刷新恢复、系统变化及标签页同步；存储不可用时本页切换可用。HTML 在主包下载前应用已保存主题并同步浏览器主题色，切换不重挂载页面、不清空输入或重启教程。系统/storage 监听有清理入口；没有业务 API、认证、数据库或规则变化。视觉检查发现手机更多菜单被路径栏部分遮挡，修正展开时层级并加入遮挡断言。界面说明同步到 ui-system.md。
+
+实际验证：
+
+- `pnpm typecheck`、`pnpm lint` 通过，20 个源目录边界通过；后续主题标签 JSX 修正后 `pnpm --filter @boardgame/web typecheck` 和相关文件 ESLint 通过，最后补充主题测试后专项 ESLint 通过。
+- `pnpm test tests/unit/developer-publication.test.ts`：4/4 通过，无 skip。
+- `pnpm build` 通过，包含生产 bundle/API runtime 与隔离 ZIP 规则/AI worker 检查；后续首屏脚本、手机层级、棋盘兼容样式更新后 `pnpm --filter @boardgame/web build` 通过。
+- `pnpm test:ui --output .data/theme-ui-final`：14/14 通过，包含原公开文档/导航/登录/失败恢复和主题桌面/手机用例。初次新增用例因包裹 label 的精确文本匹配失败，改为显式 htmlFor/id 关联后通过。
+- 最终 `pnpm exec playwright test --config playwright.ui.config.ts tests/e2e/theme.spec.ts --output .data/theme-ui-complete`：8/8 通过，无 skip。覆盖切换/表单保留、320/390/1440px 无横向溢出、手机设置标签无遮挡、跨路由/刷新、系统改变、显式偏好优先、跨标签页、禁用存储、阻断主包时首屏主题，以及真实花砖/宝石教程棋盘可读与切换不重启。实际查看亮色桌面/手机登录、文档和两款教程棋盘截图；测试只模拟公开目录响应，不算真实数据库整局验收。截图和临时诊断脚本仅留忽略目录 `.data`。
+- 确认 `TEST_DATABASE_URL` 为独立 `boardgame_test`，与开发库不同后，`pnpm test:e2e tests/e2e/theme.spec.ts` 在准备阶段被 `ECONNREFUSED 127.0.0.1:5434` 阻断；`pnpm db:up` 因 Docker Desktop Linux engine 管道不存在失败。未覆盖 `.env` 或清理开发库，真实数据库 E2E 未执行。本轮未改服务端，未运行集成和全量业务测试。
+
+下一步：恢复 PostgreSQL/Docker 后执行数据库 E2E，检查真实登录、房间及正式对局下的主题切换。本轮保留已有 AGENTS.md、README.md、architecture.md 用户改动，提交仅包含主题代码、测试和说明。
+
 ## 简化个人资料、全局通知与桌面聊天浮窗（2026-10-04）
 
 先梳理资料页目标、常驻功能、次级入口、层级与用户流程，默认 `/profile` 只展示名片及一个编辑主入口；表单、ID 管理、完整对局记录分别进入 `/profile/edit`、`/profile/identity`、`/profile/history`，内部账户资料和退出登录收进账户操作。默认不请求对局历史，原保存/分页接口保持。手机标题和操作同行，320/390/768/1440px 无整页横向溢出。
