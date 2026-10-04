@@ -5,17 +5,10 @@ import { PageFeedback } from '@boardgame/ui';
 import { api, navigate } from '../platform.js';
 import { FriendIdCard } from '../social/FriendIdCard.js';
 import { useSocialContext } from '../social/SocialProvider.js';
+import { avatars } from '../social/PersonAvatar.js';
 import '../styles/social.css';
 import '../styles/profile.css';
 
-const avatars = [
-  { id: 'dice', label: '骰子', symbol: '🎲' },
-  { id: 'leaf', label: '绿叶', symbol: '🌿' },
-  { id: 'cat', label: '猫咪', symbol: '🐱' },
-  { id: 'rocket', label: '火箭', symbol: '🚀' },
-  { id: 'star', label: '星星', symbol: '⭐' },
-  { id: 'coffee', label: '咖啡', symbol: '☕' },
-] as const;
 const statuses = { active: '进行中', finished: '已结束', aborted: '已中止' };
 const date = (value: string) => new Date(value).toLocaleString('zh-CN');
 

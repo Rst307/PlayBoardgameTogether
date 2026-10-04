@@ -1,5 +1,20 @@
 # 开发进度
 
+## 好友菜单、头像与开桌邀请视觉修复（2026-10-04）
+
+完成好友/邀请页面目标、功能去留、层级与流程自检，保留原分栏路由。原「更多」展开把私聊按钮从 44px 撑到 96px；改成独立浮层，支持 Esc 回焦、点击外部/Tab 离开关闭，删除保留确认和原命令。服务端已投影 avatar，原列表误渲染昵称首字；好友列表、搜索、申请及房间邀请现在与资料页共享六种头像定义，概要刷新同步选择。
+
+邀请以头像、房间名、姓名、文字状态标签和有效期组成紧凑行；蓝/绿/琥珀/灰区分待回应/已接受/已拒绝/失效，适配亮暗主题和手机。有效收到邀请仍走原密码/加入链路，不自动入座；失效待处理记录隐藏无效操作。没有服务端、协议、数据库或规则修改，社交说明同步。
+
+实际验证：
+
+- 最小复现：pnpm exec playwright test --config playwright.social-ui.config.ts --project desktop --grep 'friend avatars|friend options' --output .data/friends-fix-red 两项失败；断言分别得到首字「桌」而非 🐱，以及私聊高度 96 而非 44。
+- pnpm typecheck、pnpm lint 通过（20 个源目录边界）；最终相关文件 ESLint 通过。pnpm test tests/unit/friend-handles.test.ts 3/3 通过，无 skip。
+- pnpm --filter @boardgame/web build 通过。pnpm exec playwright test --config playwright.social-ui.config.ts --output .data/friends-fix-final 桌面/手机 10/10 通过，无 skip；覆盖六种头像刷新、菜单不撑高/Esc/Tab/点击外部、320/390/768/1440px 视口、四色状态、邀请方向及原密码门槛/通知/聊天/资料流程。测试使用合法 HTTP 投影，不替代数据库验收；实际查看桌面/手机菜单和亮暗邀请截图，产物仅留忽略目录 .data。随后修正截图在下一主题前恢复原视口，专项 --grep 'room invitations distinguish' 2/2 通过。
+- 确认独立 boardgame_test 与开发库不同后，pnpm test:e2e tests/e2e/social.spec.ts 在准备阶段被 ECONNREFUSED 127.0.0.1:5434 阻断。pnpm db:up 因 Docker Desktop Linux engine 管道不存在失败，未清理开发库或覆盖 .env；真实双账户数据库流程未验证。前端局部修复未运行服务端集成和全量阶段验收。
+
+下一步：恢复 PostgreSQL/Docker 后重跑真实好友 E2E，确认双账户头像修改、私聊与邀请。保留并排除本轮无关的管理员更新及其他工作区改动。
+
 ## 亮色主题与全站外观切换（2026-10-04）
 
 先完成页面目标、常驻/低频功能、层级与操作步骤自检，外观选择收进「更多」菜单，页面原主任务及主要操作保持。新增亮色、深色、跟随系统三种选择；默认跟随系统，亮色采用浅灰背景、白色表面、深色正文和蓝色强调。适配平台共享面板、侧栏/手机菜单、表单/焦点、状态提示、目录、规则、开发文档、模型设置及教程。游戏图包/语义色与独立棋盘配色保留，隔离上传包 HTML 不被自动改写。

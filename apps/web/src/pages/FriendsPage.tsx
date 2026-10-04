@@ -6,6 +6,8 @@ import { api, navigate } from '../platform.js';
 import { useSocial, useSocialCommand } from '../social/useSocial.js';
 import { DirectChat } from '../social/DirectChat.js';
 import { FriendIdCard } from '../social/FriendIdCard.js';
+import { PersonAvatar } from '../social/PersonAvatar.js';
+import { FriendOptions } from '../social/FriendOptions.js';
 import '../styles/social.css';
 
 function Invitation({ invite, me, run, busy, refresh }: {
@@ -24,16 +26,25 @@ function Invitation({ invite, me, run, busy, refresh }: {
       else void refresh();
     });
   };
-  const state = invite.status === 'accepted' ? '已接受' : invite.status === 'rejected' ? '已拒绝' : invite.available ? '等待回应' : '已失效';
-  return <article className="social-row"><div><strong>{invite.roomName}</strong>
-    <p>{incoming ? `${invite.sender.displayName} 邀请你` : `已邀请 ${invite.recipient.displayName}`} · {state}</p>
-    <small className="muted">有效至 {new Date(invite.expiresAt).toLocaleString('zh-CN')}{invite.hasPassword ? ' · 需要房间密码' : ''}</small>
-  </div>{incoming && invite.status === 'accepted' && <a className="button-link secondary" href={`/rooms/${invite.roomId}`}>进入已接受的房间</a>}
-  {incoming && invite.status === 'pending' && <div className="form-stack">
-    {invite.available && invite.hasPassword && <label>邀请房间密码<input type="password" autoComplete="off" maxLength={128} value={password} disabled={busy} onChange={event => setPassword(event.target.value)} /></label>}
-    <div className="social-actions"><button disabled={busy || !invite.available || (invite.hasPassword && !password)} onClick={() => respond('accept')}>接受并加入</button>
-      <button className="secondary" disabled={busy} onClick={() => respond('reject')}>拒绝邀请</button></div>
-  </div>}</article>;
+  const state = invite.status === 'accepted' ? 'accepted' : invite.status === 'rejected' ? 'rejected' : invite.available ? 'pending' : 'expired';
+  const labels = { accepted: '已接受', rejected: '已拒绝', pending: '等待回应', expired: '已失效' };
+  const person = incoming ? invite.sender : invite.recipient;
+  return <article className={'social-row invitation-row invitation-row--' + state}>
+    <div className="social-person invitation-person">
+      <PersonAvatar person={person} />
+      <div className="invitation-content">
+        <div className="invitation-title"><strong>{invite.roomName}</strong><span className={'invitation-status invitation-status--' + state}>{labels[state]}</span></div>
+        <p className="invitation-direction">{incoming ? person.displayName + ' 邀请你' : '已邀请 ' + person.displayName}</p>
+        <small className="muted invitation-meta">有效至 <time dateTime={invite.expiresAt}>{new Date(invite.expiresAt).toLocaleString('zh-CN')}</time>{invite.hasPassword ? ' · 需要房间密码' : ''}</small>
+      </div>
+    </div>
+    {incoming && invite.status === 'accepted' && <a className="button-link secondary" href={'/rooms/' + invite.roomId}>进入已接受的房间</a>}
+    {incoming && invite.status === 'pending' && invite.available && <div className="form-stack invitation-response">
+      {invite.hasPassword && <label>邀请房间密码<input type="password" autoComplete="off" maxLength={128} value={password} disabled={busy} onChange={event => setPassword(event.target.value)} /></label>}
+      <div className="social-actions"><button disabled={busy || (invite.hasPassword && !password)} onClick={() => respond('accept')}>接受并加入</button>
+        <button className="secondary" disabled={busy} onClick={() => respond('reject')}>拒绝邀请</button></div>
+    </div>}
+  </article>;
 }
 
 export type FriendsSection = 'list' | 'add' | 'requests' | 'invitations' | 'chat';
@@ -93,12 +104,12 @@ export function FriendsPage({ section = 'list', friendId }: {
       {data.friends.length === 0 && <div className="social-empty"><h3>还没有好友</h3><p className="muted">添加一位朋友，私聊约时间，也能在房间里邀请对方。</p><a className="button-link" href="/friends/add">去添加好友</a></div>}
       {data.friends.length > 0 && friends.length === 0 && <p className="social-empty muted">没有匹配的好友，试试其他昵称或 ID。</p>}
       {friends.map(item => <article className="social-row" key={item.person.id}>
-        <div className="social-person"><span className="social-avatar" aria-hidden="true">{Array.from(item.person.displayName)[0]}</span><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)}</p>{item.unread > 0 && <span className="unread-count">{item.unread} 条未读</span>}</div></div>
+        <div className="social-person"><PersonAvatar person={item.person} /><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)}</p>{item.unread > 0 && <span className="unread-count">{item.unread} 条未读</span>}</div></div>
         <div className="social-actions">
           <a className="button-link secondary" href={`/friends/chat/${item.person.id}`}>私聊 {item.person.displayName}</a>
-          <details className="friend-options"><summary aria-label={`${item.person.displayName} 的好友操作`}>更多</summary><button className="secondary" disabled={action.busy} onClick={() => {
+          <FriendOptions name={item.person.displayName} busy={action.busy} onRemove={() => {
             if (confirm(`删除好友 ${item.person.displayName}？删除后将不能继续私聊或邀请。`)) void action.run(`remove:${item.person.id}:${item.revision}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: 'remove' }), '好友已删除', () => void refresh());
-          }}>删除好友</button></details>
+          }} />
         </div>
       </article>)}
     </section>}
@@ -108,7 +119,7 @@ export function FriendsPage({ section = 'list', friendId }: {
       <div className="social-add-layout"><section className="panel"><h2>搜索朋友</h2><p className="muted">输入完整的好友 ID，搜索后确认昵称再发送申请。</p>
         <form className="form-stack" onSubmit={find}><label>搜索好友 ID<input required minLength={3} maxLength={37} pattern="@?[A-Za-z0-9_]{3,36}" placeholder="@rst307" value={search} disabled={action.busy} onChange={event => { setSearch(event.target.value); setResult(undefined); }} /></label><button disabled={action.busy}>{action.busy ? '处理中…' : '搜索用户'}</button></form>
         {result === null && <p role="status">没有找到这个好友 ID。</p>}
-        {result && <article className="social-row"><div><strong>{result.displayName}</strong><p className="friend-id">{formatFriendId(result.friendId)}</p></div>
+        {result && <article className="social-row"><div className="social-person"><PersonAvatar person={result} /><div><strong>{result.displayName}</strong><p className="friend-id">{formatFriendId(result.friendId)}</p></div></div>
           {result.friendId === data.identity.friendId ? <span>这是你自己</span> : data.friends.some(item => item.person.id === result.id) ? <span>已是好友</span> : data.requests.some(item => item.person.id === result.id) ? <a href="/friends/requests">查看待处理申请</a> : <button disabled={action.busy} onClick={() => void action.run(`request:${result.friendId}`, id => api.requestFriend({ requestId: id, friendId: result.friendId }), '好友申请已提交，请等待对方确认', () => void refresh())}>发送好友申请</button>}
         </article>}
         <p className="muted">申请进度可在 <a href="/friends/requests">好友申请</a> 中查看。</p>
@@ -118,13 +129,13 @@ export function FriendsPage({ section = 'list', friendId }: {
     {section === 'requests' && <div className="social-request-layout">
       {([['收到的申请', incoming], ['发出的申请', outgoing]] as const).map(([heading, items]) => <section className="panel" key={heading}><h2>{heading} <small>({items.length})</small></h2>
         {items.length === 0 && <p className="social-empty muted">{heading === '收到的申请' ? '暂无待处理申请。朋友发来申请后会显示在这里。' : '暂无发出的申请。'} </p>}
-        {items.map(item => <article className="social-row" key={item.person.id}><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div>
+        {items.map(item => <article className="social-row" key={item.person.id}><div className="social-person"><PersonAvatar person={item.person} /><div><strong>{item.person.displayName}</strong><p className="muted friend-id">{formatFriendId(item.person.friendId)} · {item.direction === 'incoming' ? '请求添加你' : '等待对方确认'}</p></div></div>
           <div className="social-actions">{(item.direction === 'incoming' ? ['accept', 'reject'] as const : ['cancel'] as const).map(operation => <button key={operation} className={operation === 'accept' ? '' : 'secondary'} disabled={action.busy} onClick={() => void action.run(`friend:${item.person.id}:${item.revision}:${operation}`, id => api.updateFriend(item.person.id, { requestId: id, expectedRevision: item.revision, action: operation }), operation === 'accept' ? '已成为好友，可返回好友列表开始私聊' : '申请已处理', () => void refresh())}>{operation === 'accept' ? '接受申请' : operation === 'reject' ? '拒绝申请' : '撤回申请'}</button>)}</div>
         </article>)}
       </section>)}
     </div>}
 
-    {section === 'invitations' && <section className="panel"><h2>开桌邀请</h2><p className="muted">想邀请朋友？进入等待中的房间，点击「邀请好友」。接受邀请后仍需自行入座。</p>
+    {section === 'invitations' && <section className="panel social-invitations"><h2>开桌邀请</h2><p className="muted invitation-help">在等待中的房间点击「邀请好友」。接受邀请后，选择座位即可准备。</p>
       {data.invitations.length === 0 && <p className="social-empty muted">暂无房间邀请。</p>}
       {data.invitations.map(invite => <Invitation key={invite.id} invite={invite} me={invite.sender.friendId === data.identity.friendId ? invite.sender.id : invite.recipient.id} run={action.run} busy={action.busy} refresh={refresh} />)}
     </section>}
