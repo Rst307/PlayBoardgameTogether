@@ -192,3 +192,31 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+.admin-update-progress {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+.admin-update-progress li {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.admin-update-progress li[data-state='active'] {
+  color: var(--text);
+  font-weight: 600;
+}
+.admin-update-step-number {
+  text-align: center;
+}
+.admin-update-progress small {
+  font-weight: 400;
+  white-space: nowrap;
+}
+.admin-update-waiting p {
+  margin: 8px 0;
+}

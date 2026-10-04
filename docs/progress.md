@@ -1,5 +1,13 @@
 # 开发进度
 
+## 服务更新阶段可见性修复（2026-10-04）
+
+针对后台「更新处理中」无法辨认进度的问题，保留独立页面和单一检测操作，将真实阶段置于版本信息前，用四步列表展示检测、安装构建、安全等待、切换验证。等待时前两步标为已完成，按钮显示「等待安全切换」，明确构建完成但尚未切换及后续检测周期重试。未修改更新器、安全排空、协议或 API；现有接口没有具体阻塞项、安装构建内部进度或完成百分比，页面如实说明。失败与已是最新版不推断步骤，未启用仍禁用操作。在线更新指南同步。
+
+本轮实际验证：修复前 `pnpm exec playwright test --config playwright.updates-ui.config.ts --project desktop -g 'administrator can request' --output .data/update-progress-red` 失败，未找到「等待安全切换」按钮。修复后 `pnpm typecheck`、`pnpm lint` 通过（20 个边界目录）；`pnpm test tests/unit/admin-update-control.test.ts tests/unit/online-update.test.ts` 14/14 通过；`pnpm --filter @boardgame/web build` 通过。最后主题分隔线修正后重建 Web，`pnpm exec playwright test --config playwright.updates-ui.config.ts --output .data/update-progress-final` 桌面/手机 4/4 通过，无 skip，包含完成步骤、当前步骤、更新成功、权限与 320px 无横向溢出断言。已实际查看桌面与手机等待截图。
+
+限制：UI 用合法 DTO 模拟状态，不连接或清理数据库，不代表真实远程安装切换验收；未运行数据库集成、真实账户 E2E、全量构建或公网部署。下一步若需要精确阻塞原因和构建内部进度，应扩展监督进程的结构化状态及共享协议；本轮不推断或编造这些数据。截图仅保留在忽略目录 .data。
+
 ## 好友列表标题栏布局修复（2026-10-04）
 
 复现好友页标题栏误继承 base.css 全局 header 的导航栏留白、固定高度和半透明白色背景，导致灰色横条与文字挤压。仅在 social-section-heading 明确设置自动高度、局部留白、透明背景和弹性换行，保留页面入口、私聊和更多菜单。新增实际生产页面回归测试，检查明暗主题及 320/390/768/1440px 下背景、水平留白、标题及链接边界和页面横向溢出。

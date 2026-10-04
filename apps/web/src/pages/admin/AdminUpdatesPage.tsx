@@ -18,6 +18,31 @@ const messages: Record<AdminUpdateStatus['phase'], string> = {
   failed: '更新未完成，请稍后重试；维护者可检查更新日志和服务就绪状态。',
 };
 const working = new Set(['checking', 'building', 'waiting', 'applying']);
+const steps = ['检测发布版本', '安装依赖并构建', '等待安全切换', '切换并验证服务'];
+const progressPhase: Partial<Record<AdminUpdateStatus['phase'], number>> = {
+  checking: 0, building: 1, waiting: 2, maintenance: 2, applying: 3, updated: 4,
+};
+
+function UpdateProgress({ phase }: { phase: AdminUpdateStatus['phase'] }) {
+  const active = progressPhase[phase];
+  if (active === undefined) return null;
+  return (
+    <ol className="admin-update-progress" aria-label="更新步骤">
+      {steps.map((label, index) => {
+        const complete = index < active;
+        const current = index === active;
+        return (
+          <li key={label} data-state={complete ? 'complete' : current ? 'active' : 'pending'}
+            aria-current={current ? 'step' : undefined}>
+            <span className="admin-update-step-number" aria-hidden="true">{complete ? '✓' : index + 1}</span>
+            <span>{label}</span>
+            <small>{complete ? '已完成' : current ? phase === 'waiting' || phase === 'maintenance' ? '等待中' : '进行中' : '待开始'}</small>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 function UpdatePanel() {
   const [status, setStatus] = useState<AdminUpdateStatus>();
@@ -73,16 +98,21 @@ function UpdatePanel() {
   }
   return (
     <section className="admin-update-section" aria-label="服务更新">
+      <p role="status">{status ? messages[status.phase] : '正在读取更新状态…'}</p>
+      {status && <UpdateProgress phase={status.phase} />}
+      {status?.phase === 'waiting' && <div className="admin-update-waiting">
+        <p>构建已完成，尚未切换版本。</p>
+        <p className="muted">更新器会在后续检测周期重试。进行中的对局、实时连接或持续请求都可能延后切换；当前接口尚未提供具体阻塞项。此页每 3 秒刷新状态，查看进度不会延长请求静默等待。</p>
+      </div>}
       <dl className="admin-update-details">
         <div><dt>发布分支</dt><dd>{status?.branch ?? '—'}</dd></div>
         <div><dt>当前版本</dt><dd>{status?.currentSha?.slice(0, 12) ?? '—'}</dd></div>
         {status?.candidateSha && <div><dt>候选版本</dt><dd>{status.candidateSha.slice(0, 12)}</dd></div>}
         <div><dt>最近检测</dt><dd>{status?.lastCheckedAt ? new Date(status.lastCheckedAt).toLocaleString('zh-CN') : '尚未检测'}</dd></div>
       </dl>
-      <p role="status">{status ? messages[status.phase] : '正在读取更新状态…'}</p>
       {error && <p role="alert">{error}</p>}
       <Button onClick={() => { void check(); }} disabled={!status?.enabled || sending || working.has(status.phase)}>
-        {sending ? '正在提交…' : status && working.has(status.phase) ? '更新处理中…' : '立即检测并更新'}
+        {sending ? '正在提交…' : status?.phase === 'waiting' ? '等待安全切换' : status && working.has(status.phase) ? '更新处理中…' : '立即检测并更新'}
       </Button>
       <p className="muted">检测已合并到发布分支的代码。更新不会强制中断对局或自动刷新玩家页面。</p>
     </section>

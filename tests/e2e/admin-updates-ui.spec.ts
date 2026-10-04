@@ -26,6 +26,12 @@ test('administrator can request an update and distinguish waiting, maintenance a
   expect(commands).toBe(1);
   state.phase = 'waiting';
   await expect(page.getByRole('status')).toContainText('等待请求静默');
+  await expect(page.getByRole('button', { name: '等待安全切换' })).toBeDisabled();
+  const progress = page.getByRole('list', { name: '更新步骤' });
+  await expect(progress.getByText('安装依赖并构建')).toBeVisible();
+  await expect(progress.locator('[data-state="complete"]')).toHaveCount(2);
+  await expect(progress.locator('[aria-current="step"]')).toContainText('等待安全切换');
+  await expect(page.getByText('构建已完成，尚未切换版本。', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('updates-waiting.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   state.phase = 'maintenance';
@@ -34,6 +40,8 @@ test('administrator can request an update and distinguish waiting, maintenance a
   state.currentSha = 'b'.repeat(40);
   state.candidateSha = null;
   await expect(page.getByRole('status')).toContainText('更新成功');
+  await expect(progress.locator('[data-state="complete"]')).toHaveCount(4);
+  await expect(progress.locator('[aria-current="step"]')).toHaveCount(0);
   const navigation = page.getByRole('navigation', { name: '后台导航' });
   expect((await navigation.boundingBox())?.height).toBeLessThan(130);
   if (info.project.name === 'mobile') {
