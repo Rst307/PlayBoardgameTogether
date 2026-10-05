@@ -1,5 +1,11 @@
 # 协议
 
+## 账户与房间客户端契约（2026-10-05）
+
+protocol/auth 提供 AccountPublic、SessionPublic 与登录/登出响应 schema；RoomService 的公开 RoomSnapshot 直接使用共享 schema 推导类型。房间 revision、座位、准备、配置、房主、加入等输入由 protocol 定义，API 与 client-sdk 复用。旧 HTTP 格式不变。
+
+client-sdk 的账户/房间方法不再允许调用者指定返回泛型，所有响应先作为 unknown 校验。roomCommand 接收 RoomCommand 判别对象，选择固定传输路径与响应 schema；type/seatId/settings 仅为 SDK 包装，不进入原 HTTP 正文。迁移示例见 [客户端 SDK](../apps/web/public/developer-docs/client-sdk.md)。
+
 ## 对局回放（2026-10-04）
 
 新增认证 GET `/api/v1/matches/:id/replay?revision=N`，严格 query 和本人投影响应由 matchReplayQuerySchema/matchReplaySchema 定义。仅固定参与者读取 finished/aborted 对局，no-store；未指定 revision 从可用起点开始。完整 DTO、错误与隐私约束见 [回放协议](replays.md#协议)。

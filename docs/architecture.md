@@ -1,5 +1,17 @@
 # 架构
 
+## 平台核心结构整理（2026-10-05）
+
+app.ts 装配现有服务；routes/AccountRoutes、RoomRoutes、MatchRoutes 分别管理账户/资料/模型设置、房间、对局的传输边界，共用 routes/context 的会话、Origin、CSRF 和响应包装。realtime/index 拥有认证/公开 WS、连接、订阅、presence、会话撤销与广播，返回明确清理入口。服务关闭继续先等待房间清理与 AI 在途工作，再释放 realtime 和数据库；不新增运行单元。
+
+MatchService 的真人/automation 入口各自处理授权、去重和过期校验，随后在原 room → match 锁和同一事务中调用 applyLockedAction，共用规则转换、RNG、结算、事件投影、对局/回放/动作/回执持久化；调用方仍拥有提交和提交后通知。view 与 replay 都使用只读 REPEATABLE READ，使局面及所有控制者元数据来自同一快照。
+
+Web RoomPage/MatchPage 消费 useRoomSession/useMatchSession，不再拥有订阅和动作恢复细节；房间 hook 验证 WS 快照及 presence 并拒绝旧 presenceSeq。ModelSettingsPage 拆为配置目录、编辑器和 useModelSettings；AssetAdminPage 拆出草稿编辑器和 useAssetWorkspace。保持原路由、页面结构和操作步骤。
+
+styles/index.css 明确 foundation/platform/components/games/shell/theme 优先级及子层顺序；按需加载样式进入声明层，不再靠加载时机加权。除跳转链接和减少动态效果外，移除普通布局/主题 !important。璀璨宝石与花砖样式由各自游戏客户端拥有，build 复制 CSS，平台不提前加载璀璨宝石样式。格式检查限定本次整理模块，保留其他模块后续迁移空间。
+
+平台 AppShell 通过 useGameOverlayInset 测量导航高度，向扩展暴露 --platform-top-inset；ResizeObserver 随页面切换清理。璀璨宝石固定行动提示使用该安全高度，避免移动端导航换行后遮挡，游戏仍拥有提示布局。
+
 ## 平台统一回放（2026-10-04）
 
 MatchService.replay 在只读 REPEATABLE READ 事务读取固定参与者、帧范围/指定帧/名称，再调用原精确扩展 getView/projectEvents。029 在开局和动作原事务捕获 State，真人/automation 附加事件，不增加规则执行或第二套动作入口。Web 独立 ReplayPage 复用原桌面和图包，只有历史身份化 View，禁用动作与 live 音频。详情见 [回放](replays.md)。

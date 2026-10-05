@@ -1,5 +1,25 @@
 # 开发进度
 
+## 核心结构复杂度整理（2026-10-05）
+
+按本轮结构审查逐项处理：API 的账户/房间/对局 HTTP 路由与 realtime 从 app.ts 分离，统一会话/Origin/CSRF 边界；真人和 AI 动作共用 applyLockedAction，保留各自身份、去重、过期判断及原 room → match 锁序、事务、提交后广播。对局 view 改为只读 REPEATABLE READ。新增真实并发交错测试：在首次 match 查询后更新控制者，修复前重现 controllerEpoch 不一致，修复后本人控制者与控制者列表来自同一快照。
+
+protocol 提供公开账户、session、房间输入/响应及判别式命令；client-sdk 登录、会话、房间、正式 View 消费共享 schema，删除调用者泛型伪装类型，只有验证过的 session 才更新 CSRF。房间命令固定类型到路径/方法映射；创建房间响应保留原有 room 与一次性邀请码信息。RoomPage 不再用 any 解析身份和房间。公开 games 与开发实验台的旧泛型保留，正式链路未新增第二套 DTO。
+
+RoomPage/MatchPage 的订阅、重连、快照、动作恢复移入 useRoomSession/useMatchSession；模型设置拆为目录/编辑器/控制器，资源管理拆出草稿编辑器与控制器，页面原流程与信息架构保留。样式建立唯一入口和显式 layer 优先级，游戏 CSS 由游戏客户端按需加载。统计平台样式与两款游戏客户端，剔除注释后 !important 声明从 991 降至 51，剩余仅为跳转链接与减少动态效果。新增限定本批模块的 Prettier 检查并接入 lint，未全库机械格式化。架构、协议、UI 系统和公开 SDK 文档同步。
+
+实际验证：pnpm typecheck、pnpm lint（含 20 个 AST 边界目录及格式门禁）、pnpm build 通过；pnpm test tests/unit 为 36 文件 / 187 测试通过，新增 SDK 边界与命令测试；最终 SDK 修正后该新增文件 3/3 复验通过。通过忽略目录 wrapper 使用独立 boardgame_replay_20261004 执行 pnpm test:integration，24 文件 / 163 测试通过，无 skip，覆盖权限、去重、并发、回滚、AI、WS、恢复和回放。未清理开发库。
+
+生产静态 UI 专项 pnpm test:ui --output .data/architecture-ui 为 19 通过 / 1 按既有配置桌面跳过（仅手机菜单回归）；已查看桌面登录与手机璀璨宝石教程截图。首次完整 E2E 暴露旧 session 夹具、内联 CSS 未展开新入口及过时导航/文案断言；补齐真实 DTO 与完整 CSS，按当前路由和菜单关闭行为更新断言，没有放宽权限/业务断言。花砖首次运行期间发生开发 HMR，稳定代码后桌面/手机整局均通过。
+
+完整 E2E `pnpm test:e2e --output .data/architecture-e2e-final` 实际执行 186 项：166 通过、19 失败、1 桌面跳过。失败包括独立库安装额外游戏导致固定目录数量不适用、玩家名称更新后的旧文案、深色主题测试未显式指定系统外观、登出旧夹具、退出房间保存 URL 的异步竞态，以及本批样式层级造成的聊天浮层定位/公共聊天背景覆盖。对前者修正夹具与明确测试前提，保持完整业务断言；对后者将外壳设为高于组件的独立 shell 层，主题气泡规则限定私聊。最终生产包已重新 build 和 lint 通过，生产 UI 专项再次 19 通过 / 1 桌面跳过。
+
+2026-10-06 最终复验：针对全部失败和外壳/主题影响范围，14 个 spec 的 72 项 E2E（.data/architecture-verified）为 61 通过、10 失败、1 桌面跳过。聊天样式、登出、原始/经典图包桌面整局已通过；余项定位为目录需排除 developmentOnly、退出房间旧测试段未正确替换、Windows 同名历史截图写入 UNKNOWN 错误，以及手机导航换行后挡住固定行动提示。目录逐项核对所有正式游戏及精确版本；退出成员重新读取明确断言 404 与无法进入反馈；截图改用 testInfo.outputPath；平台 useGameOverlayInset 以 ResizeObserver 提供 --platform-top-inset，扩展据此避让，卸载清理监听，不改变用户步骤。
+
+最终实际命令：通过原隔离 wrapper 执行 pnpm test:e2e tests/e2e/game-catalog.spec.ts tests/e2e/room-leave.spec.ts tests/e2e/stage9-ui.spec.ts tests/e2e/splendor.spec.ts tests/e2e/splendor-assets.spec.ts tests/e2e/social-shell.spec.ts --output .data/architecture-last-check，34/34 通过，无 skip，含两款图包桌面/手机完整真人与 AI 对局、失效图片回退、私密预留、刷新恢复、四人同时回合、五尺寸键盘草稿与聊天/账户流程。全部全量失败项已有通过的复验，未宣称最后一次重新执行全 186 项。导航高度修正后 pnpm typecheck、pnpm lint、pnpm build 再次通过；不重复未受影响的服务端集成测试。
+
+实际查看本轮桌面花砖、1280px 笔记本四人璀璨宝石、手机教学与手机行动提示截图。原测试覆盖的 56 张历史文档截图先备份到忽略目录 .data/architecture-generated-screenshots 再恢复，提交不含生成产物。仍保留其他旧模块后续整理空间、games/开发实验台泛型和部分重复历史 CSS 选择器；本轮解决列出的核心边界、动作重复、类型边界、快照一致性与样式优先级问题，不计为全库零技术债。不升级其他依赖，不部署生产，不改写迁移。
+
 ## 拉密 1.0.3 公共牌重组同步（2026-10-04）
 
 按用户要求，已破冰的当前玩家移动已有公共牌后，对手通过原 WS 对局快照实时看到暂时排列及「正在整理公共牌 · 尚未确认」，包含暂时不合法的拆组，沿用克制移位动画与减少动态效果。撤销、还原同步；新手牌草稿确认前只在本人浏览器，不提前公开。未新增按钮或面板，核心流程仍为选牌 → 移动/重组 → 校验 → 确认，确认仍是主要操作。

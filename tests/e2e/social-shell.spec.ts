@@ -1,3 +1,4 @@
+import { sessionFixture } from '../fixtures/session.js';
 import { test, expect, type Page } from '@playwright/test';
 import type { SocialOverview } from '@boardgame/protocol';
 
@@ -19,9 +20,9 @@ async function fixture(page: Page) {
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
     const ok = (data: unknown) => route.fulfill({ json: { ok: true, traceId: 'social-ui', data } });
-    if (path === '/auth/logout') { guest = true; return ok({}); }
+    if (path === '/auth/logout') { guest = true; return ok({ loggedOut: true }); }
     if (guest) return route.fulfill({ status: 401, json: { ok: false, traceId: 'social-ui', error: { code: 'UNAUTHENTICATED', message: '请登录', retryable: false } } });
-    if (path === '/auth/me') return ok({ account: { id: me, username: 'alice', displayName: profile.displayName, role: 'user' }, csrfToken: 'fixture-csrf' });
+    if (path === '/auth/me') return ok(sessionFixture({ id: me, displayName: profile.displayName }));
     if (path === '/social') return ok(overview);
     if (path === '/social/public/messages') {
       publicReads++;

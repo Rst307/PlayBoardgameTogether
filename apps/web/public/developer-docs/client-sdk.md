@@ -19,9 +19,9 @@ import { ApiClient, ApiError } from '@boardgame/client-sdk';
 
 const api = new ApiClient();
 // username/password 来自用户输入，不硬编码或写入日志。
-await api.login<unknown>(username, password);
+await api.login(username, password);
 // 页面刷新后先恢复 session 和 CSRF：
-await api.me<unknown>();
+await api.me();
 const created = await api.createConfiguredRoom({
   requestId: crypto.randomUUID(),
   name: '开发者测试房间',
@@ -55,7 +55,19 @@ const created = await api.createConfiguredRoom({
 | modelProfiles() 与模型配置方法 | 管理本人模型设置与凭证 |
 | assets | AssetClient 资源管理与读取 |
 
-现有 login、me、rooms、room、roomCommand、games 等仍有泛型接口；调用泛型不会自动验证返回数据。外部数据先视为 unknown，使用共享或游戏 schema 解析，不用任意类型断言伪造安全。
+login、me、logout、rooms、room、createRoom、joinRoom 和 matchView 已绑定共享响应 schema，不再接受调用方泛型。只有校验成功的登录/me 响应才能更新 SDK 的 CSRF token。games 和开发实验台旧方法仍需将外部数据作为 unknown 并用共享或游戏 schema 解析。
+
+房间操作使用有类型的命令对象，替代原 `roomCommand(id, path, method, body)`：
+
+```typescript
+const room = await api.room(roomId);
+await api.roomCommand(roomId, {
+  type: 'ready', requestId: crypto.randomUUID(),
+  expectedRoomRevision: room.roomRevision, ready: true,
+});
+```
+
+支持 seat/unseat、ready、config、assets、invite、start、leave、close、host、add-bot/configure-bot/remove-bot。机器人命令带 seatId，新增/编辑带 settings（脚本 policyId 或模型 controllerType/profileId）。SDK 负责选择固定 URL/HTTP method、移除本地 type/seatId/settings 包装并校验输入与各操作响应；HTTP 格式、会话身份、revision 与请求去重语义保持。
 
 ## 提交正式动作
 
