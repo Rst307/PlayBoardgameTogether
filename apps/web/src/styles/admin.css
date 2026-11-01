@@ -505,7 +505,8 @@
   .desktop-shell--admin .window-marks,
   .desktop-shell--admin .sidebar-note,
   .desktop-shell--admin .nav-caption,
-  .desktop-shell--admin .shell-help {
+  .desktop-shell--admin .shell-help,
+  .desktop-shell--admin .chat-dock {
     display: none;
   }
   .desktop-shell--admin .brand {
@@ -565,10 +566,12 @@
   }
   .admin-sidebar {
     position: sticky;
-    top: 24px;
-    max-height: calc(100dvh - 48px);
+    top: 16px;
+    max-height: calc(100dvh - 148px);
     overflow-y: auto;
-    padding-block: 16px;
+    overscroll-behavior-y: contain;
+    padding-block: 8px;
+    scrollbar-width: thin;
   }
   .admin-sidebar-heading {
     display: grid;
@@ -939,6 +942,35 @@
       flex-wrap: wrap;
     }
   }
+  @media (min-width: 761px) and (max-height: 860px) {
+    .admin-sidebar {
+      max-height: calc(100dvh - 136px);
+      padding-block: 4px;
+    }
+    .admin-sidebar-heading {
+      padding: 0 12px 14px;
+    }
+    .admin-nav {
+      gap: 12px;
+    }
+    .admin-nav-group {
+      gap: 2px;
+    }
+    .admin-nav-label {
+      padding: 0 12px 4px;
+      font-size: 11px;
+    }
+    .admin-nav a {
+      min-height: 38px;
+      padding: 7px 12px;
+      font-size: 13px;
+    }
+    .admin-sidebar-help {
+      margin-top: 14px;
+      min-height: 38px;
+      padding: 8px 12px;
+    }
+  }
   @media (max-width: 760px) {
     .desktop-shell--admin .site-header {
       min-height: 64px;
@@ -971,6 +1003,11 @@
     .desktop-shell--admin main {
       width: calc(100% - 32px);
       padding-top: 0;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+      scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+    .desktop-shell--admin footer {
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     }
     .admin-workspace {
       display: block;
