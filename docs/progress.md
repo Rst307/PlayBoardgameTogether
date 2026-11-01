@@ -1,5 +1,21 @@
 # 开发进度
 
+## 官方游戏订阅界面优化与后台更新栏遮挡修复（2026-11-01，1.1.1）
+
+- 界面重构与体验优化：优化管理员后台游戏管理页（`/admin/catalog`）「官方游戏订阅」的整体视觉与交互。将原本散乱的原生文本表单升级为与控制台设计语言高度一致的精致卡片面板（`.game-subscription-panel`），支持丝滑折叠微交互、优雅头部图标与状态摘要。
+- 选项卡片化：将「自动添加新游戏」与「自动更新已安装游戏」的原生复选框重构为现代化双选卡片（`.game-sub-option-card`），内嵌完整标题、辅助说明和勾选状态高亮，保持 `appearance: auto` 并精准保留无障碍 Accessible Name 与所有端到端测试断言。
+- 监控看板化：将原本垂直平铺的纯文本状态升级为三列自适应监控指标看板（当前同步状态呼吸灯与文字、最近检查完成时间及下次自动轮询计划），精准保留全部实时与历史状态文本。
+- 明细条目流：重构「同步明细」列表为现代卡片条目流，内嵌游戏盒微型图标、等宽版本胶囊，并为执行结果（已更新、已是最新、已添加、已跳过、失败）定制彩色徽章 Tag，移除浏览器原生黑色小黑三角。
+- 后台「服务更新」栏目与进度条遮挡修复：
+  - 侧边栏高度约束与视口内滚：修复 `.admin-sidebar` 原先因顶部固定偏移与过度高度声明导致普通笔记本屏幕（1366×768 / 高度 ≤ 860px）下第 10 个栏目「服务更新」被推至屏幕底边外无法完整露出或滚动的问题；调整 `top: 16px; max-height: calc(100dvh - 148px); overscroll-behavior-y: contain;`，并在短视口媒介查询下精简外边距与行高，保障 10 项管理导航全时在视口内触达且支持垂直独立滚动。
+  - 浮层气泡避让：在管理控制台环境下全局隐藏桌面浮动聊天气泡（`.chat-dock`），杜绝其遮挡服务更新第 4 步「验证服务」与右下角诊断信息。
+  - 移动端安全边距：为移动端 `.desktop-shell--admin main` 和页脚补充安全边距（`padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px))`），防止固定底栏覆盖更新进度条和操作按钮。
+  - 自动滚动行为修复：优化 `AdminLayout.tsx` 页面切换逻辑，高亮项激活时无条件触发平滑就近滚动，兼顾桌面端侧边栏竖向露视与移动端单行横滑露视。
+  - 像素风格作用域隔离：限制 `.desktop-shell--pixel .admin-nav` 底边框仅在移动端生效，消除桌面端竖向侧边栏出现意外的水平横线与错乱 gap。
+- 响应式双端适配：完善移动端自适应流式排版，严格保障全宽自适应与 `scrollWidth <= innerWidth` 无横向溢出。
+- 平台版本 `1.1.0 → 1.1.1`：样式优化与布局增强，无外部破坏性行为变更，属于 PATCH+1；同步根 `package.json`、`README.md` 与 `docs/admin.md`。
+- 验证：`pnpm typecheck`（12 个工作区全部通过）、`pnpm lint`（ESLint、check-boundaries、format:check 全通过）、`pnpm build`（生产前端构建顺利完成）、`game-subscription-ui.spec.ts`（桌面与手机 4/4 通过）、`admin-games-ui.spec.ts`（2/2 通过）、`admin-console-ui.spec.ts`（4/4 通过）、`admin-updates-ui.spec.ts`（10/10 通过，含桌面 1366×768 侧边栏无遮挡与步骤 4 浮层避让专项）。实际查看桌面与手机截图验证视觉与排版。
+
 ## 波多黎各 main 自动打包发布（2026-11-01，游戏 1.1.0）
 
 - 独立游戏 [PR #3](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/pull/3) 已合并：交付提交 `175547be7cffaaf4e6ad42e4b5a034c337c81240`，merge commit `75e83f66a1fca7c7d44891b2773806957623bc8f`。原工作流增加 main 自动发布与 main 手动补发，先通过全部验证，再读取精确版本并创建标签和正式 Release；PR 仅验证。完整旧版本跳过，不覆盖附件或移动标签；冲突/草稿/不完整发布及网络授权错误失败，发布 job 串行。
@@ -7,6 +23,7 @@
 - 北京时间 2026-11-01 10:14:44 自动创建 [puerto-rico-v1.1.0](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/releases/tag/puerto-rico-v1.1.0)，GitHub latest 已是此版本，标签 SHA 与上述 merge commit 一致。实际下载 ZIP、release.json、SHA256SUMS，ZIP 1,359,100 字节，三者 SHA-256 一致：`5b849d1876b6080a8c1a326b36848d940a235cbb27b39d4807ae5a2985ee2664`。旧 1.0.0 Release 保留。
 - 平台 main 官方目录、独立仓库 release.config.json 与 manifest 的仓库、名称、ID `online.puerto-rico`、archive `puerto-rico` 和经典玩法对齐，**登记已核对，无需改动**；本批仅同步仓库清单的已发布版本与触发方式，不改锁定游戏副本、来源锁、游戏/资源 1.1.0、contentVersion 1.0.0 或平台 1.1.0。仅开发发布工具与内部文档，不增加版本号。
 - 未持有生产管理员会话，未执行官方订阅同步/安装、平台部署或服务器运行验收；正式 Release 不等于生产已安装或上架。下一步由已启用对应订阅开关的平台同步，并核对实际安装结果。其他游戏未修改发布策略。
+
 
 ## 官方游戏订阅：自动添加与更新（2026-11-01，1.1.0）
 

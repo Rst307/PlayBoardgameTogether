@@ -70,3 +70,86 @@ test('subscription retains an unknown save request and shows independent control
   await expect(page.getByRole('button', { name: '保存订阅', exact: true })).toBeDisabled();
   expect(writes).toBe(2);
 });
+
+test('displays official game sync status metrics and items breakdown', async ({
+  page,
+}, info) => {
+  const value: GameSubscription = {
+    source: 'playboard-official',
+    autoAdd: true,
+    autoUpdate: true,
+    revision: 1,
+    intervalMinutes: 60,
+    status: 'succeeded',
+    startedAt: '2026-11-01T02:03:50.000Z',
+    finishedAt: '2026-11-01T02:03:58.000Z',
+    nextCheckAt: '2026-11-01T03:03:30.000Z',
+    message: '官方游戏目录同步完成',
+    items: [
+      {
+        gameId: 'online.uno',
+        version: '1.2.0',
+        outcome: 'updated',
+        message: '新版已上架，旧对局保留原版本',
+      },
+      {
+        gameId: 'online.uno-no-mercy',
+        version: '1.0.0',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+      {
+        gameId: 'online.gomoku',
+        version: '1.0.3',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+      {
+        gameId: 'online.rummikub',
+        version: '1.0.3',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+      {
+        gameId: 'online.catan',
+        version: '1.0.1',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+      {
+        gameId: 'online.puerto-rico',
+        version: '1.0.0',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+      {
+        gameId: 'online.awari',
+        version: '1.0.0',
+        outcome: 'current',
+        message: '已安装相同或更高版本',
+      },
+    ],
+  };
+
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/auth/me')
+      return route.fulfill({
+        json: { ok: true, data: sessionFixture({ role: 'administrator' }), traceId: 'ui' },
+      });
+    if (path === '/api/v1/admin/games')
+      return route.fulfill({ json: { ok: true, data: [], traceId: 'ui' } });
+    if (path !== '/api/v1/admin/game-subscription') return route.abort();
+    return route.fulfill({ json: { ok: true, data: value, traceId: 'ui' } });
+  });
+
+  await page.goto('/admin/catalog');
+  await page.getByText('官方游戏订阅', { exact: true }).click();
+  await expect(page.getByText('同步完成', { exact: true })).toBeVisible();
+  await expect(page.getByText('官方游戏目录同步完成', { exact: true })).toBeVisible();
+  await page.getByText('同步明细（7）', { exact: true }).click();
+  await expect(page.getByText('online.uno · 1.2.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('新版已上架，旧对局保留原版本', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('subscription-items-breakdown.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

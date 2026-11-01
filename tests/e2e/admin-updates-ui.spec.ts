@@ -220,3 +220,98 @@ test('legacy status has an honest version fallback and maintenance leads to guid
     page.getByRole('list', { name: '更新步骤' }).locator('[data-state="complete"]'),
   ).toHaveCount(2);
 });
+
+test('admin updates navigation and progress bar are unobstructed and fully reachable across screen heights', async ({
+  page,
+}, info) => {
+  const state: AdminUpdateStatus = {
+    ...fixture(),
+    phase: 'building',
+    stage: 'install',
+    candidateVersion: '0.13.0',
+    candidateSha: 'c'.repeat(40),
+  };
+  await page.route('**/api/**', async (route) => {
+    const p = new URL(route.request().url()).pathname;
+    if (p === '/api/v1/auth/me') {
+      await route.fulfill({
+        json: { ok: true, data: sessionFixture({ role: 'administrator' }), traceId: 'ui-test' },
+      });
+      return;
+    }
+    if (p === '/api/v1/admin/updates') {
+      await route.fulfill({ json: { ok: true, data: { ...state }, traceId: 'ui-test' } });
+      return;
+    }
+    if (p === '/api/v1/admin/overview') {
+      await route.fulfill({
+        json: {
+          ok: true,
+          data: {
+            accounts: 10,
+            rooms: 2,
+            matches: 5,
+            pendingSubmissions: 0,
+            installedPackages: 3,
+            updatedAt: new Date().toISOString(),
+          },
+          traceId: 'ui-test',
+        },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  if (info.project.name === 'desktop') {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto('/admin');
+    const updateLink = page.getByRole('link', { name: '服务更新' });
+    await expect(updateLink).toBeVisible();
+    const navBox = await updateLink.boundingBox();
+    expect(navBox).toBeTruthy();
+    expect(navBox.y + navBox.height).toBeLessThanOrEqual(768);
+
+    await updateLink.click();
+    await page.waitForURL('**/admin/updates');
+    await expect(updateLink).toHaveAttribute('aria-current', 'page');
+
+    await expect(page.locator('.chat-dock')).toBeHidden();
+
+    const progress = page.getByRole('list', { name: '更新步骤' });
+    await expect(progress).toBeVisible();
+
+    const step4 = progress.locator('li').nth(3);
+    await expect(step4).toContainText('验证服务');
+    const step4Box = await step4.boundingBox();
+    expect(step4Box).toBeTruthy();
+
+    const isStep4Covered = await page.evaluate(
+      ({ x, y }) => {
+        const topEl = document.elementFromPoint(x, y);
+        const step = document.querySelector('.admin-update-progress li:nth-child(4)');
+        return !step?.contains(topEl) && topEl !== step;
+      },
+      { x: step4Box.x + step4Box.width / 2, y: step4Box.y + step4Box.height / 2 },
+    );
+    expect(isStep4Covered).toBe(false);
+  } else {
+    await page.goto('/admin/updates');
+    const button = page.getByRole('button', { name: '更新进行中…' });
+    await expect(button).toBeVisible();
+    await button.scrollIntoViewIfNeeded();
+
+    const buttonBox = await button.boundingBox();
+    expect(buttonBox).toBeTruthy();
+
+    const isButtonCovered = await page.evaluate(
+      ({ x, y }) => {
+        const topEl = document.elementFromPoint(x, y);
+        const target = document.querySelector('.admin-update-actions button');
+        return !target?.contains(topEl) && topEl !== target;
+      },
+      { x: buttonBox.x + buttonBox.width / 2, y: buttonBox.y + buttonBox.height / 2 },
+    );
+    expect(isButtonCovered).toBe(false);
+  }
+});

@@ -1162,9 +1162,11 @@
     padding: 8px 12px;
   }
 
-  .desktop-shell--pixel .admin-nav {
-    border-bottom: 2px solid var(--line);
-    gap: 8px;
+  @media (max-width: 760px) {
+    .desktop-shell--pixel .admin-nav {
+      border-bottom: 2px solid var(--line);
+      gap: 8px;
+    }
   }
 
   .desktop-shell--pixel .admin-nav a {
