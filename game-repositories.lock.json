@@ -144,7 +144,7 @@
     },
     "color-match": {
       "repository": "PlayBoardgameTogether/playboard-game-color-match",
-      "commit": "ceb70051f81a059bcb184694ae38e3cdc2a6672f",
+      "commit": "ce4f0dabb2a20ccaa11f01691df7d0ad26ac88da",
       "kind": "builtin",
       "source": "games/color-match",
       "compatibility": {
@@ -152,6 +152,9 @@
         "sdk": "0.1.0"
       },
       "files": {
+        "games/color-match/art/PIXEL-ART.md": "9eb8824db1ffea334120ebaaf0c5772c3852b918",
+        "games/color-match/art/catalog.json": "58ebdd613429be85bc6c89073709f3103d147334",
+        "games/color-match/art/icon.png": "594a3dd62bdeadb428de7f5b70616157a10daf38",
         "games/color-match/assets/NOTICE.md": "c4fad3f5911e9599c24fe814ff397d583766cbc3",
         "games/color-match/assets/cards/README.md": "4a11713acb94df178175b93b2aae1888b7eb8fea",
         "games/color-match/assets/icons/README.md": "2b24de95bdbc326b26e32a06b13e63b06149a99f",
@@ -175,7 +178,7 @@
     },
     "grid-garden": {
       "repository": "PlayBoardgameTogether/playboard-game-grid-garden",
-      "commit": "e04ae54b762caaf30b1096f3f06a09a43d6f2127",
+      "commit": "8e33422337562c9c1c0a8adebf98e403ba6e86f4",
       "kind": "builtin",
       "source": "games/grid-garden",
       "compatibility": {
@@ -184,6 +187,9 @@
       },
       "files": {
         "docs/games/grid-garden.md": "b570333449ab1da99a9e351438b72fbaec331136",
+        "games/grid-garden/art/PIXEL-ART.md": "8cf5403c3cc43073165cbc9124d30504e768e075",
+        "games/grid-garden/art/catalog.json": "58ebdd613429be85bc6c89073709f3103d147334",
+        "games/grid-garden/art/icon.png": "14079c14723120db18db86fe1329a04e6c5ecd65",
         "games/grid-garden/assets/NOTICE.md": "8af66eae8d2f9d513e59d2c97c81ad0cb3a45676",
         "games/grid-garden/assets/manifest.json": "0ab7ee4d8ba28b226f6c170c709fdbfc126b6525",
         "games/grid-garden/package.json": "04bb46e6db7021bfda9559d8215f6de4575fa67d",
@@ -200,7 +206,7 @@
     },
     "splendor": {
       "repository": "PlayBoardgameTogether/playboard-game-splendor",
-      "commit": "52da0564950476e36ca94ce0b899f5969f8a6ac3",
+      "commit": "0b0b17089cda2c50b146b19a6b5838ac917a8534",
       "kind": "builtin",
       "source": "games/splendor",
       "compatibility": {
@@ -209,6 +215,9 @@
       },
       "files": {
         "docs/games/splendor.md": "cc2699641968445fa524ee120a30f81080d14dd0",
+        "games/splendor/art/PIXEL-ART.md": "67ce9ac3b07ceff84b25eec49c34c763b2ac5243",
+        "games/splendor/art/catalog.json": "58ebdd613429be85bc6c89073709f3103d147334",
+        "games/splendor/art/icon.png": "1b482e4df807676d34bc54abe9532c475ed0b3a6",
         "games/splendor/build.mjs": "0c880c7547af2d6a9374cd4b709178441c7c8ae1",
         "games/splendor/package.json": "1c752c9d7f1aeb4f160dd95d6e5de4ce8f97f2f4",
         "games/splendor/src/client/Activity.tsx": "f6ed67e70f68fd6c5483ee7811af8376caacfd36",
@@ -234,7 +243,7 @@
     },
     "azul": {
       "repository": "PlayBoardgameTogether/playboard-game-azul",
-      "commit": "db1fce8eb3019e7faab1781720c76a5883dd21b3",
+      "commit": "f5857d5c7e838a00aceb9dcc84ea46fe0fbe6bf5",
       "kind": "builtin",
       "source": "games/azul",
       "compatibility": {
@@ -243,6 +252,9 @@
       },
       "files": {
         "docs/games/azul.md": "9eefe51969dd68ef8deba05d615821546b20d0a7",
+        "games/azul/art/PIXEL-ART.md": "c543f13e4719aa22e0a8cddd37187724e3cf5600",
+        "games/azul/art/catalog.json": "58ebdd613429be85bc6c89073709f3103d147334",
+        "games/azul/art/icon.png": "e14b65a7e7dda4c700eca32fb3e5fa2feebc0c4f",
         "games/azul/build.mjs": "132aec0b1085c9565899a840829d911fb6203f83",
         "games/azul/package.json": "7a91e66e94359fe750c0f9b512ff96c26503763c",
         "games/azul/src/client/TileFlight.tsx": "5a566591500dc2e348592a8439974c3d7a11ce34",

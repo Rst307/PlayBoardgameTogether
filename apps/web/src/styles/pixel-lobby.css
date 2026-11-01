@@ -832,7 +832,7 @@
   }
 
   .desktop-shell--pixel-lobby .discovery-catalog .game-card .game-cover {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1;
     border-radius: 0;
     border-bottom: 2px solid var(--line-strong);
   }
@@ -849,6 +849,10 @@
 
   .desktop-shell--pixel-lobby .game-card-icon {
     display: none;
+  }
+
+  .desktop-shell--pixel-lobby .game-avatar img {
+    object-fit: contain;
   }
 
   .desktop-shell--pixel-lobby .game-card-info {

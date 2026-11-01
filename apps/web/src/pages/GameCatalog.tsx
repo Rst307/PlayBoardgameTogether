@@ -7,8 +7,15 @@ import { gameArt } from './catalog-art.js';
 import { GameArtwork } from './GameArtwork.js';
 import { PixelSearchIcon } from '../ui/PixelIcons.js';
 
-export function GameCover({ game }: { game: AvailableGame }) {
-  return <GameArtwork src={gameArt(game).coverUrl} className="game-cover" name={game.name} />;
+export function GameAvatar({ game }: { game: AvailableGame }) {
+  const art = gameArt(game);
+  return (
+    <GameArtwork
+      src={art.iconUrl ?? art.coverUrl}
+      className="game-cover game-avatar"
+      name={game.name}
+    />
+  );
 }
 
 export function GameCatalog() {
@@ -72,7 +79,7 @@ export function GameCatalog() {
             />
             <div className="discovery-art-caption">
               <div className="pixel-featured-cover">
-                <GameCover game={featured} />
+                <GameAvatar game={featured} />
               </div>
               <strong>{featured.name}</strong>
               <span>从第一手开始，边玩边学</span>
@@ -156,7 +163,7 @@ export function GameCatalog() {
             aria-label={`查看 ${game.name}`}
           >
             <div className="discovery-card-art">
-              <GameCover game={game} />
+              <GameAvatar game={game} />
               {clientTutorial(game.id, game.version) && (
                 <span className="discovery-practice-tag">可练习</span>
               )}
