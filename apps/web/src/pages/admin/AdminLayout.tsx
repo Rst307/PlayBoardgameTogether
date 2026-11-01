@@ -49,7 +49,7 @@ export function AdminLayout({
     if (
       item &&
       navigation.current &&
-      navigation.current.scrollWidth > navigation.current.clientWidth
+      Boolean(item)
     )
       item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [path, state]);
