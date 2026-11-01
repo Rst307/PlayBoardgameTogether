@@ -37,6 +37,8 @@ import { SocialService } from './social/service.js';
 import { registerSocialRoutes } from './social/routes.js';
 import { GamePackageService } from './catalog/package-service.js';
 import { registerGamePackageRoutes } from './catalog/package-routes.js';
+import { GameSubscriptionService } from './catalog/subscriptions.js';
+import type { OfficialGameSource } from './catalog/official-source.js';
 export type AppDeps = {
   config: ApiConfigInput;
   db: Database;
@@ -44,6 +46,7 @@ export type AppDeps = {
   runner?: LabRunner;
   registrationMailer?: RegistrationMailer;
   mailTransport?: MailTransport;
+  gameSubscriptionSource?: OfficialGameSource;
   testMatchFaults?: {
     beforeCommit?: () => void;
     afterCommit?: () => void;
@@ -144,13 +147,20 @@ export async function createApp(deps: AppDeps): Promise<FastifyInstance> {
     config.NODE_ENV === 'production',
   );
   registerGameSubmissionRoutes(app, auth, new GameSubmissionService(deps.db));
+  const packages = await GamePackageService.create(deps.db, deps.registry);
+  const subscriptions = new GameSubscriptionService(
+    deps.db,
+    packages,
+    config.NODE_ENV !== 'production' ? deps.gameSubscriptionSource : undefined,
+  );
   registerAdminRoutes(
     app,
     auth,
     new AdminService(deps.db, deps.registry, config.NODE_ENV === 'production', mail),
+    undefined,
+    subscriptions,
   );
   registerSocialRoutes(app, auth, new SocialService(deps.db, rooms));
-  const packages = await GamePackageService.create(deps.db, deps.registry);
   registerGamePackageRoutes(app, auth, packages);
   app.addHook('onRequest', async (request) => {
     if (/^\/api\/v1\/(?:games|rooms|matches|admin|ws\/session)(?:\/|\?|$)/.test(request.url))
@@ -338,6 +348,7 @@ export async function createApp(deps: AppDeps): Promise<FastifyInstance> {
       ),
     );
   scheduler.start();
+  if (config.NODE_ENV !== 'test') subscriptions.start();
   let idleSweep: Promise<unknown> | undefined;
   const idleTimer = setInterval(() => {
     if (idleSweep) return;
@@ -352,6 +363,7 @@ export async function createApp(deps: AppDeps): Promise<FastifyInstance> {
   app.addHook('onClose', async () => {
     clearInterval(idleTimer);
     await idleSweep;
+    await subscriptions.close();
     await scheduler.close();
     await closeRealtime();
     auth.close();

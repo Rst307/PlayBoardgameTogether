@@ -6,6 +6,7 @@ export default async function setup() {
   if (!url) throw new Error('TEST_DATABASE_URL is required');
   const db = createDatabase(url);
   try {
+    await db.query("UPDATE game_subscription SET auto_add=false,auto_update=false,revision=0,authorized_by=NULL,next_check_at=NULL,requested_at=NULL,status='idle',started_at=NULL,finished_at=NULL,message='',items='[]'");
     await db.query('TRUNCATE accounts CASCADE');
     await db.query('TRUNCATE registration_email_challenges');
     await db.query('TRUNCATE registration_mail_settings');

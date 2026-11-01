@@ -456,6 +456,19 @@ export class ApiClient {
   async adminGames() {
     return adminGameSchema.array().parse(await this.request<unknown>('/admin/games'));
   }
+  async gameSubscription(signal?: AbortSignal) {
+    return gameSubscriptionSchema.parse(await this.request<unknown>('/admin/game-subscription', { signal: signal ?? null }));
+  }
+  async saveGameSubscription(input: GameSubscriptionInput) {
+    return gameSubscriptionSchema.parse(await this.request<unknown>('/admin/game-subscription', {
+      method: 'PUT', body: JSON.stringify(gameSubscriptionInputSchema.parse(input)),
+    }));
+  }
+  async checkGameSubscription(input: Pick<GameSubscriptionInput, 'requestId' | 'expectedRevision'>) {
+    return gameSubscriptionSchema.parse(await this.request<unknown>('/admin/game-subscription/check', {
+      method: 'POST', body: JSON.stringify(gameSubscriptionCheckSchema.parse(input)),
+    }));
+  }
   async setAdminGameStatus(id: string, version: string, input: AdminGameCommand) {
     return adminGameSchema.parse(
       await this.request<unknown>(
@@ -967,3 +980,4 @@ export function pingWebSocket(signal?: AbortSignal): Promise<number> {
     });
   });
 }
+import { gameSubscriptionSchema, gameSubscriptionInputSchema, gameSubscriptionCheckSchema, type GameSubscriptionInput } from '@boardgame/protocol';

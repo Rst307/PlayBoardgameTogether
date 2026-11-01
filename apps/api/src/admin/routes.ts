@@ -11,17 +11,21 @@ import {
   badgeDefinitionInputSchema,
   mailSettingsInputSchema,
   mailTestInputSchema,
+  gameSubscriptionInputSchema,
+  gameSubscriptionCheckSchema,
 } from '@boardgame/protocol';
 import type { AuthService } from '../auth.js';
 import { AppError } from '../errors.js';
 import type { AdminService } from './service.js';
 import { UpdateControl } from './update-control.js';
+import type { GameSubscriptionService } from '../catalog/subscriptions.js';
 
 export function registerAdminRoutes(
   app: FastifyInstance,
   auth: AuthService,
   service: AdminService,
   updates: UpdateControl = new UpdateControl(),
+  subscriptions?: GameSubscriptionService,
 ) {
   const administrator = async (request: FastifyRequest, write = false) => {
     if (write) auth.assertOrigin(request);
@@ -37,6 +41,32 @@ export function registerAdminRoutes(
     data,
     traceId: request.id,
   });
+  if (subscriptions) {
+    app.get('/api/v1/admin/game-subscription', async (request) => {
+      await administrator(request);
+      return ok(request, await subscriptions.status());
+    });
+    app.put('/api/v1/admin/game-subscription', async (request) => {
+      const current = await administrator(request, true);
+      const data = await service.gameSubscription(
+        subscriptions,
+        current,
+        gameSubscriptionInputSchema.parse(request.body),
+      );
+      subscriptions.wake();
+      return ok(request, data);
+    });
+    app.post('/api/v1/admin/game-subscription/check', async (request) => {
+      const current = await administrator(request, true);
+      const data = await service.checkGameSubscription(
+        subscriptions,
+        current,
+        gameSubscriptionCheckSchema.parse(request.body),
+      );
+      subscriptions.wake();
+      return ok(request, data);
+    });
+  }
   app.get('/api/v1/admin/mail-settings', async (request) => {
     await administrator(request);
     return ok(request, await service.mailSettings());

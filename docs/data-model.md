@@ -1,5 +1,9 @@
 # 数据模型
 
+## 官方游戏订阅（037，1.1.0）
+
+`game_subscription` 单例保存独立添加/更新开关、策略 revision、授权管理员审计 UUID、下次检查/手动请求/开始/完成时间、状态、非秘密消息及最多 100 条最近同步结果。管理员授权 UUID 不级联删除，账户失效后不能安装，保留历史审计。设置和手动同步复用 `admin_command_receipts`；后台逐包复用 `game_packages`、`game_installations` 和 `game_package_receipts`，不保存 session 或访问凭据。会话 advisory lock 串行批次，安装事务共享锁定策略行并重新核对管理员及目录，不改变旧局绑定。参见 [官方游戏订阅](game-subscription.md)。
+
 ## 后台邮件设置（036，1.0.0）
 
 `registration_mail_settings` 为单例配置，按 revision 控制并发编辑，保存启停、SMTP 公网域名、465/587、账号、发件地址、更新者/时间和 AES-256-GCM 密文/nonce/tag；三项加密字段同时存在或同时为空，主密钥复用服务器既有 MODEL_CREDENTIALS_KEY 并使用独立 AAD，不存入数据库。未保存行时兼容环境回退；保存过的停用/空密码不回退。配置每次发送单条查询读取，保存立即生效。`registration_mail_test_limit` 为单例持久化测试冷却，最多每分钟一次。

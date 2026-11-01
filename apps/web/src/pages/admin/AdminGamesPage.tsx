@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AdminGame } from '@boardgame/protocol';
 import { PageFeedback } from '@boardgame/ui';
 import { api } from '../../platform.js';
 import { AdminLayout, adminError, useAdminRequestId } from './AdminLayout.js';
 import { GamePackageUpload } from './GamePackageUpload.js';
+import { GameSubscriptionPanel } from './GameSubscriptionPanel.js';
 
 function Games() {
   const requestId = useAdminRequestId();
@@ -13,6 +14,7 @@ function Games() {
   const selectionHeading = useRef<HTMLHeadingElement>(null);
   const gameButtons = useRef(new Map<string, HTMLButtonElement>());
   const [attempt, setAttempt] = useState(0);
+  const refreshGames = useCallback(() => setAttempt(value => value + 1), []);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -90,6 +92,7 @@ function Games() {
   return (
     <>
       <GamePackageUpload onInstalled={() => setAttempt((value) => value + 1)} />
+      <GameSubscriptionPanel onChanged={refreshGames} />
       <div className="admin-actions admin-game-toolbar">
         {selectedId && (
           <button
