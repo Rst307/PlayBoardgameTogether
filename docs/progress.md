@@ -1,5 +1,18 @@
 # 开发进度
 
+## 官方游戏订阅：自动添加与更新（2026-11-01，1.1.0）
+
+- 用户选定官方游戏目录。在原游戏管理页新增折叠订阅面板，自动添加/自动更新独立开关、保存、立即同步、最近结果和逐游戏明细；默认关闭，启用明确授权官方包自动校验安装上架。每小时后台检查，关闭面板清理轮询；网络回复未知沿用原请求，其他管理员修改后提示重新读取，不用轮询的新 revision 覆盖旧草稿。
+- 通过 GitHub Contents API 读取官方目录，逐独立游戏仓库选择数字版本最高的正式 Release，分别处理 UNO 两种玩法，验证 release.json、精确 ZIP 名称、SHA-256、运行时游戏 ID/版本。只接受固定官方来源，有域名/重定向/流式大小/期限限制，不执行源码 ZIP、宿主 JS、npm 或 shell。内置游戏仍随平台构建发布。
+- 新迁移 037 持久设置、授权管理员及最近结果；管理写入复用原 AdminService 授权、Origin/CSRF、事务、回执与 revision。后台有跨连接/进程互斥和退出取消，每包复用原安装事务，并在提交前复验活跃管理员、订阅 revision/开关及目录摘要。不降级、不重上架已下架游戏、不覆盖精确版本，保留旧对局。多游戏逐包提交，失败不撤销同批成功项。
+- 平台 `1.0.0 → 1.1.0`：向后兼容新增功能，MINOR+1；README、管理员、协议、数据模型、架构与 [使用说明](game-subscription.md) 同步。游戏仓库、锁定集成副本、游戏版本和 SDK 包版本没有修改；根工作区已有 AGENTS.md 改动保留。
+- 本轮检查：`pnpm typecheck`、`pnpm lint`、`pnpm build` 通过（含 20 根目录 AST、公开 SDK 白名单、生产 bundle/API runtime/隔离 ZIP 检查）。最后仅发布标签筛选修正，复跑来源单测、API typecheck/build 和相关 ESLint 均通过；未重复无关检查。构建曾遇到 Windows 生成目录 EPERM，改用同一权限上下文完成；没有删除用户文件或放宽检查。
+- 单元：`pnpm test tests/unit/official-game-source.test.ts tests/unit/developer-publication.test.ts` 的 SDK 发布 4/4 通过；修复来源解析后，来源最终 3/3 通过，覆盖数字版本、双 UNO 标签、预发布/无关标签排除、篡改、跨来源及恶意重定向/超限响应。
+- 集成：经原 `test:integration --testNamePattern 'official game subscription|administrator instant game installation'` 准备链，订阅初版 4/4、原 ZIP 2/2 通过（原 ZIP 包含真实对局和重启恢复）；补充并发/手动请求后通过原准备链仅复验订阅，最终 5/5 通过。其他集成用例由模式筛选未执行，不计为通过。新增库 `boardgame_subscription_20261101_test` 与开发库隔离，未覆盖 .env 或清理开发/生产库；本机 Docker/PostgreSQL 原停机，恢复既有容器后验证，未删除容器/卷。
+- 界面与联机：生产静态 `test:ui game-subscription-ui.spec.ts admin-games-ui.spec.ts` 首轮桌面/手机 4/4；复选框可视修复和多人编辑保护后，最终订阅静态 2/2。原 `test:e2e game-subscription.spec.ts` 桌面/手机 2/2，通过真实会话、API、数据库和安装运行时验证保存、自动安装、目录出现、关闭及刷新恢复；E2E 发布来源为测试专用内存产物，不冒充公网安装。实际查看 1440×900 与 390×844 页面截图，修正选中标记，无横向溢出。
+- 公网只读验收：真实发现 7 个官方在线游戏包，下载 UNO 1.2.0 的 208106 字节 ZIP，SHA-256、包解析和 QuickJS 清单身份一致。初试 raw.githubusercontent.com 直连超时，改用本机可达的 GitHub Contents API 后通过；未把真实包安装到开发或生产库。
+- 交付范围：功能分支基于最新 main，提交前再次获取远程并确认无新增提交。提交/推送及 PR 结果见本轮交付；尚未合并或部署。仓库中仅有既有 `/opt/boardgame` / `boardgame-local.service` 约定，未找到可确认的服务器连接地址或 SSH 别名，服务器同步尚缺连接目标。未验证物理手机、Safari、生产网络或完整一小时定时周期；定时到期、串行互斥及手动触发使用实际数据库路径验证。
+
 ## 1.0.0 合并前复验（2026-10-31）
 
 - 按用户本轮“合并代码更新版本、先不同步服务器”的指令，继续交付已整合六个原 PR 的 [PR #40](https://github.com/PlayBoardgameTogether/PlayBoardgameTogether/pull/40)。重新获取 main 后确认基线仍为 `13a24bd`，六个原 head 均为整合分支祖先，无遗漏或额外游戏变更；主工作区未提交的 AGENTS.md 改动及其他聊天工作区保持原样。

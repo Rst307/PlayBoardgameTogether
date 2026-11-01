@@ -1,5 +1,9 @@
 # 协议
 
+## 官方游戏订阅（1.1.0）
+
+管理员 `GET/PUT /api/v1/admin/game-subscription` 读取/保存单例官方来源订阅，PUT 严格接受 `{requestId,expectedRevision,autoAdd,autoUpdate}`；POST `/api/v1/admin/game-subscription/check` 接受 `{requestId,expectedRevision}`，安排后台同步，每分钟最多一次。写入复用 AdminService 的有效 session/角色复验、Origin/CSRF、事务、旧回执优先和请求内容冲突语义；返回共享 `gameSubscriptionSchema`，无来源 URL、凭据或秘密状态。相同请求重试返回原回执，不重复排队；前端随后 GET 获取实际最新状态。保存递增策略 revision；批次状态变化不递增策略版本，自动安装提交时重新检查策略版本及管理员授权。协议及 SDK 见 `packages/protocol/src/game-subscription.ts`，完整语义见 [官方游戏订阅](game-subscription.md)。
+
 ## 后台邮件设置（1.0.0）
 
 GET `/api/v1/admin/mail-settings` 返回 `{enabled,host,port,username,from,revision,source,hasPassword,encryptionAvailable,configured}`，source 为 database/environment/none；只返回授权码是否存在，不返回密码、密文、nonce/tag。PUT 同路径严格接受 `{enabled,host,port,username,from,expectedRevision,requestId,password?,clearPassword?}`，password 省略保留，clearPassword 明确清除且不能同时给新密码。端口仅 465/587，host 为不含协议/路径的公网域名；启用需要完整字段与有效加密主密钥。更换 host/port/username 时必须提交新授权码。并发编辑 STATE_CONFLICT，同 requestId 异内容 REQUEST_ID_CONFLICT。

@@ -14,6 +14,7 @@ export default webConfig(
     'admin-games-ui.spec.ts',
     'admin-updates-ui.spec.ts',
     'game-package-upload-ui.spec.ts',
+    'game-subscription-ui.spec.ts',
   ],
   5374,
 );
