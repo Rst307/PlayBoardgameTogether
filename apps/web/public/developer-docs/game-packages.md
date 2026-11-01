@@ -45,7 +45,7 @@ HTML 在 `sandbox="allow-scripts"` 的独立不透明来源 iframe 中运行，�
 ```javascript
 window.addEventListener('message', event => {
   if (event.source !== parent || event.data?.type !== 'boardgame:view') return;
-  const { view, busy, events } = event.data;
+  const { view, busy, events, playerNames = {} } = event.data;
   // 使用 textContent 等方式绘制 View，busy 时禁用提交。
 });
 parent.postMessage({type:'boardgame:ready'}, '*');
@@ -56,6 +56,8 @@ parent.postMessage({type:'boardgame:resize', height:900}, '*');
 // 或：让宿主按屏幕剩余空间设置高度；桌面 CSS 必须自行适配该高度。
 parent.postMessage({type:'boardgame:resize', height:560, fit:'viewport'}, '*');
 ```
+
+平台 1.1.1 起，`boardgame:view.playerNames` 是公开的 `seatId → displayName` 映射，与规则 `view` 分开传递；真人昵称与 AI 名称均来自当前对局参与者。桌面按自身 View 的座位 ID 查找，用 `textContent` 展示昵称，本人可附加“（你）”。缺少或空白名称时保留匿名标签。名称只用于展示，不授予权限；同一局面也可能更新昵称，不能只按局面去重而忽略新映射。本人回放同样传入该帧公开名称。旧平台/旧桌面可忽略这一可选字段，已安装的不可变旧版本不会被自动修改。
 
 父页面只接受当前 iframe 的消息，动作最大 8 KiB，并继续交给原 match 命令链路做身份、控制权、revision、去重和规则校验。'*' 仅用于向不透明来源 iframe/父页面传递本人 View，不广播到其他窗口。桌面无跨局权限；卸载清理监听器。历史版本桌面始终可读取以恢复下架版本旧局，其 HTML 是公开程序，不能包含秘密或凭据。
 

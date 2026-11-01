@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { playerLabel, type PlayerNames } from '@boardgame/game-sdk/presentation';
 import type { AssetResolverPort } from '@boardgame/game-sdk/assets';
 import type { GardenView, Orientation } from '../shared/index.js';
 import { cellsFor } from '../shared/index.js';
@@ -61,9 +62,10 @@ function GardenGrid({ view, seatId, assets, interactive, orientation, anchor, in
   </div>;
 }
 
-export function GridGardenBoard({ view, busy, onAction, assets, events = [] }: {
-  view: GardenView; busy: boolean; onAction: (action: unknown) => void; assets?: AssetResolverPort | undefined; events?: unknown[];
+export function GridGardenBoard({ view, busy, onAction, assets, playerNames, events = [] }: {
+  view: GardenView; busy: boolean; onAction: (action: unknown) => void; assets?: AssetResolverPort | undefined; playerNames?: PlayerNames | undefined; events?: unknown[];
 }) {
+  const seatName = (id: string) => playerLabel(id, view.seats, view.viewingSeatId, playerNames, '座位');
   const [orientation, setOrientation] = useState<Orientation>('H');
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const [choiceDraft, setChoiceDraft] = useState<'harvest' | 'build' | null>(null);
@@ -99,7 +101,7 @@ export function GridGardenBoard({ view, busy, onAction, assets, events = [] }: {
       </>}
       <p className="muted">已提交 {view.submittedSeatIds.length} / {view.seats.length}</p>
     </section>}
-    {view.phase !== 'finished' && <p className="action-hint" role="status">{waitingIds.includes(view.viewingSeatId) ? view.phase === 'selecting' ? '请选择收获或建造，再确认选择。' : '请预览位置，再确认放置。' : `等待 ${waitingIds.length} 位玩家：${waitingIds.map(id => `座位 ${view.seats.indexOf(id) + 1}`).join('、')}。`}</p>}
+    {view.phase !== 'finished' && <p className="action-hint" role="status">{waitingIds.includes(view.viewingSeatId) ? view.phase === 'selecting' ? '请选择收获或建造，再确认选择。' : '请预览位置，再确认放置。' : `等待 ${waitingIds.length} 位玩家：${waitingIds.map(seatName).join('、')}。`}</p>}
     {view.phase === 'placing' && <section className="garden-action-area">
       {view.builders.includes(view.viewingSeatId) && !view.placedSeatIds.includes(view.viewingSeatId) ? <>
         <p>选择方向，再选择棋盘上的起点。预览后确认落子。键盘可用方向键移动，Enter 或空格选择起点。</p>
@@ -107,18 +109,18 @@ export function GridGardenBoard({ view, busy, onAction, assets, events = [] }: {
           <button className="secondary" disabled={busy || !anchor} onClick={() => setAnchor(null)}>取消预览</button></div>
         {anchor && <div className="garden-confirm"><span>{String.fromCharCode(65 + anchor.x)}{anchor.y + 1} · {orientation === 'H' ? '横向' : '纵向'}{previewLegal ? '' : ' · 此位置不可放置'}</span>
           <button disabled={busy || !previewLegal} onClick={() => { const target = anchor; submit({ type: 'place_domino', round: view.round, ...target, orientation }); }}>确认放置</button></div>}
-      </> : <p role="status">本轮需要放置骨牌的玩家：{view.builders.map(id => `座位 ${view.seats.indexOf(id) + 1}`).join('、')}。已完成 {view.placedSeatIds.length} / {view.builders.length}。</p>}
+      </> : <p role="status">本轮需要放置骨牌的玩家：{view.builders.map(seatName).join('、')}。已完成 {view.placedSeatIds.length} / {view.builders.length}。</p>}
       {previewReason && <p role="status">{previewReason}</p>}
     </section>}
     <div className="garden-player-boards">
       {[view.viewingSeatId, ...view.seats.filter(id => id !== view.viewingSeatId)].map(seatId => <section className={seatId === view.viewingSeatId ? 'garden-player garden-player--self' : 'garden-player'} key={seatId}>
-        <div className="garden-player-heading"><h3>{seatId === view.viewingSeatId ? '我的花园' : `座位 ${view.seats.indexOf(seatId) + 1}`}</h3><span>{view.boards[seatId]!.energy} 能量</span>{view.phase !== 'selecting' && view.revealedChoices?.[seatId] && <span>{view.revealedChoices[seatId] === 'build' ? '建造' : '收获'}</span>}</div>
+        <div className="garden-player-heading"><h3>{playerNames?.[seatId] ? seatName(seatId) : seatId === view.viewingSeatId ? '我的花园' : seatName(seatId)}</h3><span>{view.boards[seatId]!.energy} 能量</span>{view.phase !== 'selecting' && view.revealedChoices?.[seatId] && <span>{view.revealedChoices[seatId] === 'build' ? '建造' : '收获'}</span>}</div>
         <GardenGrid view={view} seatId={seatId} assets={assets} interactive={interactivePlace && seatId === view.viewingSeatId} orientation={orientation} anchor={seatId === view.viewingSeatId ? anchor : null} invalid={anchor !== null && !previewLegal} onAnchor={(x, y) => { if (interactivePlace && seatId === view.viewingSeatId) setAnchor({ x, y }); }} />
         <p className="muted">{view.boards[seatId]!.placements.length} 枚骨牌 · {view.submittedSeatIds.includes(seatId) ? '已提交' : view.phase === 'selecting' ? '等待选择' : view.placedSeatIds.includes(seatId) ? '已放置' : '等待中'}</p>
       </section>)}
     </div>
-    {view.roundResults.length > 0 && <section className="garden-results"><h3>已公开轮次</h3>{view.roundResults.map(result => <p key={result.round}>第 {result.round} 轮 · {view.seats.map(id => `座位 ${view.seats.indexOf(id) + 1}：${result.choices[id] === 'build' ? '建造' : '收获'}，能量 ${result.energy[id]}`).join('；')}</p>)}</section>}
-    {view.outcome.status === 'finished' && <section className="garden-results" aria-live="polite"><h3>最终得分</h3><ul>{view.seats.map(id => { const detail = view.outcome.status === 'finished' ? view.outcome.scoreDetails[id]! : { occupied: 0, energy: 0, total: 0 }; return <li key={id}>座位 {view.seats.indexOf(id) + 1}：{detail.total} 分（占格 {detail.occupied} + 能量 {detail.energy}）{view.outcome.status === 'finished' && view.outcome.winners.includes(id) ? ' · 获胜' : ''}</li>; })}</ul></section>}
+    {view.roundResults.length > 0 && <section className="garden-results"><h3>已公开轮次</h3>{view.roundResults.map(result => <p key={result.round}>第 {result.round} 轮 · {view.seats.map(id => `${seatName(id)}：${result.choices[id] === 'build' ? '建造' : '收获'}，能量 ${result.energy[id]}`).join('；')}</p>)}</section>}
+    {view.outcome.status === 'finished' && <section className="garden-results" aria-live="polite"><h3>最终得分</h3><ul>{view.seats.map(id => { const detail = view.outcome.status === 'finished' ? view.outcome.scoreDetails[id]! : { occupied: 0, energy: 0, total: 0 }; return <li key={id}>{seatName(id)}：{detail.total} 分（占格 {detail.occupied} + 能量 {detail.energy}）{view.outcome.status === 'finished' && view.outcome.winners.includes(id) ? ' · 获胜' : ''}</li>; })}</ul></section>}
     {events.length > 0 && <section className="garden-results garden-events"><h3>最近行动</h3><ol>{events.slice(-6).map(raw => {
       const parsed = visibleEventSchema.safeParse(raw);
       return parsed.success ? <li key={parsed.data.eventId}>{eventLabels[parsed.data.type]}</li> : null;

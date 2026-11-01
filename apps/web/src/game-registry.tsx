@@ -45,14 +45,14 @@ export const clientGames = [
     id: 'color-match', version: '1.0.0', name: 'Color Match', defaultOptions: {},
     load: async (): Promise<GameBoard> => {
       const { ColorBoard } = await import('@boardgame/color-match/client');
-      return (view, busy, events, onAction, assets) => <ColorBoard view={colorViewSchema.parse(view)} busy={busy} events={events} onAction={onAction} assets={assets}/>;
+      return (view, busy, events, onAction, assets, _audio, playerNames) => <ColorBoard view={colorViewSchema.parse(view)} busy={busy} events={events} onAction={onAction} assets={assets} playerNames={playerNames}/>;
     },
   },
   {
     id: 'grid-garden', version: '1.0.0', name: 'Grid Garden', defaultOptions: {},
     load: async (): Promise<GameBoard> => {
       const { GridGardenBoard } = await import('@boardgame/grid-garden/client');
-      return (view, busy, events, onAction, assets) => <GridGardenBoard view={gardenViewSchema.parse(view)} busy={busy} onAction={onAction} assets={assets} events={events} />;
+      return (view, busy, events, onAction, assets, _audio, playerNames) => <GridGardenBoard view={gardenViewSchema.parse(view)} busy={busy} onAction={onAction} assets={assets} events={events} playerNames={playerNames} />;
     },
   },
 ] as const;
@@ -61,8 +61,8 @@ export function clientGame(id: string, version: string) {
   return clientGames.find(game => game.id === id && game.version === version) ?? {
     id, version, name: id, defaultOptions: {}, finishBehavior: 'stay',
     preserveReplayDesktop: true,
-    load: async (): Promise<GameBoard> => (view, busy, events, onAction, _assets, _audio, _names, replay) =>
-      <PackageBoard id={id} version={version} view={view} busy={busy} events={events} onAction={onAction} replay={replay} />,
+    load: async (): Promise<GameBoard> => (view, busy, events, onAction, _assets, _audio, playerNames, replay) =>
+      <PackageBoard id={id} version={version} view={view} busy={busy} events={events} onAction={onAction} playerNames={playerNames} replay={replay} />,
   };
 }
 

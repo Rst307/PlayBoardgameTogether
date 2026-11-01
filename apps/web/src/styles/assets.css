@@ -18,6 +18,8 @@
   }
   .garden-status h2,
   .garden-player-heading h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
     margin: 0;
   }
   .garden-energy {

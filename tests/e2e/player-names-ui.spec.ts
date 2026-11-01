@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { DeterministicRng } from '@boardgame/game-sdk';
 import { azulExtension } from '../../games/azul/src/server/index.js';
 import { splendorExtension } from '../../games/splendor/src/server/index.js';
+import { colorMatchExtension } from '../../games/color-match/src/server/index.js';
+import { gridGardenExtension } from '../../games/grid-garden/src/server/index.js';
 
 const longName = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456';
 const players = { a: '小明', b: longName };
@@ -51,5 +53,39 @@ for (const id of ['azul.base', 'splendor.base']) {
     // Anonymous tutorials and legacy API snapshots keep their existing labels.
     await page.evaluate(view => Reflect.get(window, 'renderNamedBoard')(view, undefined), waiting);
     await expect(board).toContainText(id === 'azul.base' ? '玩家 2' : '座位 2');
+  });
+}
+
+for (const id of ['color-match', 'grid-garden']) {
+  test(`${id} shows player names, updates metadata and keeps anonymous tutorials`, async ({ page }, info) => {
+    const game = id === 'color-match' ? colorMatchExtension : gridGardenExtension;
+    const state = game.setup({ seats: ['a', 'b'], options: {}, rng: new DeterministicRng(42) }).state;
+    const view = id === 'color-match'
+      ? colorMatchExtension.getView(state as Parameters<typeof colorMatchExtension.getView>[0], { kind: 'seat', seatId: 'a' })
+      : gridGardenExtension.getView(state as Parameters<typeof gridGardenExtension.getView>[0], { kind: 'seat', seatId: 'a' });
+    await page.route('**/api/**', route => route.abort());
+    await page.goto('/');
+    await page.evaluate(async ({ id, view, players }) => {
+      const load = (url: string) => import(/* @vite-ignore */ url);
+      const [{ default: React }, { default: ReactDOM }, { clientGame }] = await Promise.all([
+        load('/node_modules/.vite/deps/react.js'), load('/node_modules/.vite/deps/react-dom_client.js'), load('/src/game-registry.tsx'),
+      ]);
+      document.body.innerHTML = '<main style="max-width:1200px;margin:auto;padding:12px"><div id="board"></div></main>';
+      const root = ReactDOM.createRoot(document.getElementById('board'));
+      const render = await clientGame(id, '1.0.0').load();
+      Reflect.set(window, 'renderNamedBuiltin', (names: unknown) => root.render(React.createElement(React.Fragment, null, render(view, false, [], () => {}, undefined, undefined, names))));
+      Reflect.get(window, 'renderNamedBuiltin')(players);
+    }, { id, view, players });
+    const board = page.locator(id === 'color-match' ? '.color-players' : '.garden-player-boards');
+    await expect(board).toContainText('小明（你）');
+    await expect(board).toContainText(longName);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(id + '-names.png'), fullPage: true });
+    await page.evaluate(() => Reflect.get(window, 'renderNamedBuiltin')({ a: '小明', b: '电脑阿福' }));
+    await expect(board).toContainText('电脑阿福');
+    await expect(board).not.toContainText(longName);
+    await page.evaluate(() => Reflect.get(window, 'renderNamedBuiltin')(undefined));
+    await expect(board).not.toContainText('小明');
+    await expect(board).toContainText('座位 2');
   });
 }
