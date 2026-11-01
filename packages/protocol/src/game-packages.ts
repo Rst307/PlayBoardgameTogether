@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const GAME_PACKAGE_MAX_ZIP_BYTES = 50 * 1024 * 1024;
+export const GAME_PACKAGE_MAX_EXPANDED_BYTES = 100 * 1024 * 1024;
+
 export const gamePackageResultSchema = z.object({
   gameId: z.string().max(128),
   version: z.string().max(32),

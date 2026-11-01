@@ -4,7 +4,7 @@ import { createApp } from '../../apps/api/src/app.js';
 import { createDatabase, type Database } from '../../apps/api/src/db/index.js';
 import { createRegistry } from '../../apps/api/src/registry/index.js';
 import { createAccount } from '../../apps/api/src/auth.js';
-import { gamePackageZip } from '../fixtures/game-package.js';
+import { gamePackageFiles, gamePackageZip, zipSync } from '../fixtures/game-package.js';
 
 process.loadEnvFile('.env');
 const url = process.env.TEST_DATABASE_URL;
@@ -69,6 +69,40 @@ describe('administrator instant game installation', () => {
       expect((await db.query('SELECT count(*)::int AS count FROM game_package_receipts')).rows[0].count).toBe(0);
     } finally {
       await db.query('DROP TRIGGER fail_game_package ON game_packages'); await db.query('DROP FUNCTION fail_game_package()');
+    }
+  });
+  it('reviews, persists and restores a ZIP larger than the old limits, and rejects oversized HTTP bodies', async () => {
+    const files = await gamePackageFiles();
+    files['server.js'] = Buffer.from(files['server.js'].toString().replaceAll('online.score-race', 'online.large-desktop'));
+    files['client.html'] = Buffer.concat([files['client.html'], Buffer.from(`<!--${'x'.repeat(6 * 1024 * 1024)}-->`)]);
+    const zip = Buffer.from(zipSync(files, { level: 0 }));
+    expect(zip.length).toBeGreaterThan(5 * 1024 * 1024);
+    const checked = await review(zip);
+    expect(checked.statusCode).toBe(200);
+    const requestId = randomUUID();
+    try {
+      expect((await publish(zip, checked.json().data.catalogHash, requestId)).statusCode).toBe(200);
+      await app.close();
+      db = createDatabase(url!);
+      app = await createApp({ db, config, registry: createRegistry(false) });
+      const desktop = await app.inject({ url: '/api/v1/game-packages/online.large-desktop/versions/1.0.0/desktop' });
+      expect(desktop.statusCode).toBe(200);
+      expect(desktop.body).toBe(files['client.html'].toString());
+      for (const endpoint of ['/review', `?requestId=${randomUUID()}`]) {
+        const response = await app.inject({
+          method: 'POST', url: `/api/v1/admin/game-packages${endpoint}`,
+          headers: { ...admin, 'content-type': 'application/zip', 'content-length': String(50 * 1024 * 1024 + 1) },
+          payload: Buffer.from('x'),
+        });
+        expect(response.statusCode).toBe(413);
+      }
+    } finally {
+      await db.query('DELETE FROM game_package_receipts WHERE request_id=$1', [requestId]);
+      await db.query("DELETE FROM game_packages WHERE game_id='online.large-desktop'");
+      await db.query("DELETE FROM game_installations WHERE game_id='online.large-desktop'");
+      await app.close();
+      db = createDatabase(url!);
+      app = await createApp({ db, config, registry: createRegistry(false) });
     }
   });
   it('installs concurrently once, locks versions, completes a real match and restores exact rules after restart', async () => {

@@ -3,6 +3,7 @@ import { DeterministicRng } from '../../packages/game-sdk/src/index.js';
 import { readGamePackage } from '../../apps/api/src/catalog/game-package.js';
 import { PackageRuntime } from '../../apps/api/src/registry/package-runtime.js';
 import { gamePackageFiles, gamePackageZip, zipSync, strToU8 } from '../fixtures/game-package.js';
+import { GAME_PACKAGE_MAX_ZIP_BYTES, GAME_PACKAGE_MAX_EXPANDED_BYTES } from '../../packages/protocol/src/index.js';
 
 describe('bounded online game packages', () => {
   let runtime: PackageRuntime;
@@ -13,9 +14,22 @@ describe('bounded online game packages', () => {
     const files = await gamePackageFiles();
     for (const bad of [Buffer.from('not a zip'), bytes.subarray(0, bytes.length - 1),
       Buffer.from(zipSync({ ...files, '../escape.js': strToU8('x') })),
-      Buffer.from(zipSync({ ...files, 'client.html': strToU8('x'.repeat(2 * 1024 * 1024)) })),
       Buffer.from(zipSync({ ...files, 'game.json': strToU8('{"format":"wrong"}') })),
-      Buffer.alloc(5 * 1024 * 1024 + 1)]) expect(() => readGamePackage(bad)).toThrow();
+      Buffer.alloc(GAME_PACKAGE_MAX_ZIP_BYTES + 1)]) expect(() => readGamePackage(bad)).toThrow();
+  });
+  it('accepts artwork-heavy desktops beyond the old upload and expanded limits', async () => {
+    const files = await gamePackageFiles();
+    const client = files['client.html'].toString() + `<!--${'x'.repeat(6 * 1024 * 1024)}-->`;
+    const zip = Buffer.from(zipSync({ ...files, 'client.html': strToU8(client) }, { level: 0 }));
+    expect(zip.length).toBeGreaterThan(5 * 1024 * 1024);
+    expect(readGamePackage(zip).client).toBe(client);
+  });
+  it('rejects an expanded-size bomb from its directory before decompression', async () => {
+    const zip = await gamePackageZip();
+    const end = zip.length - 22;
+    const directory = zip.readUInt32LE(end + 16);
+    zip.writeUInt32LE(GAME_PACKAGE_MAX_EXPANDED_BYTES + 1, directory + 24);
+    expect(() => readGamePackage(zip)).toThrow('解压后不超过 100 MiB');
   });
   it('runs deterministic transitions and does not advance RNG for failed rules', async () => {
     const { server } = readGamePackage(await gamePackageZip());

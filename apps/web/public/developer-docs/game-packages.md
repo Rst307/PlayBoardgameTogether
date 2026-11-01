@@ -4,7 +4,7 @@
 
 ## 包格式 v1
 
-ZIP 根目录必须恰好包含以下三个文件，无父目录、附加文件、加密、符号链接或 ZIP64。压缩包最大 5 MiB，解压后总共最多 2 MiB；采用 ZIP stored 或 deflate。
+ZIP 根目录必须恰好包含以下三个文件，无父目录、附加文件、加密、符号链接或 ZIP64。压缩包最大 50 MiB，解压后总共最多 100 MiB；采用 ZIP stored 或 deflate。图片等桌面素材可内嵌在 client.html 中，建议压缩图片并移除未使用的素材，避免影响手机加载速度。上传限制提高不改变规则沙箱的内存、执行时间或结果大小限制。
 
 | 文件 | 内容 |
 | --- | --- |
@@ -34,7 +34,7 @@ server.js 可实现 `getDecisionContext(state,viewer)`：无需行动返回 null
 
 ## 可选展示图（2026-10-03）
 
-`game.json.presentation` 为可选严格对象，支持 icon、cover、background；每个值是 `data:image/png;base64,...`。仅 PNG、单图字节最多 320 KiB、宽高 1–2048；校验 canonical base64、PNG 头/块边界及结束块。SVG/JPEG/外链不作为此字段接收。三图与规则/HTML 总共仍受 ZIP 解压后 2 MiB 限制。建议用方形图标、横向封面和背景；PNG 可由原创 SVG 在打包时渲染。不要在图像或元数据中嵌入秘密。
+`game.json.presentation` 为可选严格对象，支持 icon、cover、background；每个值是 `data:image/png;base64,...`。仅 PNG、单图字节最多 320 KiB、宽高 1–2048；校验 canonical base64、PNG 头/块边界及结束块。SVG/JPEG/外链不作为此字段接收。三图与规则/HTML 总共仍受 ZIP 解压后 100 MiB 限制。建议用方形图标、横向封面和背景；PNG 可由原创 SVG 在打包时渲染。不要在图像或元数据中嵌入秘密。
 
 025 迁移为 game_packages 增加 presentation；图像与同版本源码/安装回执原子保存，包 SHA-256 含图像。图库返回 `/api/v1/game-packages/:id/versions/:version/art/{icon|cover|background}.png`，响应 image/png、nosniff、sandbox CSP、不可变缓存。大厅和详情自动使用这些默认图，管理员原展示配置优先，清空后恢复包默认。旧包默认空对象，旧版本和对局不覆盖。仅声明图像即可自动展示，无需编辑平台 gameId 分支。
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures.js';
+import { unzipSync, zipSync } from 'fflate';
 
 async function login(page: Page, username: string) {
   await page.goto('/login');
@@ -18,7 +19,12 @@ test('administrator installs ZIP and players complete a real iframe game', async
   await expect(dialog.getByRole('button', { name: '检查游戏包' })).toBeDisabled();
   const example = await page.request.get('/api/v1/game-packages/example.zip');
   expect(example.ok()).toBe(true);
-  await page.getByLabel('游戏 ZIP 文件').setInputFiles({ name: 'score-race.zip', mimeType: 'application/zip', buffer: await example.body() });
+  const files = unzipSync(await example.body());
+  files['client.html'] = Buffer.concat([files['client.html']!, Buffer.from(`<!--${'x'.repeat(6 * 1024 * 1024)}-->`)]);
+  const zip = Buffer.from(zipSync(files, { level: 0 }));
+  expect(zip.length).toBeGreaterThan(5 * 1024 * 1024);
+  await expect(dialog).toContainText('最多 50 MiB；解压后最多 100 MiB');
+  await page.getByLabel('游戏 ZIP 文件').setInputFiles({ name: 'score-race.zip', mimeType: 'application/zip', buffer: zip });
   await page.screenshot({ path: info.outputPath('game-package-dialog.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await dialog.getByRole('button', { name: '检查游戏包' }).click();

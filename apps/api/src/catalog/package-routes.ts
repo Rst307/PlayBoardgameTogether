@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import { readFile } from 'node:fs/promises';
 import { zipSync } from 'fflate';
-import { gamePackageRequestSchema } from '@boardgame/protocol';
+import { GAME_PACKAGE_MAX_ZIP_BYTES, gamePackageRequestSchema } from '@boardgame/protocol';
 import type { AuthService } from '../auth.js';
 import { AppError } from '../errors.js';
 import { GamePackageService, packageVersionParams } from './package-service.js';
@@ -23,8 +23,8 @@ export function registerGamePackageRoutes(app: FastifyInstance, auth: AuthServic
     if ((!entry && attempts.size >= 1024) || (entry && entry.count >= 20)) throw new AppError('RATE_LIMITED', '游戏上传过于频繁，请一分钟后重试', 429, true);
     attempts.set(current.account.id, entry ? { ...entry, count: entry.count + 1 } : { count: 1, expires: now + 60000 });
   });
-  app.addContentTypeParser('application/zip', { parseAs: 'buffer', bodyLimit: 5 * 1024 * 1024 }, (_request, body, done) => done(null, body));
-  app.post(path, { bodyLimit: 5 * 1024 * 1024 }, async request => {
+  app.addContentTypeParser('application/zip', { parseAs: 'buffer', bodyLimit: GAME_PACKAGE_MAX_ZIP_BYTES }, (_request, body, done) => done(null, body));
+  app.post(path, { bodyLimit: GAME_PACKAGE_MAX_ZIP_BYTES }, async request => {
     const current = await auth.authenticate(request);
     if (!current || current.account.role !== 'administrator') throw new AppError('FORBIDDEN', '需要管理员权限', 403);
     auth.assertCsrf(request, current);
@@ -32,7 +32,7 @@ export function registerGamePackageRoutes(app: FastifyInstance, auth: AuthServic
     if (!Buffer.isBuffer(request.body) || request.headers['content-type']?.split(';')[0] !== 'application/zip') throw new AppError('VALIDATION_ERROR', '请选择 ZIP 游戏包', 415);
     return { ok: true, data: await packages.install(current, requestId, request.body, expectedCatalogHash), traceId: request.id };
   });
-  app.post(`${path}/review`, { bodyLimit: 5 * 1024 * 1024 }, async (request, reply) => {
+  app.post(`${path}/review`, { bodyLimit: GAME_PACKAGE_MAX_ZIP_BYTES }, async (request, reply) => {
     const current = await auth.authenticate(request);
     if (!current || current.account.role !== 'administrator') throw new AppError('FORBIDDEN', '需要管理员权限', 403);
     auth.assertCsrf(request, current);

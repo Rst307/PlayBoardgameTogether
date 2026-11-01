@@ -1,5 +1,6 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import { z } from 'zod';
+import { GAME_PACKAGE_MAX_ZIP_BYTES, GAME_PACKAGE_MAX_EXPANDED_BYTES } from '@boardgame/protocol';
 import { AppError } from '../errors.js';
 import { packagePresentationSchema } from './package-art.js';
 
@@ -11,8 +12,11 @@ export const packageDescriptorSchema = z.object({
 
 /** Fixed files only; inspect central-directory size/flags before any decompression. Never extract to disk. */
 export function readGamePackage(bytes: Buffer) {
-  const invalid = () => new AppError('VALIDATION_ERROR', 'ZIP 格式无效：需包含 game.json、server.js、client.html，且解压后不超过 2 MiB', 400);
-  if (bytes.length > 5 * 1024 * 1024 || bytes.length < 22) throw invalid();
+  const invalid = () => new AppError('VALIDATION_ERROR', 'ZIP 格式无效：需包含 game.json、server.js、client.html，且解压后不超过 100 MiB', 400);
+  if (bytes.length > GAME_PACKAGE_MAX_ZIP_BYTES) {
+    throw new AppError('VALIDATION_ERROR', '游戏 ZIP 压缩包不能超过 50 MiB', 400);
+  }
+  if (bytes.length < 22) throw invalid();
   let end = -1;
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
     if (bytes.readUInt32LE(i) === 0x06054b50 && i + 22 + bytes.readUInt16LE(i + 20) === bytes.length) { end = i; break; }
@@ -31,7 +35,7 @@ export function readGamePackage(bytes: Buffer) {
     if (position + 46 + length + extra + comment > end) throw invalid();
     const name = bytes.subarray(position + 46, position + 46 + length).toString('utf8');
     total += expanded;
-    if (!names.delete(name) || flags & 1 || ![0, 8].includes(method) || total > 2 * 1024 * 1024 ||
+    if (!names.delete(name) || flags & 1 || ![0, 8].includes(method) || total > GAME_PACKAGE_MAX_EXPANDED_BYTES ||
       expanded === 0 || (mode & 0xf000) === 0xa000 || offset + 30 > start || bytes.readUInt32LE(offset) !== 0x04034b50) throw invalid();
     const localName = bytes.readUInt16LE(offset + 26), localExtra = bytes.readUInt16LE(offset + 28);
     if (bytes.readUInt16LE(offset + 6) !== flags || bytes.readUInt16LE(offset + 8) !== method ||
@@ -42,7 +46,7 @@ export function readGamePackage(bytes: Buffer) {
   if (position !== end || names.size) throw invalid();
   try {
     const files = unzipSync(bytes);
-    if (Object.values(files).reduce((sum, file) => sum + file.length, 0) > 2 * 1024 * 1024) throw invalid();
+    if (Object.values(files).reduce((sum, file) => sum + file.length, 0) > GAME_PACKAGE_MAX_EXPANDED_BYTES) throw invalid();
     const descriptor = packageDescriptorSchema.parse(JSON.parse(strFromU8(files['game.json']!)));
     return { ...descriptor, server: strFromU8(files['server.js']!), client: strFromU8(files['client.html']!) };
   } catch { throw invalid(); }

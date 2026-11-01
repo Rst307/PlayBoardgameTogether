@@ -3,6 +3,10 @@ import { api } from '../../platform.js';
 import { adminError } from './AdminLayout.js';
 import type { GamePackageReview } from '@boardgame/protocol';
 import { ApiError } from '@boardgame/client-sdk';
+import { GAME_PACKAGE_MAX_ZIP_BYTES, GAME_PACKAGE_MAX_EXPANDED_BYTES } from '@boardgame/protocol';
+
+const maxZipMiB = GAME_PACKAGE_MAX_ZIP_BYTES / 1024 / 1024;
+const maxExpandedMiB = GAME_PACKAGE_MAX_EXPANDED_BYTES / 1024 / 1024;
 
 export function GamePackageUpload({ onInstalled }: { onInstalled: () => void }) {
   const [open, setOpen] = useState(false);
@@ -22,8 +26,8 @@ export function GamePackageUpload({ onInstalled }: { onInstalled: () => void }) 
   useEffect(() => { if (open) dialog.current?.showModal(); else dialog.current?.close(); }, [open]);
   async function install() {
     if (!file || controller.current) return;
-    if (!file.name.toLowerCase().endsWith('.zip') || file.size > 5 * 1024 * 1024) {
-      setError('请选择不超过 5 MiB 的 .zip 游戏包'); return;
+    if (!file.name.toLowerCase().endsWith('.zip') || file.size > GAME_PACKAGE_MAX_ZIP_BYTES) {
+      setError(`请选择不超过 ${maxZipMiB} MiB 的 .zip 游戏包`); return;
     }
     const abort = new AbortController();
     controller.current = abort;
@@ -62,7 +66,7 @@ export function GamePackageUpload({ onInstalled }: { onInstalled: () => void }) 
         <a href="/api/v1/game-packages/example.zip" download>下载可玩示例 ZIP</a>
         <a href="/developers/game-packages">查看打包说明</a>
       </div>
-      <p>包含 game.json、server.js、client.html，最多 5 MiB；解压后最多 2 MiB。普通源码仓库 ZIP 需要先按说明打包。</p>
+      <p>包含 game.json、server.js、client.html，最多 {maxZipMiB} MiB；解压后最多 {maxExpandedMiB} MiB。普通源码仓库 ZIP 需要先按说明打包。</p>
       <label>游戏 ZIP 文件<input type="file" accept=".zip,application/zip" disabled={busy}
         onChange={event => { setFile(event.target.files?.[0]); request.current = undefined; setReview(undefined); setError(''); }} /></label>
       {file && <p>{file.name} · {(file.size / 1024).toFixed(1)} KiB</p>}
