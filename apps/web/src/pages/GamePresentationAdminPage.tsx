@@ -9,8 +9,8 @@ import { GameArtwork } from './GameArtwork.js';
 import { AdminLayout } from './admin/AdminLayout.js';
 
 const fields = [
-  { key: 'iconUrl', label: '游戏图标地址', hint: '方形图片，用于卡片与游戏标题。' },
-  { key: 'coverUrl', label: '大厅封面地址', hint: '建议 16:9 横图，用于游戏大厅。' },
+  { key: 'iconUrl', label: '游戏图标地址', hint: '方形游戏头像，用于大厅主图与详情标题图标；保留完整构图。' },
+  { key: 'coverUrl', label: '大厅封面地址', hint: '未设置头像时使用的兼容封面；不会替代详情背景。' },
   { key: 'backgroundUrl', label: '详情背景地址', hint: '建议宽幅横图，标题区会自动压暗以保证文字清晰。' },
 ] as const;
 type ImageDraft = { iconUrl: string; coverUrl: string; backgroundUrl: string };

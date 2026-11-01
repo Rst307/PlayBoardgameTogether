@@ -38,6 +38,50 @@ test('search and player filters compose, recover from an empty result and retain
   await expect(page.locator('.game-card')).toHaveCount(6);
 });
 
+test('game avatars use complete square portraits across themes and viewports', async ({ page, isMobile }, info) => {
+  const widths = isMobile ? [320, 390] : [1280, 1440];
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: isMobile ? 844 : 900 });
+      for (const name of ['花砖物语', 'Color Match', 'Grid Garden', '璀璨宝石']) {
+        const card = page.getByRole('link', { name: `查看 ${name}`, exact: true });
+        await card.scrollIntoViewIfNeeded();
+        const avatar = card.locator('.game-avatar img');
+        await expect(avatar).toBeVisible();
+        await expect.poll(() => avatar.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBe(512);
+        const box = await avatar.boundingBox();
+        expect(box!.width / box!.height).toBeCloseTo(1, 1);
+        await expect(avatar).toHaveCSS('object-fit', 'contain');
+        expect(await avatar.evaluate(node => {
+          const image = node as HTMLImageElement;
+          return image.naturalWidth / image.naturalHeight;
+        })).toBe(1);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: info.outputPath(`pixel-games-${theme}-${width}.png`), fullPage: true });
+    }
+  }
+});
+
+test('catalog avatars, legacy covers and detail backgrounds keep their separate image roles', async ({ page }, info) => {
+  await page.route('**/api/v1/games/presentations', route => route.fulfill({ json: {
+    ok: true, traceId: 'avatar-roles', data: [
+      { gameId: 'party', version: '1.0.0', revision: 1, iconUrl: '/game-art/counter-icon.svg', coverUrl: '/game-art/color-match.svg', backgroundUrl: '/game-art/grid-garden.svg' },
+      { gameId: 'duel', version: '1.0.0', revision: 1, iconUrl: null, coverUrl: '/game-art/counter.svg', backgroundUrl: '/game-art/color-match.svg' },
+    ],
+  } }));
+  await page.goto('/');
+  const avatar = page.getByRole('link', { name: '查看 聚会桌游', exact: true });
+  await expect(avatar.locator('.game-avatar img')).toHaveAttribute('src', '/game-art/counter-icon.svg');
+  await expect(page.getByRole('link', { name: '查看 双人棋', exact: true }).locator('.game-avatar img')).toHaveAttribute('src', '/game-art/counter.svg');
+  await avatar.click();
+  await expect(page.locator('.game-detail-icon img')).toHaveAttribute('src', '/game-art/counter-icon.svg');
+  await expect(page.locator('.game-banner-background img')).toHaveAttribute('src', '/game-art/grid-garden.svg');
+  await expect(page.locator('.game-detail-icon img')).toHaveCSS('object-fit', 'contain');
+  await page.screenshot({ path: info.outputPath('separate-avatar-and-background.png'), fullPage: true });
+});
+
 test('mobile navigation stays reachable and content clears the bar at narrow widths', async ({ page, isMobile }, info) => {
   test.skip(!isMobile, 'Mobile navigation and grid');
   for (const width of [320, 390, 700]) {

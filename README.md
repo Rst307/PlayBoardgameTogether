@@ -2,7 +2,7 @@
 
 顶尖桌游联盟的桌游平台，支持多人实时对局、脚本与模型 AI、在线游戏扩展。先选游戏，再开一桌，让朋友在浏览器里一起玩。
 
-**平台版本 `1.1.1`** · TypeScript · React / Vite · Fastify · PostgreSQL
+**平台版本 `1.1.2`** · TypeScript · React / Vite · Fastify · PostgreSQL
 
 [快速开始](#快速开始) · [游戏列表](#游戏列表) · [部署与更新](#部署与更新) · [开发者文档](#开发者文档) · [开发进度](docs/progress.md)
 
@@ -52,6 +52,8 @@
 输出位于 `dist/game-packages/`。包格式、运行限制及 AI 接口见 [在线游戏 ZIP 规范](apps/web/public/developer-docs/game-packages.md)；普通源码仓库 ZIP 不能直接安装。
 
 独立开发与发布游戏的仓库规划、导出工具及迁移边界见 [独立游戏仓库](docs/game-repositories.md)。
+
+游戏头像与详情背景分别使用，附件映射、美术来源及本批候选发布状态见 [头像交付记录](docs/game-avatar-art-2026-11-01.md)。
 
 ## 快速开始
 

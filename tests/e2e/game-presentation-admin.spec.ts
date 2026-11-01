@@ -6,6 +6,8 @@ test('administrator saves three image roles, persists settings and restores buil
   await page.getByLabel('密码', { exact: true }).fill('stage two password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page.locator('a.game-card[href="/games/splendor.base/1.0.0"]')).toBeVisible();
+  const builtinAvatar = await page.locator('a.game-card[href="/games/splendor.base/1.0.0"] .game-avatar img').getAttribute('src');
+  expect(builtinAvatar).toBeTruthy();
   await page.locator('.nav-tools summary').click();
   await page.getByRole('link', { name: '管理员后台', exact: true }).click();
   await expect(page.getByRole('heading', { name: '管理员后台', exact: true })).toBeVisible();
@@ -31,7 +33,7 @@ test('administrator saves three image roles, persists settings and restores buil
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await page.getByRole('link', { name: '游戏大厅', exact: true }).click();
   const card = page.locator('a.game-card[href="/games/splendor.base/1.0.0"]');
-  await expect(card.locator('.game-cover img')).toHaveAttribute('src', '/game-art/grid-garden.svg');
+  await expect(card.locator('.game-avatar img')).toHaveAttribute('src', '/game-art/color-match-icon.svg');
   await expect(card.locator('.game-card-icon img')).toHaveAttribute('src', '/game-art/color-match-icon.svg');
   await card.click();
   await expect(page.getByRole('heading', { name: '公开房间', exact: true })).toBeVisible();
@@ -48,7 +50,7 @@ test('administrator saves three image roles, persists settings and restores buil
   await page.getByRole('button', { name: '保存展示图片' }).click();
   await expect(page.getByRole('status')).toContainText('展示图片已保存');
   await page.goto('/games/splendor.base/1.0.0');
-  await expect(page.locator('.game-detail-icon img')).toHaveAttribute('src', '/game-art/splendor-icon.svg');
+  await expect(page.locator('.game-detail-icon img')).toHaveAttribute('src', builtinAvatar!);
 });
 
 test('ordinary accounts cannot edit game presentation', async ({ page }) => {
