@@ -10,7 +10,7 @@
 | 五子棋         | [playboard-game-gomoku](https://github.com/PlayBoardgameTogether/playboard-game-gomoku)           | 1.0.3         | 安装 ZIP         |
 | 拉密           | [playboard-game-rummikub](https://github.com/PlayBoardgameTogether/playboard-game-rummikub)       | 1.0.3         | 安装 ZIP         |
 | 卡坦岛         | [playboard-game-catan](https://github.com/PlayBoardgameTogether/playboard-game-catan)             | 1.0.1         | 安装 ZIP         |
-| 波多黎各       | [playboard-game-puerto-rico](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico) | 1.0.0         | 安装 ZIP         |
+| 波多黎各       | [playboard-game-puerto-rico](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico) | 1.1.0         | 安装 ZIP         |
 | 阿瓦里         | [playboard-game-awari](https://github.com/PlayBoardgameTogether/playboard-game-awari)             | 1.0.0         | 安装 ZIP         |
 | Color Match    | [playboard-game-color-match](https://github.com/PlayBoardgameTogether/playboard-game-color-match) | 1.0.0         | 可信内置集成 tgz |
 | Grid Garden    | [playboard-game-grid-garden](https://github.com/PlayBoardgameTogether/playboard-game-grid-garden) | 1.0.0         | 可信内置集成 tgz |
@@ -100,7 +100,9 @@ pnpm verify
 
 内置仓库不需要 Playwright，额外执行 `pnpm typecheck`。内置 `pnpm verify` 校验 manifest 与包版本一致，生成 tgz 和摘要；在线包把最终 ZIP 交给平台固定版本解析器和真实 QuickJS，验证最小/最大人数、恢复、本人视图和合法初始动作。原游戏规则测试一并运行。这些是独立兼容性检查，不冒充全平台 HTTP、权限、数据库、手机或真实联机验收。
 
-普通 main 推送、PR 和手动工作流只验证并提供短期 Actions artifact；推送 `<archive>-v<精确版本>` 标签，在检查通过后创建 GitHub Release，附件包含游戏 ZIP 或内置 tgz、`SHA256SUMS` 和 `release.json`。例如 `gomoku-v1.0.3`、`azul-v1.0.0`，UNO 分别使用 `uno-v1.2.0`、`uno-no-mercy-v1.0.0`。已存在的 Release 不覆盖；不同系统的 PNG 字体渲染可能产生不同 ZIP 摘要，核对该次实际附件。
+除下述波多黎各自动发布流程外，普通 main 推送、PR 和手动工作流只验证并提供短期 Actions artifact；推送 `<archive>-v<精确版本>` 标签，在检查通过后创建 GitHub Release，附件包含游戏 ZIP 或内置 tgz、`SHA256SUMS` 和 `release.json`。例如 `gomoku-v1.0.3`、`azul-v1.0.0`，UNO 分别使用 `uno-v1.2.0`、`uno-no-mercy-v1.0.0`。已存在的 Release 不覆盖；不同系统的 PNG 字体渲染可能产生不同 ZIP 摘要，核对该次实际附件。
+
+**波多黎各自 2026-11-01 起采用 main 自动发布**（[游戏 PR #3](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/pull/3)）：合入 main 或在 main 手动运行工作流，完整检查通过后读取包内精确版本，自动创建缺失标签和正式 Release；标签推送入口保留，PR 仅验证。完整的正式旧版本跳过，不移动旧标签或覆盖附件；冲突标签、草稿/预发布、缺失附件及授权/网络错误报错。当前 [1.1.0 Release](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/releases/tag/puerto-rico-v1.1.0) 由 main 提交 `75e83f66a1fca7c7d44891b2773806957623bc8f` 自动发布，三个附件实际可下载且摘要一致。其他仓库的触发方式保持原样。
 
 **GitHub 自动提供的 Source code.zip 和内置 tgz 不能在在线 ZIP 管理中安装。** 内置 tgz 是可信构建集成产物，不是公开 npm SDK，不授予上传代码进入 Node.js 的权限。
 

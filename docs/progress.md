@@ -16,6 +16,15 @@
 - 平台版本 `1.1.0 → 1.1.1`：样式优化与布局增强，无外部破坏性行为变更，属于 PATCH+1；同步根 `package.json`、`README.md` 与 `docs/admin.md`。
 - 验证：`pnpm typecheck`（12 个工作区全部通过）、`pnpm lint`（ESLint、check-boundaries、format:check 全通过）、`pnpm build`（生产前端构建顺利完成）、`game-subscription-ui.spec.ts`（桌面与手机 4/4 通过）、`admin-games-ui.spec.ts`（2/2 通过）、`admin-console-ui.spec.ts`（4/4 通过）、`admin-updates-ui.spec.ts`（10/10 通过，含桌面 1366×768 侧边栏无遮挡与步骤 4 浮层避让专项）。实际查看桌面与手机截图验证视觉与排版。
 
+## 波多黎各 main 自动打包发布（2026-11-01，游戏 1.1.0）
+
+- 独立游戏 [PR #3](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/pull/3) 已合并：交付提交 `175547be7cffaaf4e6ad42e4b5a034c337c81240`，merge commit `75e83f66a1fca7c7d44891b2773806957623bc8f`。原工作流增加 main 自动发布与 main 手动补发，先通过全部验证，再读取精确版本并创建标签和正式 Release；PR 仅验证。完整旧版本跳过，不覆盖附件或移动标签；冲突/草稿/不完整发布及网络授权错误失败，发布 job 串行。
+- 本地发布保护回归 `node --test tests/publish-release.test.mjs` 9/9、无 skip，Node 语法、YAML 解析和 `git diff --check` 通过。GitHub PR 检查和 [main 发布运行](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/actions/runs/41264225073) 均成功；本轮 main 实际规则测试 16/16、发布保护 9/9、四视口 UI 8/8、打包成功、真实 QuickJS 发布验证 1/1，无 skip。发布工具变化，不重复平台业务/数据库/E2E 检查。
+- 北京时间 2026-11-01 10:14:44 自动创建 [puerto-rico-v1.1.0](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico/releases/tag/puerto-rico-v1.1.0)，GitHub latest 已是此版本，标签 SHA 与上述 merge commit 一致。实际下载 ZIP、release.json、SHA256SUMS，ZIP 1,359,100 字节，三者 SHA-256 一致：`5b849d1876b6080a8c1a326b36848d940a235cbb27b39d4807ae5a2985ee2664`。旧 1.0.0 Release 保留。
+- 平台 main 官方目录、独立仓库 release.config.json 与 manifest 的仓库、名称、ID `online.puerto-rico`、archive `puerto-rico` 和经典玩法对齐，**登记已核对，无需改动**；本批仅同步仓库清单的已发布版本与触发方式，不改锁定游戏副本、来源锁、游戏/资源 1.1.0、contentVersion 1.0.0 或平台 1.1.0。仅开发发布工具与内部文档，不增加版本号。
+- 未持有生产管理员会话，未执行官方订阅同步/安装、平台部署或服务器运行验收；正式 Release 不等于生产已安装或上架。下一步由已启用对应订阅开关的平台同步，并核对实际安装结果。其他游戏未修改发布策略。
+
+
 ## 官方游戏订阅：自动添加与更新（2026-11-01，1.1.0）
 
 - 开发指引补充（同日）：按用户要求将“每次新游戏/游戏更新均核对维护官方登记”写入平台 AGENTS、游戏 SDK/仓库指南、公开添加游戏指南和独立仓库指引模板，包含新增示例、发布附件一致性、元数据不变时明确记录、内置例外和精确集成锁边界。主工作区 AGENTS 同步该要求并保留原有未提交改动。本次仅文档/指引补充，核对格式、链接、示例及实现一致性，不重复业务测试，不递增同批平台版本；已有游戏仓库不会因模板更新被自动改写，后续维护时按平台指引执行。
