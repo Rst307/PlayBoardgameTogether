@@ -492,3 +492,4 @@ export const matchReplaySchema = z
 export type MatchReplay = z.infer<typeof matchReplaySchema>;
 export * from './badges.js';
 export * from './coins.js';
+export * from './game-subscription.js';

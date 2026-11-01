@@ -10,6 +10,7 @@ import type { GameRegistry } from '../registry/index.js';
 import { PackageRuntime } from '../registry/package-runtime.js';
 import { readGamePackage } from './game-package.js';
 import { AppError } from '../errors.js';
+import { compareGameVersions } from './official-source.js';
 
 type Row = { game_id: string; game_version: string; package_hash: string; server_source: string; public_rules: string };
 
@@ -101,16 +102,44 @@ export class GamePackageService {
     });
   }
   async install(current: AuthContext, requestId: string, bytes: Buffer, expectedCatalogHash?: string) {
+    return this.installAuthorized({ kind: 'session', current }, requestId, bytes, expectedCatalogHash);
+  }
+  async installSubscribed(revision: number, requestId: string, bytes: Buffer, expectedCatalogHash: string) {
+    return this.installAuthorized({ kind: 'subscription', revision }, requestId, bytes, expectedCatalogHash);
+  }
+  private async installAuthorized(
+    authorization: { kind: 'session'; current: AuthContext } | { kind: 'subscription'; revision: number },
+    requestId: string, bytes: Buffer, expectedCatalogHash?: string,
+  ) {
     const { hash, packageData, manifest, result } = this.validate(bytes);
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
       await client.query('SELECT pg_advisory_xact_lock(73418, 2)');
-      const account = await client.query<{ role: string }>("SELECT role FROM accounts WHERE id=$1 AND status='active' FOR UPDATE", [current.account.id]);
-      const session = await client.query(`SELECT 1 FROM sessions WHERE id=$1 AND account_id=$2 AND token_hash=$3 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`, [current.sessionId, current.account.id, current.tokenHash]);
-      if (!account.rowCount || !session.rowCount) throw new AppError('UNAUTHENTICATED', '会话已失效', 401);
+      const owner = authorization.kind === 'subscription'
+        ? (await client.query<{ authorized_by: string }>('SELECT authorized_by FROM game_subscription WHERE singleton=true')).rows[0]?.authorized_by
+        : authorization.current.account.id;
+      const account = await client.query<{ role: string }>("SELECT role FROM accounts WHERE id=$1 AND status='active' FOR UPDATE", [owner]);
+      if (!account.rowCount) throw new AppError('UNAUTHENTICATED', '安装授权已失效', 401);
       if (account.rows[0]?.role !== 'administrator') throw new AppError('FORBIDDEN', '需要管理员权限', 403);
-      const previous = await client.query<{ package_hash: string; result: unknown }>('SELECT package_hash,result FROM game_package_receipts WHERE account_id=$1 AND request_id=$2', [current.account.id, requestId]);
+      if (authorization.kind === 'session') {
+        const current = authorization.current;
+        const session = await client.query(`SELECT 1 FROM sessions WHERE id=$1 AND account_id=$2 AND token_hash=$3 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`, [current.sessionId, owner, current.tokenHash]);
+        if (!session.rowCount) throw new AppError('UNAUTHENTICATED', '会话已失效', 401);
+      } else {
+        const settings = await client.query<{ revision: number; authorized_by: string; auto_add: boolean; auto_update: boolean }>('SELECT * FROM game_subscription WHERE singleton=true FOR SHARE');
+        const policy = settings.rows[0]!;
+        const installed = await client.query<{ game_version: string; enabled: boolean; online: boolean }>(
+          `SELECT i.game_version,i.enabled,p.game_id IS NOT NULL AS online FROM game_installations i
+           LEFT JOIN game_packages p USING(game_id,game_version) WHERE i.game_id=$1`, [manifest.id]);
+        if (policy.revision !== authorization.revision || policy.authorized_by !== owner ||
+          (installed.rows.length ? !policy.auto_update : !policy.auto_add) ||
+          installed.rows.some(row => !row.online || compareGameVersions(row.game_version, manifest.version) >= 0) ||
+          (installed.rows.length && !installed.rows.some(row => row.enabled))) {
+          throw new AppError('STATE_CONFLICT', '订阅授权或游戏状态已变化，本次安装已取消', 409);
+        }
+      }
+      const previous = await client.query<{ package_hash: string; result: unknown }>('SELECT package_hash,result FROM game_package_receipts WHERE account_id=$1 AND request_id=$2', [owner, requestId]);
       if (previous.rows[0]) {
         if (previous.rows[0].package_hash !== hash) throw new AppError('REQUEST_ID_CONFLICT', '同一请求 ID 不能上传不同游戏包', 409);
         await client.query('COMMIT');
@@ -134,9 +163,9 @@ export class GamePackageService {
         // Replace catalog availability atomically; immutable old rules remain recoverable.
         await client.query('UPDATE game_installations SET enabled=false WHERE game_id=$1 AND enabled=true', [manifest.id]);
         await client.query('INSERT INTO game_installations(game_id,game_version,content_version,sdk_range,manifest,enabled) VALUES($1,$2,$3,$4,$5,true)', [manifest.id, manifest.version, manifest.contentVersion, manifest.sdkRange, manifest]);
-        await client.query('INSERT INTO game_packages(game_id,game_version,package_hash,server_source,client_html,public_rules,installed_by,presentation) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [manifest.id, manifest.version, hash, packageData.server, packageData.client, packageData.rules, current.account.id, packageData.presentation ?? {}]);
+        await client.query('INSERT INTO game_packages(game_id,game_version,package_hash,server_source,client_html,public_rules,installed_by,presentation) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', [manifest.id, manifest.version, hash, packageData.server, packageData.client, packageData.rules, owner, packageData.presentation ?? {}]);
       }
-      await client.query('INSERT INTO game_package_receipts(account_id,request_id,package_hash,result) VALUES($1,$2,$3,$4)', [current.account.id, requestId, hash, result]);
+      await client.query('INSERT INTO game_package_receipts(account_id,request_id,package_hash,result) VALUES($1,$2,$3,$4)', [owner, requestId, hash, result]);
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');

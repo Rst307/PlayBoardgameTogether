@@ -46,7 +46,7 @@
   }
 }
 @layer theme {
-  .desktop-shell--admin .mail-settings-workspace input[type='checkbox'] {
+  .desktop-shell--admin :is(.mail-settings-workspace, .game-subscription) input[type='checkbox'] {
     appearance: auto;
     background: initial;
     box-shadow: none;
@@ -1072,5 +1072,54 @@
       align-items: flex-end;
       gap: 6px;
     }
+  }
+}
+@layer components.admin {
+  .game-subscription {
+    display: grid;
+    gap: 0.85rem;
+    margin-block: 1rem;
+  }
+  .game-subscription p {
+    margin: 0;
+  }
+  .game-subscription fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+  }
+  .game-subscription legend {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .game-subscription fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+  }
+  .game-subscription input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+  }
+  .game-subscription-status {
+    display: grid;
+    gap: 0.35rem;
+    overflow-wrap: anywhere;
+  }
+  .game-subscription-results {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 0.8rem;
+  }
+  .game-subscription-results li {
+    display: grid;
+    gap: 0.25rem;
+    overflow-wrap: anywhere;
   }
 }

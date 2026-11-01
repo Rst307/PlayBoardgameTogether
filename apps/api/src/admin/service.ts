@@ -19,6 +19,8 @@ import { CoinService } from '../coins/service.js';
 import { mailSettingsSchema, mailTestResultSchema, type MailSettingsInput, type MailTestInput } from '@boardgame/protocol';
 import type { MailSettingsService } from '../mail-settings.js';
 import type { SmtpCredentials } from '../mail-transport.js';
+import type { GameSubscriptionService } from '../catalog/subscriptions.js';
+import { gameSubscriptionSchema, type GameSubscriptionInput } from '@boardgame/protocol';
 
 type AccountRow = {
   id: string;
@@ -44,6 +46,18 @@ const accountColumns =
   'id,username_canonical,display_name,role,status,admin_revision,created_at';
 
 export class AdminService {
+  async gameSubscription(service: GameSubscriptionService, current: AuthContext, input: GameSubscriptionInput) {
+    return gameSubscriptionSchema.parse(await this.command(
+      current, input.requestId, { operation: 'game.subscription.save', ...input },
+      client => service.save(client, current.account.id, input),
+    ));
+  }
+  async checkGameSubscription(service: GameSubscriptionService, current: AuthContext, input: Pick<GameSubscriptionInput, 'requestId' | 'expectedRevision'>) {
+    return gameSubscriptionSchema.parse(await this.command(
+      current, input.requestId, { operation: 'game.subscription.check', ...input },
+      client => service.requestCheck(client, input.expectedRevision),
+    ));
+  }
   async coins(accountId: string, before?: number) {
     return new CoinService(this.db).wallet(accountId, before);
   }

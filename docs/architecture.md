@@ -1,5 +1,9 @@
 # 架构
 
+## 官方游戏订阅（2026-11-01，1.1.0）
+
+catalog 的 `official-source.ts` 固定官方目录和同组织 Release 来源，负责有界下载、清单解析及 SHA-256；`subscriptions.ts` 拥有订阅策略、定时调度、跨进程串行锁和最近结果。管理员保存/触发复用 AdminService 原授权、事务及回执；后台安装进入 GamePackageService 同一校验及安装事务，以持久订阅授权取代交互会话，并在提交时复验活跃管理员、策略 revision、上下架和目录摘要。没有新运行单元、任意来源执行或第二套游戏规则/对局写链路。Web 在原游戏管理页提供折叠面板，关闭后清理轮询。内置游戏和独立仓库所有权不变，详见 [官方游戏订阅](game-subscription.md)。
+
 ## 注册邮箱验证（2026-10-25，1.0.0）
 
 `registration-email.ts` 拥有临时验证码与持久化发送/尝试配额，`mail-settings.ts` 拥有后台 SMTP 配置、主密钥加密与运行时读取，`mail-transport.ts` 负责公网地址解析/固定 IP、TLS 和脱敏 SMTP 投递。`registration-routes.ts` 沿用 Origin、JSON、体积限制与有界 IP 限流。`AuthService.register` 在原 social-write 事务中验证并核销挑战、创建绑定已验证邮箱的账户；未验证前没有账户或 session。protocol/client-sdk 提供邮箱、后台设置和测试契约，RegisterPage 管理发码与注册，AdminMailSettingsPage 在既有后台外壳中管理保存/测试/未知回复恢复。后台写入复用 AdminService 原管理员事务与回执，只保存秘密输入的 HMAC 指纹；测试先提交 sending 回执，再从事务外调用 SMTP，重复请求只读取原结果。没有新的身份、规则、进程或邮箱公开 DTO。旧账号/CLI 登录不受影响；新增公开注册必填契约，版本升级已获用户明确授权。测试传输只在非生产依赖注入；生产 `main.ts` 及 createApp 使用实际 SMTP，不暴露测试开关或收件箱路由。
