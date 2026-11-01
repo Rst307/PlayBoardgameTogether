@@ -2,6 +2,8 @@
 
 2026-10-25 用户确认：游戏统一放在 [PlayBoardgameTogether 组织](https://github.com/orgs/PlayBoardgameTogether)，**每个游戏单独一个仓库，以后也沿用此规则**。平台主仓库继续维护网站、认证、房间、对局事务、数据库、通用 SDK、游戏运行时、管理员安装及部署。
 
+2026-11-01 头像批次的十个游戏 PR 已合并；波多黎各正式发布至 1.1.1，其他在线头像候选尚未打标发布，表内保留其原正式版本。合并、附件校验及订阅/生产边界见 [本批交付记录](game-avatar-art-2026-11-01.md)。
+
 ## 已创建的游戏仓库
 
 | 游戏           | 仓库                                                                                              | 现有游戏版本  | 发布格式         |
@@ -10,7 +12,7 @@
 | 五子棋         | [playboard-game-gomoku](https://github.com/PlayBoardgameTogether/playboard-game-gomoku)           | 1.0.3         | 安装 ZIP         |
 | 拉密           | [playboard-game-rummikub](https://github.com/PlayBoardgameTogether/playboard-game-rummikub)       | 1.0.3         | 安装 ZIP         |
 | 卡坦岛         | [playboard-game-catan](https://github.com/PlayBoardgameTogether/playboard-game-catan)             | 1.0.1         | 安装 ZIP         |
-| 波多黎各       | [playboard-game-puerto-rico](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico) | 1.1.0         | 安装 ZIP         |
+| 波多黎各       | [playboard-game-puerto-rico](https://github.com/PlayBoardgameTogether/playboard-game-puerto-rico) | 1.1.1         | 安装 ZIP         |
 | 阿瓦里         | [playboard-game-awari](https://github.com/PlayBoardgameTogether/playboard-game-awari)             | 1.0.0         | 安装 ZIP         |
 | Color Match    | [playboard-game-color-match](https://github.com/PlayBoardgameTogether/playboard-game-color-match) | 1.0.0         | 可信内置集成 tgz |
 | Grid Garden    | [playboard-game-grid-garden](https://github.com/PlayBoardgameTogether/playboard-game-grid-garden) | 1.0.0         | 可信内置集成 tgz |
