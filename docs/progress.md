@@ -1,5 +1,16 @@
 # 开发进度
 
+## 游戏包容量提升（2026-11-01，1.1.1）
+
+- ZIP 压缩包从 5 MiB 提高至 50 MiB，三文件解压总量从 2 MiB 提高至 100 MiB。protocol 导出共用上限，手动上传的前端检查、审核/安装 HTTP 限制、ZIP 解析和官方订阅流式下载保持一致；同步弹窗提示、公开包规范、订阅说明及数据模型文档。规则 QuickJS 的内存/时间/结果限制、固定三文件和目录检查、来源摘要、管理员审核与精确版本不可变边界保持。
+- 新增 `038_game_package_size_limits.sql` 将持久源码/桌面/规则文本约束提高到 100 MiB，不改写已应用迁移或旧包。大包桌面素材仍须内嵌 HTML；展示图各自 320 KiB 的校验保持，不把安装容量放宽等同于规则执行资源放宽。
+- 在独立 worktree 基于 main 开发，交付前发现 main 新合入官方订阅 [PR #41](https://github.com/PlayBoardgameTogether/PlayBoardgameTogether/pull/41)，以 merge commit 纳入最新 `71aefef`，补齐订阅原有 5 MiB 下载限制；最终平台版本按最新主线 `1.1.0 → 1.1.1`，兼容性限制修复，PATCH+1，README 一致。主工作区用户 AGENTS.md 改动及其他任务不动；未修改任何游戏源码、版本、目录登记或集成锁。
+- 最终静态和生产检查：`pnpm typecheck`、`pnpm lint`、`pnpm build` 通过，含 20 源码根目录 AST 边界、公开 SDK、生产 bundle/API runtime 和隔离 ZIP 检查。构建初次遇到 Windows 输出目录 EPERM，使用同一独立工作目录的可用权限完成，未删除用户文件或放宽检查；最后仅修改 E2E 定位，相关 ESLint 与测试 TypeScript 再次通过。
+- `pnpm test tests/unit/game-packages.test.ts tests/unit/official-game-source.test.ts tests/unit/developer-publication.test.ts`：3 文件、14/14 通过。覆盖超过旧上限的 6 MiB 桌面包、订阅下载及摘要校验、50 MiB ZIP 超限、解压前拒绝声明超过 100 MiB 的 ZIP、既有格式和沙箱限制。大 Buffer 比较使用原生完整字节比较，避免测试框架逐项深比较的额外开销。
+- 集成通过原独立库准备链串行执行：`pnpm test:integration --testNamePattern 'official game subscription|administrator instant game installation'` 首轮订阅 5/5、ZIP 2/3；原完整对局用例出现一次 5 秒超时。构建和单测结束后，不改超时或断言，以 `pnpm test:integration --testNamePattern 'administrator instant game installation'` 单独复验 ZIP，最终 3/3（完整对局用例约 2.25 秒）。新用例证明 6 MiB ZIP 可审核、持久安装、API 重启后逐字节返回原桌面，两个 HTTP 写入入口对超限 Content-Length 返回 413。最终 `038` 迁移及订阅 `037` 已在与开发库隔离的 `boardgame_package_limits_20261101_test` 应用；其余模式筛选用例未执行，不计为通过。早期基线的全量集成在发现主线更新后中止，不作为最终全量通过记录。
+- `pnpm test:e2e game-packages.spec.ts --output .data/game-package-e2e-final`：桌面/手机 2/2 通过，无 skip，覆盖真实 6 MiB ZIP 上传、审核、完整双人 iframe 对局、刷新恢复与回放。首次回放步骤发现测试使用过期的“开头/末尾”按钮名，按当前 UI 更新为“第一步/最后一步”，保留原行为断言；ZIP 固定 mtime，确保双端复验同版本的包摘要稳定。`pnpm test:ui game-package-upload-ui.spec.ts` 的静态审核交互另有桌面/手机 2/2 通过；实际查看 1440×900、390×844 上传弹窗截图，无横向溢出，最终真实截图保存在上述忽略目录。
+- 交付边界：本轮仅平台容量兼容性修复，不新增或发布游戏，不声称官方订阅已在生产安装大包。未验证物理手机、Safari、50 MiB 极限包的公网传输及生产服务器；提交推送并提供 PR，尚未合并/部署，未取得服务器运行 SHA、systemd active 或 `/health/ready` 的本轮上线证据。下一步审查合并后，在已确认且可访问的服务器连接上按现有更新器应用迁移并独立验收。
+
 ## 官方游戏订阅：自动添加与更新（2026-11-01，1.1.0）
 
 - 开发指引补充（同日）：按用户要求将“每次新游戏/游戏更新均核对维护官方登记”写入平台 AGENTS、游戏 SDK/仓库指南、公开添加游戏指南和独立仓库指引模板，包含新增示例、发布附件一致性、元数据不变时明确记录、内置例外和精确集成锁边界。主工作区 AGENTS 同步该要求并保留原有未提交改动。本次仅文档/指引补充，核对格式、链接、示例及实现一致性，不重复业务测试，不递增同批平台版本；已有游戏仓库不会因模板更新被自动改写，后续维护时按平台指引执行。

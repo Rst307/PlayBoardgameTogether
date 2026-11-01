@@ -21,7 +21,7 @@ test('administrator installs ZIP and players complete a real iframe game', async
   expect(example.ok()).toBe(true);
   const files = unzipSync(await example.body());
   files['client.html'] = Buffer.concat([files['client.html']!, Buffer.from(`<!--${'x'.repeat(6 * 1024 * 1024)}-->`)]);
-  const zip = Buffer.from(zipSync(files, { level: 0 }));
+  const zip = Buffer.from(zipSync(files, { level: 0, mtime: new Date(2026, 0, 1) }));
   expect(zip.length).toBeGreaterThan(5 * 1024 * 1024);
   await expect(dialog).toContainText('最多 50 MiB；解压后最多 100 MiB');
   await page.getByLabel('游戏 ZIP 文件').setInputFiles({ name: 'score-race.zip', mimeType: 'application/zip', buffer: zip });
@@ -105,9 +105,9 @@ test('administrator installs ZIP and players complete a real iframe game', async
     await expect(page.getByLabel('回放进度')).toHaveValue('1');
     await expect(iframe.locator('#scores')).not.toHaveText(initialScores);
     await expect(iframe.locator('html')).toHaveAttribute('data-replay-instance', 'original');
-    await page.getByRole('button', { name: '末尾', exact: true }).click();
+    await page.getByRole('button', { name: '最后一步', exact: true }).click();
     await expect(iframe.locator('#status')).toContainText('获胜');
-    await page.getByRole('button', { name: '开头', exact: true }).click();
+    await page.getByRole('button', { name: '第一步', exact: true }).click();
     await expect(page.getByLabel('回放进度')).toHaveValue('0');
     await expect(iframe.locator('#scores')).toHaveText(initialScores);
     await page.getByLabel('播放速度').selectOption('4');

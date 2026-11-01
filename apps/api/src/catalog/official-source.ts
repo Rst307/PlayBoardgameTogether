@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { GAME_PACKAGE_MAX_ZIP_BYTES } from '@boardgame/protocol';
 
 const organization = 'PlayBoardgameTogether';
 const versionSchema = z.string().regex(/^\d{1,9}\.\d{1,9}\.\d{1,9}$/);
@@ -236,7 +237,7 @@ export class GitHubOfficialGameSource implements OfficialGameSource {
     return [...result.values()];
   }
   async download(item: OfficialPackage, signal: AbortSignal) {
-    const bytes = await this.bytes(item.url, 5 * 1024 * 1024, signal);
+    const bytes = await this.bytes(item.url, GAME_PACKAGE_MAX_ZIP_BYTES, signal);
     if (createHash('sha256').update(bytes).digest('hex') !== item.sha256)
       throw new Error('官方安装包校验失败');
     return bytes;

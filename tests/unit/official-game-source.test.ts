@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import { GAME_PACKAGE_MAX_ZIP_BYTES } from '../../packages/protocol/src/index.js';
 import {
   GitHubOfficialGameSource,
   compareGameVersions,
@@ -98,6 +99,20 @@ describe('official game release source', () => {
     transport.mockResolvedValueOnce(Response.json({ platform: 'attacker/platform', games: {} }));
     await expect(bad.discover(new AbortController().signal)).rejects.toThrow();
   });
+  it('downloads a verified package larger than the old 5 MiB limit', async () => {
+    const bytes = Buffer.alloc(6 * 1024 * 1024, 1);
+    const source = new GitHubOfficialGameSource(
+      vi.fn<typeof fetch>().mockResolvedValue(new Response(bytes)),
+    );
+    const item = {
+      gameId: 'online.uno',
+      version: '1.0.0',
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+      url: 'https://github.com/test.zip',
+    };
+    const downloaded = await source.download(item, new AbortController().signal);
+    expect(downloaded.equals(bytes)).toBe(true);
+  });
   it('blocks untrusted redirects and bounds streamed bodies without Content-Length', async () => {
     const transport = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(null, {
@@ -115,7 +130,7 @@ describe('official game release source', () => {
     await expect(source.download(item, new AbortController().signal)).rejects.toThrow('不受信任');
     expect(transport).toHaveBeenCalledTimes(1);
     const huge = new GitHubOfficialGameSource(
-      vi.fn<typeof fetch>().mockResolvedValue(new Response(new Uint8Array(5 * 1024 * 1024 + 1))),
+      vi.fn<typeof fetch>().mockResolvedValue(new Response(new Uint8Array(GAME_PACKAGE_MAX_ZIP_BYTES + 1))),
     );
     await expect(huge.download(item, new AbortController().signal)).rejects.toThrow('大小限制');
   });
