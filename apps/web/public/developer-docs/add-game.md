@@ -2,6 +2,14 @@
 
 游戏有两条接入路径：现有 workspace 扩展继续由维护者审核、构建和部署；管理员也可上传 [在线游戏 ZIP](/developers/game-packages)，自动安装独立规则和桌面，立即真人可玩。在线格式不接受普通源码仓库 ZIP，不自动安装 npm 依赖。下方游戏接入申请仍只保存资料，资料审核不会安装游戏。
 
+## 官方游戏登记与更新检查
+
+每次开发新游戏或更新已有游戏，都须核对 [平台官方目录](https://github.com/PlayBoardgameTogether/PlayBoardgameTogether/blob/main/scripts/game-repositories/catalog.json)。官方游戏统一使用 PlayBoardgameTogether 组织下的独立 `playboard-game-<英文游戏名>` 仓库；新游戏由维护者提交目录 PR，已有游戏核对并按需更新仓库、名称、游戏 ID、包名前缀和扩展玩法。操作步骤及示例见 [仓库与登记指南](https://github.com/PlayBoardgameTogether/PlayBoardgameTogether/blob/main/docs/game-repositories.md#官方游戏目录登记与每次发布检查)。游戏资料申请的 reviewed 状态不代替该登记。
+
+目录的 `assets[].id` 必须匹配包内 `manifest.id`，`archive` 与游戏仓库 `release.config.json` 一致；目录不记录最新版号。正常升级保留 ID 和 archive，提升游戏版本，按 `<archive>-v<版本>` 发布正式 Release，附件包含 `<archive>-<版本>.zip`、`release.json` 和 `SHA256SUMS`，不覆盖旧发布、不使用源码 ZIP。新增玩法补独立 ID/archive；元数据未变化时无需改目录 JSON，但交付中仍须记录“登记已核对，无需改动”。
+
+目录登记需合入平台 main；在已部署订阅功能且管理员启用「自动添加新游戏」或「自动更新已安装游戏」的平台，才能通过官方订阅安装。交付记录目录 PR/提交、实际发布版本和附件、订阅同步结果或未验证原因；没有安装验证不能宣称已经上架。内置游戏不走 ZIP 自动更新，平台精确集成来源锁仅在正式导入时维护。
+
 ## 在线接入申请（2026-10-03）
 
 先使用现有账户登录，再携带 session cookie、同源 Origin 和 X-CSRF-Token，发送 `POST /api/v1/game-submissions`。只接受 application/json，正文上限 8 KiB。
@@ -114,4 +122,4 @@ GameBoard 在当前 Web registry 中接收 view:unknown、busy:boolean、events:
 
 后续接口应以现有 manifest/版本、公开规则、View/Action schema 和资源契约为基础，并明确提交、审核、安装和启用的权限。服务端规则需要可信部署边界；不能通过普通 HTTP 请求执行任意上传代码。
 
-现阶段开发者可通过本文申请接口提交资料，再按照可信源码流程贡献独立游戏包。代码包上传、隔离审核、安装启用与动态加载仍为后续工作，不由资料审核接口触发。
+开发者可通过本文申请接口提交资料，再按可信源码或在线 ZIP 流程贡献独立游戏包。在线 ZIP 已有隔离安装链路，官方订阅另需目录登记和管理员启用；资料审核接口本身不安装代码或启用游戏。
