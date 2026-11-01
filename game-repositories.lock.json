@@ -144,7 +144,7 @@
     },
     "color-match": {
       "repository": "PlayBoardgameTogether/playboard-game-color-match",
-      "commit": "ceb70051f81a059bcb184694ae38e3cdc2a6672f",
+      "commit": "81e7be68329f3e82d08bdb8697e989ff0842e4d6",
       "kind": "builtin",
       "source": "games/color-match",
       "compatibility": {
@@ -158,10 +158,10 @@
         "games/color-match/assets/manifest.json": "5e3ed3e9881e63bcf12747360497a0bb6b8c2054",
         "games/color-match/build.mjs": "0c880c7547af2d6a9374cd4b709178441c7c8ae1",
         "games/color-match/manifest.json": "1bc0bd3bd90a68a2cb25483b700c6664cdbfd18c",
-        "games/color-match/package.json": "d66a9a176986f506ad508cff62004b2ae35c5d2f",
-        "games/color-match/src/client/index.tsx": "0ee9145c0303aaa46313170aa246255d0a1be7e2",
+        "games/color-match/package.json": "da9bc6bcdc0e2a4c9aa5ce245b6bf17de14b3054",
+        "games/color-match/src/client/index.tsx": "124f29e5052eb456f30a55b084cb693e329825a2",
         "games/color-match/src/client/preview.tsx": "a5173acb4d75f4f8eba5be59841d93444f68ae47",
-        "games/color-match/src/client/style.css": "3ec0c8a4c2b3e05fe81ce875a4d401eae5775468",
+        "games/color-match/src/client/style.css": "9c29f90b6ffa450ebd97c8c1e0b40d0a61f64942",
         "games/color-match/src/client/tutorial.ts": "130bb94ebd9449daad5da9c9869b9fe073608be7",
         "games/color-match/src/server/index.ts": "39b15fcafa2f52a330668e42d3f8b523241fd47b",
         "games/color-match/src/shared/assets.ts": "c73aae974769d9394ebe8caabe9b17b32077d205",
@@ -175,7 +175,7 @@
     },
     "grid-garden": {
       "repository": "PlayBoardgameTogether/playboard-game-grid-garden",
-      "commit": "e04ae54b762caaf30b1096f3f06a09a43d6f2127",
+      "commit": "41e5b1d72e050797eee1c3572fed6c758144faec",
       "kind": "builtin",
       "source": "games/grid-garden",
       "compatibility": {
@@ -186,8 +186,8 @@
         "docs/games/grid-garden.md": "b570333449ab1da99a9e351438b72fbaec331136",
         "games/grid-garden/assets/NOTICE.md": "8af66eae8d2f9d513e59d2c97c81ad0cb3a45676",
         "games/grid-garden/assets/manifest.json": "0ab7ee4d8ba28b226f6c170c709fdbfc126b6525",
-        "games/grid-garden/package.json": "04bb46e6db7021bfda9559d8215f6de4575fa67d",
-        "games/grid-garden/src/client/index.tsx": "3c322cc284faf9e8dfda879b3992a99633fe44ba",
+        "games/grid-garden/package.json": "d42a1e56e9a845f7f51975e390400226f4299ab4",
+        "games/grid-garden/src/client/index.tsx": "aec3746ecfa5d71306aa6481289c2b18a0e0c329",
         "games/grid-garden/src/server/assets.ts": "b5addd670238734a5baa6f6325c28cc8272f8fba",
         "games/grid-garden/src/server/index.ts": "6a25ec71b459197448e9b82c012765088134c5e4",
         "games/grid-garden/src/shared/assets.ts": "e6fff98191035768277740de7582a2247081795a",

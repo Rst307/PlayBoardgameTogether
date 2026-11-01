@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReplayPresentation } from '@boardgame/game-sdk/presentation';
+import type { PlayerNames, ReplayPresentation } from '@boardgame/game-sdk/presentation';
 
-export function PackageBoard({ id, version, view, busy, events, onAction, replay }: {
+export function PackageBoard({ id, version, view, busy, events, onAction, playerNames, replay }: {
   id: string; version: string; view: unknown; busy: boolean; events: unknown[]; onAction: (action: unknown) => void;
+  playerNames?: PlayerNames | undefined;
   replay?: ReplayPresentation | undefined;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -31,11 +32,11 @@ export function PackageBoard({ id, version, view, busy, events, onAction, replay
       window.removeEventListener('resize', resize);
     };
   }, [fitViewport, id, version]);
-  const latest = useRef({ view, busy, events, onAction, replay });
-  latest.current = { view, busy, events, onAction, replay };
+  const latest = useRef({ view, busy, events, onAction, playerNames, replay });
+  latest.current = { view, busy, events, onAction, playerNames, replay };
   const publish = () => {
-    const { view, busy, events, replay } = latest.current;
-    frame.current?.contentWindow?.postMessage({ type: 'boardgame:view', view, busy: replay ? !replay.animate : busy, events,
+    const { view, busy, events, playerNames, replay } = latest.current;
+    frame.current?.contentWindow?.postMessage({ type: 'boardgame:view', view, busy: replay ? !replay.animate : busy, events, playerNames: playerNames ?? {},
       ...(replay ? { replay: { id: replay.id, animate: replay.animate } } : {}) }, '*');
   };
   useEffect(() => {
@@ -67,7 +68,7 @@ export function PackageBoard({ id, version, view, busy, events, onAction, replay
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, []);
-  useEffect(publish, [view, busy, events, replay]);
+  useEffect(publish, [view, busy, events, playerNames, replay]);
   return <iframe key={`${id}@${version}`} ref={frame} title="在线游戏桌面" className="package-desktop"
     style={height === undefined ? undefined : { height, minHeight: 0 }}
     sandbox="allow-scripts" referrerPolicy="no-referrer" onLoad={publish}

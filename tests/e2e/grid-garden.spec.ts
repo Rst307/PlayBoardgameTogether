@@ -98,6 +98,8 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
     await a.getByRole('button', { name: '开始游戏' }).click();
     for (const page of [a, b]) {
       await expect(page.getByRole('button', { name: '建造 -1' })).toBeEnabled();
+      await expect(page.locator('.garden-player-boards')).toContainText(page === a ? '玩家 D（你）' : '玩家 E（你）');
+      await expect(page.locator('.garden-player-boards')).toContainText(page === a ? '玩家 E' : '玩家 D');
     }
     // Hold A's real revision-0 request until B has committed revision 1.
     let releaseRequest!: () => void;
@@ -171,8 +173,8 @@ test('two human gardens preserve conflict drafts, private choices and keyboard p
       await expect(page).toHaveURL(/\/rooms\//);
       await page.getByRole('link', { name: '查看本局结果' }).click();
       await expect(page.getByRole('heading', { name: '最终得分' })).toBeVisible();
-      await expect(page.getByText('座位 1：6 分（占格 6 + 能量 0） · 获胜')).toBeVisible();
-      await expect(page.getByText('座位 2：5 分（占格 2 + 能量 3）')).toBeVisible();
+      await expect(page.getByText(`${page === a ? '玩家 D（你）' : '玩家 D'}：6 分（占格 6 + 能量 0） · 获胜`)).toBeVisible();
+      await expect(page.getByText(`${page === b ? '玩家 E（你）' : '玩家 E'}：5 分（占格 2 + 能量 3）`)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     }
     await a.screenshot({ path: testInfo.outputPath('garden-human-finished.png'), fullPage: true });

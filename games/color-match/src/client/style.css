@@ -32,6 +32,8 @@
     gap: 9px;
   }
   .color-players > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: flex;
     align-items: center;
     justify-content: space-between;

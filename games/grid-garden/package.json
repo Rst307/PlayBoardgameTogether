@@ -1,7 +1,7 @@
 {
   "name": "@boardgame/grid-garden",
   "license": "GPL-3.0-only",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "exports": {
     "./rules": { "production": "./dist/shared/rules.js", "default": "./src/shared/rules.ts" },

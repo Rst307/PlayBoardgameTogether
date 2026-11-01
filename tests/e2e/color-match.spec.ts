@@ -233,8 +233,12 @@ test('two browsers play Color Match from login to a saved winner', async ({ brow
     expect(droppedPongs).toBeGreaterThan(0);
     await expect.poll(() => a.getByText('网络重连中，操作已暂停。').count()).toBeGreaterThan(0);
     dropPongA = false;
-    await a.clock.fastForward(1_000);
-    await expect(a.getByText('网络重连中，操作已暂停。')).toHaveCount(0, { timeout: 20_000 });
+    // Socket close and handshake events arrive asynchronously. Keep advancing
+    // the mocked clock so a retry scheduled after the close event can execute.
+    await expect.poll(async () => {
+      await a.clock.runFor(1_000);
+      return a.getByText('网络重连中，操作已暂停。').count();
+    }, { timeout: 20_000 }).toBe(0);
     // Subsequent reload/navigation assertions exercise normal rendering timers.
     await a.clock.resume();
     for (let index = 0; index < 3; index++) {
